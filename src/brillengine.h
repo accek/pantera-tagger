@@ -63,6 +63,7 @@ private:
         assert(text1.size() == text2.size());
         start_index = std::min(start_index, (int)text1.size());
         end_index = std::min(end_index, (int)text1.size());
+        #pragma omp parallel for default(shared)
         for (int i = start_index; i < end_index; ++i) {
             if (text1[i].isConsideredTag(b.tag)
                     && b.predicate.tpl
@@ -87,6 +88,9 @@ private:
         int tp = 0, tn = 0, fp = 0, fn = 0;
         int e = 0;
 
+        #pragma omp parallel for \
+            default(shared) \
+            reduction(+: tp, tn, fp, fn, e)
         for (int i = start_index; i < end_index; ++i) {
             const Lexeme& lex = text[i];
             if (lex.chosen_tag[phase] == lex.expected_tag) {
@@ -226,7 +230,10 @@ public:
                 << " ...  ";
         const Tagset* previous_tagset =
                 phase == 0 ? NULL : phase_tagsets[phase - 1];
-        BOOST_FOREACH(Lexeme& lexeme, text_to_tag) {
+        int n = text_to_tag.size();
+        #pragma omp parallel for default(shared)
+        for (int i = 0; i < n; i++) {
+            Lexeme& lexeme = text_to_tag[i];
             tag_type previous_tag = phase == 0 ? tag_type::getNullTag()
                     : lexeme.chosen_tag[phase - 1];
             lexeme.chosen_tag[phase] =
@@ -269,7 +276,9 @@ public:
         cerr << "Generating initial rules for phase " << phase << " ...  ";
         if (DBG)
             cerr << endl;
-        for (int i = INDEX_OFFSET, n = text.size() - INDEX_OFFSET; i < n; ++i) {
+
+        int n = text.size() - INDEX_OFFSET;
+        for (int i = INDEX_OFFSET; i < n; ++i) {
             Lexeme& lex = text[i];
             vector<Predicate<Lexeme> > preds;
             generatePredicates(text, i, preds);
@@ -349,93 +358,112 @@ public:
 
             generated_rules.push_back(b);
 
-            for (int i = INDEX_OFFSET, n = text.size() - INDEX_OFFSET; i < n; ++i) {
-                Lexeme& lex1 = text[i];
-                Lexeme& lex2 = next_text[i];
-                if (lex2.chosen_tag[phase] == lex1.expected_tag)
-                    correct_tags++;
-                else
-                    incorrect_tags++;
+            int n = text.size() - INDEX_OFFSET;
+            #pragma omp parallel default(shared)
+            {
+                vector<Rule<Lexeme> > first_dec;
+                vector<Rule<Lexeme> > second_dec;
+                vector<Rule<Lexeme> > first_inc;
+                vector<Rule<Lexeme> > second_inc;
 
-                if (lex2.vicinity != round) continue;
+                #pragma omp for
+                for (int i = INDEX_OFFSET; i < n; ++i) {
+                    Lexeme& lex1 = text[i];
+                    Lexeme& lex2 = next_text[i];
+                    if (lex2.chosen_tag[phase] == lex1.expected_tag)
+                        correct_tags++;
+                    else
+                        incorrect_tags++;
 
-                if (lex2.chosen_tag[phase] == lex1.chosen_tag[phase]) {
-                    vector<Predicate<Lexeme> > preds;
-                    generatePredicates(text, i, preds);
-                    BOOST_FOREACH(Predicate<Lexeme>& pred, preds) {
-                        if (lex1.chosen_tag[phase] != lex1.expected_tag) {
-                            if (!matchPredicate(pred, next_text, i)
-                                    && lex1.expected_tag != tag_type::getNullTag()) {
-                                scores[Rule<Lexeme>(pred, lex1.expected_tag)].first--;
+                    if (lex2.vicinity != round) continue;
+
+                    if (lex2.chosen_tag[phase] == lex1.chosen_tag[phase]) {
+                        vector<Predicate<Lexeme> > preds;
+                        generatePredicates(text, i, preds);
+                        BOOST_FOREACH(Predicate<Lexeme>& pred, preds) {
+                            if (lex1.chosen_tag[phase] != lex1.expected_tag) {
+                                if (!matchPredicate(pred, next_text, i)
+                                        && lex1.expected_tag != tag_type::getNullTag()) {
+                                    first_dec.push_back(Rule<Lexeme>(pred, lex1.expected_tag));
+                                }
+                            } else {
+                                if (!matchPredicate(pred, next_text, i))
+                                    BOOST_FOREACH(const tag_type& ctag,
+                                            lex1.considered_tags) {
+                                        if (ctag != lex1.chosen_tag[phase]) {
+                                            second_dec.push_back(Rule<Lexeme>(pred, ctag));
+                                        }
+                                    }
                             }
-                        } else {
-                            if (!matchPredicate(pred, next_text, i))
+                        }
+                        preds.clear();
+                        generatePredicates(next_text, i, preds);
+
+                        BOOST_FOREACH(Predicate<Lexeme>& pred, preds) {
+                            if (lex2.chosen_tag[phase] != lex1.expected_tag) {
+                                if (!matchPredicate(pred, text, i)
+                                        && lex1.expected_tag != tag_type::getNullTag()) {
+                                   first_inc.push_back(Rule<Lexeme>(pred, lex1.expected_tag));
+                                }
+                            } else {
+                                if (!matchPredicate(pred, text, i)) {
+                                    BOOST_FOREACH(const tag_type& ctag,
+                                            lex1.considered_tags) {
+                                        if (ctag != lex2.chosen_tag[phase]) {
+                                            second_inc.push_back(Rule<Lexeme>(pred, ctag));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        vector<Predicate<Lexeme> > preds;
+                        generatePredicates(text, i, preds);
+                        BOOST_FOREACH(Predicate<Lexeme>& pred, preds) {
+                            if (lex1.chosen_tag[phase] != lex1.expected_tag) {
+                                if (lex1.expected_tag != tag_type::getNullTag() &&
+                                        (!matchPredicate(pred, next_text, i) ||
+                                         lex2.chosen_tag[phase] == lex1.expected_tag)) {
+                                    first_dec.push_back(Rule<Lexeme>(pred, lex1.expected_tag));
+                                }
+                            } else {
                                 BOOST_FOREACH(const tag_type& ctag,
                                         lex1.considered_tags) {
                                     if (ctag != lex1.chosen_tag[phase]) {
-                                        scores[Rule<Lexeme>(pred, ctag)].second--;
+                                        second_dec.push_back(Rule<Lexeme>(pred, ctag));
                                     }
                                 }
-                        }
-                    }
-                    preds.clear();
-                    generatePredicates(next_text, i, preds);
-
-                    BOOST_FOREACH(Predicate<Lexeme>& pred, preds) {
-                        if (lex2.chosen_tag[phase] != lex1.expected_tag) {
-                            if (!matchPredicate(pred, text, i)
-                                    && lex1.expected_tag != tag_type::getNullTag()) {
-                               scores[Rule<Lexeme>(pred, lex1.expected_tag)].first++;
                             }
-                        } else {
-                            if (!matchPredicate(pred, text, i)) {
+                        }
+                        preds.clear();
+                        generatePredicates(next_text, i, preds);
+                        BOOST_FOREACH(Predicate<Lexeme>& pred, preds) {
+                            if (lex2.chosen_tag[phase] != lex1.expected_tag) {
+                                if (lex1.expected_tag != tag_type::getNullTag() &&
+                                        (!matchPredicate(pred, text, i) ||
+                                         lex1.chosen_tag[phase] == lex1.expected_tag)) {
+                                    first_inc.push_back(Rule<Lexeme>(pred, lex1.expected_tag));
+                                }
+                            } else {
                                 BOOST_FOREACH(const tag_type& ctag,
                                         lex1.considered_tags) {
                                     if (ctag != lex2.chosen_tag[phase]) {
-                                        scores[Rule<Lexeme>(pred, ctag)].second++;
+                                        second_inc.push_back(Rule<Lexeme>(pred, ctag));
                                     }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    vector<Predicate<Lexeme> > preds;
-                    generatePredicates(text, i, preds);
-                    BOOST_FOREACH(Predicate<Lexeme>& pred, preds) {
-                        if (lex1.chosen_tag[phase] != lex1.expected_tag) {
-                            if (lex1.expected_tag != tag_type::getNullTag() &&
-                                    (!matchPredicate(pred, next_text, i) ||
-                                     lex2.chosen_tag[phase] == lex1.expected_tag)) {
-                                scores[Rule<Lexeme>(pred, lex1.expected_tag)].first--;
-                            }
-                        } else {
-                            BOOST_FOREACH(const tag_type& ctag,
-                                    lex1.considered_tags) {
-                                if (ctag != lex1.chosen_tag[phase]) {
-                                    scores[Rule<Lexeme>(pred, ctag)].second--;
-                                }
-                            }
-                        }
-                    }
-                    preds.clear();
-                    generatePredicates(next_text, i, preds);
-                    BOOST_FOREACH(Predicate<Lexeme>& pred, preds) {
-                        if (lex2.chosen_tag[phase] != lex1.expected_tag) {
-                            if (lex1.expected_tag != tag_type::getNullTag() &&
-                                    (!matchPredicate(pred, text, i) ||
-                                     lex1.chosen_tag[phase] == lex1.expected_tag)) {
-                                scores[Rule<Lexeme>(pred, lex1.expected_tag)].first++;
-                            }
-                        } else {
-                            BOOST_FOREACH(const tag_type& ctag,
-                                    lex1.considered_tags) {
-                                if (ctag != lex2.chosen_tag[phase]) {
-                                    scores[Rule<Lexeme>(pred, ctag)].second++;
                                 }
                             }
                         }
                     }
                 }
+
+                #pragma omp critical (scores)
+                {
+                    BOOST_FOREACH(const Rule<Lexeme>& r, first_inc) scores[r].first++;
+                    BOOST_FOREACH(const Rule<Lexeme>& r, first_dec) scores[r].first--;
+                    BOOST_FOREACH(const Rule<Lexeme>& r, second_inc) scores[r].second++;
+                    BOOST_FOREACH(const Rule<Lexeme>& r, second_dec) scores[r].second--;
+                }
+
             }
             std::swap(text, next_text);
 

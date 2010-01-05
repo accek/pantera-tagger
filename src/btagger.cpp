@@ -125,7 +125,7 @@ int main(int argc, char** argv) {
     tagsets.push_back(tagset);
     vector<PredicateTemplate<MyLexeme>*> r3 = Rules::make_p2_rules<MyLexeme, 2>(tagsets);
 
-    int threshold = 10;
+    int threshold = 50;
     if (argc >= 4) {
         threshold = atoi(argv[3]);
     }
