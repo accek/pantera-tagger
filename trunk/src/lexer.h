@@ -18,8 +18,8 @@ template<class Lexeme>
 class Lexer
 {
 public:
-	virtual void parseStream(const Tagset* tagset, std::istream& stream,
-			vector<Lexeme>& lexemes) = 0;
+    virtual void parseStream(const Tagset* tagset, std::istream& stream,
+            vector<Lexeme>& lexemes) = 0;
 };
 
 
