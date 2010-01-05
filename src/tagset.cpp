@@ -14,26 +14,26 @@ using boost::format;
 using boost::str;
 
 CategoryNotFoundException CategoryNotFoundException::ById(unsigned int id) {
-	return CategoryNotFoundException(
-			str(format("Category #%1% does not exist.") % id));
+    return CategoryNotFoundException(
+            str(format("Category #%1% does not exist.") % id));
 }
 
 CategoryNotFoundException CategoryNotFoundException::ByName(
-		const string& name) {
-	return CategoryNotFoundException(
-			str(format("Category '%1%' does not exist.") % name));
+        const string& name) {
+    return CategoryNotFoundException(
+            str(format("Category '%1%' does not exist.") % name));
 }
 
 PartOfSpeechNotFoundException PartOfSpeechNotFoundException::ById(
-		unsigned int id) {
-	return PartOfSpeechNotFoundException(
-			str(format("Part of speech #%1% does not exist.") % id));
+        unsigned int id) {
+    return PartOfSpeechNotFoundException(
+            str(format("Part of speech #%1% does not exist.") % id));
 }
 
 PartOfSpeechNotFoundException PartOfSpeechNotFoundException::ByName(
-		const string& name) {
-	return PartOfSpeechNotFoundException(
-			str(format("Part of speech '%1%' does not exist.") % name));
+        const string& name) {
+    return PartOfSpeechNotFoundException(
+            str(format("Part of speech '%1%' does not exist.") % name));
 }
 
 }

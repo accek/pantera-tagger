@@ -23,41 +23,41 @@ using std::map;
 
 class PartOfSpeech {
 private:
-	string _name;
-	vector<const Category*> _categories;
-	vector<bool> _requiredCategoryFlags;
+    string _name;
+    vector<const Category*> _categories;
+    vector<bool> _requiredCategoryFlags;
 
 public:
-	PartOfSpeech(const string& name) : _name(name) { }
+    PartOfSpeech(const string& name) : _name(name) { }
 
-	const string& getName() const { return _name; }
+    const string& getName() const { return _name; }
 
-	const vector<const Category*>& getCategories(void) const {
-		return _categories;
-	}
-
-	bool isRequiredCategory(unsigned int index) const {
-		return _requiredCategoryFlags[index];
-	}
-
-    bool hasCategory(const Category* category) const {
-		vector<const Category*>::const_iterator i =
-				std::find(_categories.begin(), _categories.end(), category);
-		return i != _categories.end();
+    const vector<const Category*>& getCategories(void) const {
+        return _categories;
     }
 
-	bool isRequiredCategory(const Category* category) const {
-		vector<const Category*>::const_iterator i =
-				std::find(_categories.begin(), _categories.end(), category);
-		if (i == _categories.end())
-			return false;
-		return _requiredCategoryFlags[i - _categories.begin()];
-	}
+    bool isRequiredCategory(unsigned int index) const {
+        return _requiredCategoryFlags[index];
+    }
 
-	void addCategory(const Category* category, bool required) {
-		_categories.push_back(category);
-		_requiredCategoryFlags.push_back(required);
-	}
+    bool hasCategory(const Category* category) const {
+        vector<const Category*>::const_iterator i =
+                std::find(_categories.begin(), _categories.end(), category);
+        return i != _categories.end();
+    }
+
+    bool isRequiredCategory(const Category* category) const {
+        vector<const Category*>::const_iterator i =
+                std::find(_categories.begin(), _categories.end(), category);
+        if (i == _categories.end())
+            return false;
+        return _requiredCategoryFlags[i - _categories.begin()];
+    }
+
+    void addCategory(const Category* category, bool required) {
+        _categories.push_back(category);
+        _requiredCategoryFlags.push_back(required);
+    }
 
 };
 

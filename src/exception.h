@@ -18,14 +18,14 @@ using std::string;
 class Exception : public std::exception
 {
 private:
-	string _message;
+    string _message;
 
 public:
-	Exception(const string& message) : _message(message) { }
-	virtual ~Exception() throw () { }
+    Exception(const string& message) : _message(message) { }
+    virtual ~Exception() throw () { }
 
     virtual const char* what() const throw () {
-    	return _message.c_str();
+        return _message.c_str();
     }
 };
 

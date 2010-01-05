@@ -18,8 +18,8 @@ namespace BTagger {
 class TagsetLoaderError : public Exception
 {
 public:
-	TagsetLoaderError(const string& msg) : Exception(msg) { }
-	virtual ~TagsetLoaderError() throw () { };
+    TagsetLoaderError(const string& msg) : Exception(msg) { }
+    virtual ~TagsetLoaderError() throw () { };
 };
 
 
@@ -27,9 +27,9 @@ public:
 class TagsetLoader
 {
 public:
-	// A method to read tagset specification from a specified
-	// stream.
-	virtual Tagset* loadTagset(std::istream& stream) = 0;
+    // A method to read tagset specification from a specified
+    // stream.
+    virtual Tagset* loadTagset(std::istream& stream) = 0;
 };
 
 } // namespace BTagger

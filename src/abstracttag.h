@@ -22,13 +22,13 @@ namespace BTagger {
 class AbstractTag
 {
 public:
-	AbstractTag(const Tagset* tagset, unsigned int pos_index);
+    AbstractTag(const Tagset* tagset, unsigned int pos_index);
 
-	void setValue(unsigned int category_index, unsigned int value_index);
-	unsigned int getValue(unsigned int category_index) const;
+    void setValue(unsigned int category_index, unsigned int value_index);
+    unsigned int getValue(unsigned int category_index) const;
 
-	bool operator==(const AbstractTag& other) const;
-	bool operator!=(const AbstractTag& other) const;
+    bool operator==(const AbstractTag& other) const;
+    bool operator!=(const AbstractTag& other) const;
 };
 
 }

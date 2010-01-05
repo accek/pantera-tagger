@@ -22,15 +22,15 @@ template<class Lexeme>
 class IpiPanRewriter : Rewriter<Lexeme>
 {
 private:
-	int token;
-	void (*progress_handler)(int);
-	int progress_every;
+    int token;
+    void (*progress_handler)(int);
+    int progress_every;
 
 public:
-	void setProgressHandler(void (*progress)(int token), int every) {
-		progress_handler = progress;
-		progress_every = every;
-	}
+    void setProgressHandler(void (*progress)(int token), int every) {
+        progress_handler = progress;
+        progress_every = every;
+    }
 
     void rewriteStream(int phase, const Tagset* tagset, const vector<Lexeme>& lexemes,
             std::istream& in, std::ostream& out) {

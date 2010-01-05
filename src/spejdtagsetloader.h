@@ -16,10 +16,10 @@ namespace BTagger {
 class SpejdTagsetLoader : public TagsetLoader
 {
 private:
-	void reportError(SI_Error error);
+    void reportError(SI_Error error);
 
 public:
-	virtual Tagset* loadTagset(std::istream& stream);
+    virtual Tagset* loadTagset(std::istream& stream);
 };
 
 } // namespace BTagger
