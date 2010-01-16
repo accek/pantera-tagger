@@ -41,8 +41,15 @@ public:
             train(lexeme, projection_tagset);
     }
 
-    int getFrequency(const string& string, const tag_type& tag) {
-        return _freq[string][tag];
+    int getFrequency(const string& str, const tag_type& tag) const {
+        typename unordered_map<string, unordered_map<tag_type, int> >::const_iterator i
+            = _freq.find(str);
+        if (i == _freq.end())
+            return 0;
+        typename unordered_map<tag_type, int>::const_iterator j = i->second.find(tag);
+        if (j == i->second.end())
+            return 0;
+        return j->second;
     }
 
     tag_type getBestTag(const string& string, const tag_type& default_tag) {

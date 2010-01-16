@@ -90,7 +90,8 @@ private:
 
         #pragma omp parallel for \
             default(shared) \
-            reduction(+: tp, tn, fp, fn, e)
+            reduction(+: tp, tn, fp, fn, e) \
+           
         for (int i = start_index; i < end_index; ++i) {
             const Lexeme& lex = text[i];
             if (lex.chosen_tag[phase] == lex.expected_tag) {
@@ -339,22 +340,30 @@ public:
             int f;
             Rule<Lexeme> b = this->findBestRule(&f);
 
-            fprintf(stderr, "(%d) CHOSEN RULE (good=%d, bad=%d): %s\n",
-                            round, scores[b].first, scores[b].second,
+            fprintf(stderr, "(%d) CHOSEN RULE (good=%d, bad=%d, candidates=%d): %s\n",
+                            round, scores[b].first, scores[b].second, scores.size(),
                             b.asString().c_str());
 
             if (f < threshold || cancelled) break;
 
-            assert(countScores(b)
-                    == make_pair(scores[b].first, scores[b].second));
+            std::pair<int, int> good_scores = countScores(b);
+            if (good_scores != make_pair(scores[b].first, scores[b].second)) {
+                fprintf(stderr, "\n*** WRONG SCORES ***"
+                        "\n good is %d, should be %d"
+                        "\n bad is %d, should be %d\n\n",
+                        scores[b].first, good_scores.first,
+                        scores[b].second, good_scores.second);
+            }
 
             double P, R, F;
             applyRule(phase, b, text, next_text, INDEX_OFFSET,
                     text.size() - INDEX_OFFSET, round, VICINITY);
-            calculateStats(phase, next_text, &P, &R, &F, &errors, INDEX_OFFSET,
-                    text.size() - INDEX_OFFSET);
-            fprintf(stderr, "Applied. P=%lf R=%lf F=%lf errors: %d\n",
-                    P, R, F, errors);
+            if ((round % 10) == 1) {
+                calculateStats(phase, next_text, &P, &R, &F, &errors, INDEX_OFFSET,
+                        text.size() - INDEX_OFFSET);
+                fprintf(stderr, "Applied. P=%lf R=%lf F=%lf errors: %d\n",
+                        P, R, F, errors);
+            }
 
             generated_rules.push_back(b);
 
@@ -387,13 +396,14 @@ public:
                                     first_dec.push_back(Rule<Lexeme>(pred, lex1.expected_tag));
                                 }
                             } else {
-                                if (!matchPredicate(pred, next_text, i))
+                                if (!matchPredicate(pred, next_text, i)) {
                                     BOOST_FOREACH(const tag_type& ctag,
                                             lex1.considered_tags) {
                                         if (ctag != lex1.chosen_tag[phase]) {
                                             second_dec.push_back(Rule<Lexeme>(pred, ctag));
                                         }
                                     }
+                                }
                             }
                         }
                         preds.clear();
@@ -480,30 +490,50 @@ public:
     }
 
     Rule<Lexeme> findBestRule(int* max) {
-        Rule<Lexeme> maxR = scores.begin()->first;
-        *max = scores[maxR].first - scores[maxR].second;
+        Rule<Lexeme> gmaxR = scores.begin()->first;
+        int gmax = scores[gmaxR].first - scores[gmaxR].second;
 
         if (DBG) {
             cerr << "Rules: " << endl;
         }
 
-        BOOST_FOREACH(const typename scores_map_type::value_type& i, scores) {
-            if (DBG) {
-                cerr << "\t" << i.first.asString()
-                    << " (good: " << i.second.first
-                    << ", bad: " << i.second.second << ")" << endl;
-                assert(countScores(i.first)
-                        == std::make_pair(i.second.first, i.second.second));
+        int n = scores.bucket_count();
+
+        #pragma omp parallel default(shared)
+        {
+            Rule<Lexeme> maxR = scores.begin()->first;
+            int max = scores[maxR].first - scores[maxR].second;
+
+            #pragma omp for
+            for (int i = 0; i < n; i++) {
+                typename scores_map_type::const_local_iterator end = scores.end(i);
+                for (typename scores_map_type::const_local_iterator j = scores.begin(i);
+                        j != end; j++) {
+                    if (DBG) {
+                        cerr << "\t" << j->first.asString()
+                            << " (good: " << j->second.first
+                            << ", bad: " << j->second.second << ")" << endl;
+                        assert(countScores(j->first)
+                                == std::make_pair(j->second.first, j->second.second));
+                    }
+
+                    int val = j->second.first - j->second.second;
+                    if (val > max) {
+                        max = val;
+                        maxR = j->first;
+                    }
+                }
             }
 
-            int val = i.second.first - i.second.second;
-            if (val > *max) {
-                *max = val;
-                maxR = i.first;
+            #pragma omp critical
+            if (max > gmax) {
+                gmax = max;
+                gmaxR = maxR;
             }
         }
 
-        return maxR;
+        *max = gmax;
+        return gmaxR;
     }
 
     void runPhase(const Tagset* tagset,
@@ -543,7 +573,11 @@ public:
 
     std::pair<int, int> countScores(const Rule<Lexeme>& b) {
         int countGood = 0, countBad = 0;
-        for (int i = INDEX_OFFSET, n = text.size() - INDEX_OFFSET; i < n; ++i) {
+
+        int n = text.size() - INDEX_OFFSET;
+        #pragma omp parallel for default(shared) \
+                reduction(+: countGood, countBad)
+        for (int i = INDEX_OFFSET; i < n; ++i) {
             const Lexeme& lex = text[i];
             if (b.predicate.tpl->predicateMatches(b.predicate, text, i)
                     && lex.isConsideredTag(b.tag)) {

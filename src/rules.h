@@ -36,17 +36,15 @@ class Predicate {
 public:
     PredicateTemplate<Lexeme>* tpl;
     struct {
-        typename Lexeme::tag_type segment_tag;
-        typename Lexeme::tag_type segment_subtag;
-        union {
-            typename Lexeme::tag_type tag;
-            typename Lexeme::tag_type tags[2];
-            char chars[4];
-        };
+        typename Lexeme::tag_type tags[3];
+        char chars[4];
+        uint8_t categories[3];
+        uint8_t values[3];
     } params;
 
     Predicate() :
         tpl(NULL) {
+        std::memset(&params, 0xff, sizeof(params));
     }
 
     Predicate(PredicateTemplate<Lexeme>* tpl) :
@@ -55,11 +53,13 @@ public:
     }
 
     bool operator==(const Predicate<Lexeme>& r) const {
-        return !std::memcmp(this, &r, sizeof(Predicate<Lexeme>));
+        return tpl == r.tpl && !std::memcmp(&params, &r.params, sizeof(params));
     }
 
     bool operator<(const Predicate<Lexeme>& r) const {
-        return std::memcmp(this, &r, sizeof(Predicate<Lexeme>)) < 0;
+        if (tpl == r.tpl)
+            return std::memcmp(&params, &r.params, sizeof(params)) < 0;
+        return tpl < r.tpl;
     }
 };
 
@@ -67,10 +67,7 @@ template<class Lexeme>
 std::size_t hash_value(const Predicate<Lexeme>& pred) {
     std::size_t seed = 0;
     boost::hash_combine(seed, pred.tpl);
-    boost::hash_combine(seed, pred.params.segment_tag);
-    boost::hash_combine(seed, pred.params.segment_subtag);
-    boost::hash_combine(seed, pred.params.tags[0]);
-    boost::hash_combine(seed, pred.params.tags[1]);
+    boost::hash_range(seed, (char*)&pred.params, (char*)(&pred.params) + sizeof(pred.params));
     return seed;
 }
 
