@@ -11,6 +11,11 @@
 #include <boost/foreach.hpp>
 #include <iostream>
 #include <fstream>
+#include <cstdlib>
+
+#if HAVE_OPENMP
+#include <omp.h>
+#endif
 
 #include "tagset.h"
 #include "spejdtagsetloader.h"
@@ -75,22 +80,22 @@ vector<const Category*> findConstantCategories(const Tagset* tagset, vector<Lexe
 
 int main(int argc, char** argv) {
     //ios_base::sync_with_stdio(false);
+#if HAVE_OPENMP
+    cerr << "OpenMP parallelism enabled (processors: " <<
+        omp_get_num_procs() << ", dynamic thread allocation: "
+        << omp_get_dynamic() << ")" << endl;
+
+    if (!omp_get_dynamic() && getenv("OMP_NUM_THREADS") == NULL) {
+        omp_set_num_threads(min(omp_get_num_procs(), 8));
+    }
+#endif
 
     SpejdTagsetLoader tagset_loader;
     ifstream config_stream("tagset.cfg");
     Tagset* tagset = tagset_loader.loadTagset(config_stream);
 
-    cout << "Loaded categories:" << endl;
-    const vector<const Category*>& cats = tagset->getCategories();
-    BOOST_FOREACH(const Category* i, cats) {
-        cout << "  " << i->getName() << endl;
-    }
-
-    cout << "Loaded parts of speech:" << endl;
-    const vector<const PartOfSpeech*>& pos = tagset->getPartsOfSpeech();
-    BOOST_FOREACH(const PartOfSpeech* i, pos) {
-        cout << "  " << i->getName() << endl;
-    }
+    cout << "Loaded " << tagset->getCategories().size() << " categories." << endl;
+    cout << "Loaded " << tagset->getPartsOfSpeech().size() << " parts of speech." << endl;
 
     cerr << endl << "Lexing ...";
     IpiPanLexer<MyLexeme> lexer;
@@ -119,11 +124,14 @@ int main(int argc, char** argv) {
 
     vector<const Tagset*> tagsets;
     tagsets.push_back(tagset2);
-    vector<PredicateTemplate<MyLexeme>*> r1 = Rules::make_p1_rules<MyLexeme>(tagsets);
+    vector<PredicateTemplate<MyLexeme>*> r1;
+    Rules::make_p1_rules<MyLexeme, 0>(tagsets, r1);
     tagsets.push_back(tagset3);
-    vector<PredicateTemplate<MyLexeme>*> r2 = Rules::make_p2_rules<MyLexeme, 1>(tagsets);
+    vector<PredicateTemplate<MyLexeme>*> r2;
+    Rules::make_p2_rules<MyLexeme, 1>(tagsets, r2);
     tagsets.push_back(tagset);
-    vector<PredicateTemplate<MyLexeme>*> r3 = Rules::make_p2_rules<MyLexeme, 2>(tagsets);
+    vector<PredicateTemplate<MyLexeme>*> r3;
+    Rules::make_p2_rules<MyLexeme, 2>(tagsets, r3);
 
     int threshold = 50;
     if (argc >= 4) {

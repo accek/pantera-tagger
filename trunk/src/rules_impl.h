@@ -21,7 +21,7 @@ using namespace std;
 
 #define STR_SIZE 250
 
-#define T(a) (p.params.a.asString(p.tpl->tagsets[0]).c_str())
+#define T(a) (p.params.a.asString(p.tpl->tagsets[Phase]).c_str())
 
 #include "rules_p1.cpp"
 
