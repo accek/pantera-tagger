@@ -1,0 +1,26 @@
+package NLPCommon;
+
+message TextHeader {
+}
+
+message Token {
+    enum Type {
+        SEGMENT = 0;
+        NO_SPACE = 1;
+        START_OF_SENTENCE = 2;
+        START_OF_PARAGRAPH = 3;
+    }
+
+    required Type type = 1;
+    optional string orth = 2;
+    repeated Interpretation interp = 3;
+}
+
+message Interpretation {
+    required string tag = 1;
+    optional bool chosen_in_golden = 2 [ default = false ];
+    optional bool chosen_in_analyzed = 3 [ default = false ];
+}
+
+    
+

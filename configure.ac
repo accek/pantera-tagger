@@ -8,10 +8,18 @@ AM_INIT_AUTOMAKE()
 
 AC_PROG_CC
 AC_PROG_CXX
+AC_PROG_LIBTOOL
+AC_SUBST(LIBTOOL_DEPS)
 
 AC_SUBST(CFLAGS)
 AC_SUBST(CXXFLAGS)
 AC_SUBST(LDFLAGS)
+
+AC_LANG([C++])
+
+ACX_PTHREAD([], [AC_MSG_ERROR([pthread development bits not found])])
+CXXFLAGS="$CXXFLAGS $PTHREAD_CFLAGS"
+LDFLAGS="$LDFLAGS $PTHREAD_LIBS"
 
 AC_ARG_ENABLE(eclipse,
   [  --enable-eclipse  Support eclipse-aware build, ie. build \
@@ -31,16 +39,49 @@ if test "x$eclipse" = "xyes"; then
 	esac
 fi
 
+AC_ARG_WITH([tcmalloc],
+    AS_HELP_STRING([--without-tcmalloc], [Ignore presence of tcmalloc and disable it]))
+
+AS_IF([test "x$with_tcmalloc" != "xno"],
+      [AC_CHECK_LIB([tcmalloc], [tc_malloc], [have_tcmalloc=yes], [have_tcmalloc=no])],
+      [have_tcmalloc=no])
+
+AS_IF([test "x$have_tcmalloc" = "xyes"],
+      [LDFLAGS="$LDFLAGS -ltcmalloc"],
+      [AS_IF([test "x$with_tcmalloc" = "xyes"],
+             [AC_MSG_ERROR([tcmalloc requested but not found])
+      ])
+])
+
+AC_ARG_WITH([profiler],
+    AS_HELP_STRING([--with-profiler], [Ignore presence of profiler and disable it]))
+
+AS_IF([test "x$with_profiler" = "xyes"],
+      [AC_CHECK_LIB([profiler], [ProfilerStart], [have_profiler=yes], [have_profiler=no])],
+      [have_profiler=no])
+
+AS_IF([test "x$have_profiler" = "xyes"],
+      [LDFLAGS="$LDFLAGS -lprofiler"],
+      [AS_IF([test "x$with_profiler" = "xyes"],
+             [AC_MSG_ERROR([profiler requested but not found])
+      ])
+])
+
 AX_BOOST_BASE([1.40.0])
 AX_BOOST_REGEX
 
-AC_LANG_PUSH(C++)
+PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 2.0], ,
+                  [AC_MSG_ERROR([Google Protocol Buffer libraries not found])])
+AC_CHECK_PROG(ax_cv_protoc, protoc, yes, no)
+if test "x$ax_cv_protoc" != "xyes"; then
+  AC_MSG_ERROR(['protoc' Google Protocol Buffer compiler not found])
+fi
+AC_SUBST(PROTOBUF_CFLAGS)
+AC_SUBST(PROTOBUF_LIBS)
+
 AX_OPENMP
-AC_LANG_POP(C++)
+AC_SUBST(OPENMP_CXXFLAGS)
 
-CXXFLAGS="$CXXFLAGS $BOOST_CPPFLAGS $OPENMP_CXXFLAGS"
-LDFLAGS="$LDFLAGS $BOOST_LDFLAGS $BOOST_REGEX_LIB"
-
-AC_CONFIG_FILES(Makefile src/Makefile)
+AC_CONFIG_FILES(Makefile src/Makefile src/nlpcommon/Makefile)
 AC_OUTPUT
 
