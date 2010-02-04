@@ -6,19 +6,16 @@ SUFFIXES = .proto .pb.cc .pb.h
 .proto.pb.h:
 	protoc $< --cpp_out=./ --proto_path=${srcdir}
 
-bin_PROGRAMS = xces2corpus corpus2corpus
-
-xces2corpus_SOURCES = xces2corpus.cpp
-xces2corpus_LDFLAGS = @BOOST_LDFLAGS@
-xces2corpus_LDADD = libnlpcommon.la
-
-corpus2corpus_SOURCES = corpus2corpus.cpp
-corpus2corpus_LDFLAGS = @BOOST_LDFLAGS@
-corpus2corpus_LDADD = libnlpcommon.la
 
 lib_LTLIBRARIES = libnlpcommon.la
 libnlpcommon_la_SOURCES = \
 	corpus.pb.cc corpus.pb.h \
-    progress.cpp ipipanlexer.cpp corpuswriter.cpp corpusreader.cpp
+    progress.cpp util.cpp category.cpp tagset.cpp \
+	spejdtagsetloader.cpp corpustagsetloader.cpp
 libnlpcommon_la_LDFLAGS = @BOOST_LDFLAGS@
 libnlpcommon_la_LIBADD = @BOOST_REGEX_LIB@ @PROTOBUF_LIBS@
+
+libnlpcommonincludedir = $(includedir)/nlpcommon
+libnlpcommoninclude_HEADERS = corpus.pb.h corpuslexer.h corpuswriter.h \
+	exception.h ipipanlexer.h lexer.h progress.h tag.h util.h writer.h \
+	tagset.h category.h pos.h

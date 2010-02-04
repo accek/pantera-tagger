@@ -12,8 +12,9 @@
 #include <fstream>
 #include <cstdlib>
 
-#include <nlpcommon/corpusreader.h>
+#include <nlpcommon/corpuslexer.h>
 #include <nlpcommon/corpuswriter.h>
+#include <nlpcommon/spejdtagsetloader.h>
 
 using namespace std;
 using namespace NLPCommon;
@@ -29,17 +30,23 @@ void writing_progress(int token) {
 int main(int argc, char** argv) {
     ios_base::sync_with_stdio(false);
 
-    CorpusReader lexer;
-    vector<Token> text;
+    const Tagset* tagset = NULL;
+
     ifstream data_stream(argv[1]);
+    CorpusLexer<> lexer(data_stream);
+    vector<DefaultLexeme> text;
     lexer.setProgressHandler(lexing_progress, 1000);
-    lexer.parseStream(data_stream, text);
+    lexer.parseStreamToVector(text, &tagset);
     cerr << "\rLexing ...  done.       " << endl;
 
+    cerr << "Loaded " << text.size() << " lexemes." << endl;
+    cerr << "Tagset has " << tagset->getCategories().size()
+        << " categories and " << tagset->getPartsOfSpeech().size() << " parts of speech."
+        << endl;
 
-    CorpusWriter writer;
     ofstream out_stream(argv[2]);
+    CorpusWriter<DefaultLexeme> writer(out_stream);
     writer.setProgressHandler(writing_progress, 1000);
-    writer.writeToStream(out_stream, text);
+    writer.writeVectorToStream(tagset, text);
     cerr << "\rWriting ...  done.       " << endl;
 }

@@ -17,20 +17,20 @@
 #include <omp.h>
 #endif
 
-#include "tagset.h"
-#include "spejdtagsetloader.h"
-#include "ipipanlexer.h"
-#include "ipipanrewriter.h"
-#include "arraytag.h"
+#include <nlpcommon/tag.h>
+#include <nlpcommon/tagset.h>
+#include <nlpcommon/spejdtagsetloader.h>
+#include <nlpcommon/ipipanlexer.h>
+
 #include "rules_impl.h"
 #include "brilllexeme.h"
 #include "brillengine.h"
+#include "ipipanrewriter.h"
 
 using namespace std;
 using namespace BTagger;
 
-typedef ArrayTag MyTag;
-typedef BrillLexeme<MyTag> MyLexeme;
+typedef BrillLexeme<Tag> MyLexeme;
 
 void lexing_progress(int token) {
     cerr << "\rLexing...  " << token;
@@ -92,17 +92,17 @@ int main(int argc, char** argv) {
 
     SpejdTagsetLoader tagset_loader;
     ifstream config_stream("tagset.cfg");
-    Tagset* tagset = tagset_loader.loadTagset(config_stream);
+    const Tagset* tagset = tagset_loader.loadTagset(config_stream);
 
     cout << "Loaded " << tagset->getCategories().size() << " categories." << endl;
     cout << "Loaded " << tagset->getPartsOfSpeech().size() << " parts of speech." << endl;
 
     cerr << endl << "Lexing ...";
-    IpiPanLexer<MyLexeme> lexer;
-    vector<MyLexeme> text;
     ifstream data_stream(argv[1]);
+    IpiPanLexer<MyLexeme> lexer(data_stream);
+    vector<MyLexeme> text;
     lexer.setProgressHandler(lexing_progress, 1000);
-    lexer.parseStream(tagset, data_stream, text);
+    lexer.parseStreamToVector(text, &tagset);
     cerr << "\rLexing ...  done.       " << endl;
 
     for (int i=0; i < 20; i++) {
@@ -150,11 +150,11 @@ int main(int argc, char** argv) {
     string rewrite_filename = argv[1];
     if (argc >= 3) {
         cerr << endl << "Lexing ...";
-        IpiPanLexer<MyLexeme> lexer;
         text.clear();
         ifstream data_stream(argv[2]);
+        IpiPanLexer<MyLexeme> lexer(data_stream);
         lexer.setProgressHandler(lexing_progress, 1000);
-        lexer.parseStream(tagset, data_stream, text);
+        lexer.parseStreamToVector(text, &tagset);
         cerr << "\rLexing ...  done.       " << endl;
         engine.tagText(text);
 

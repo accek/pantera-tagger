@@ -9,9 +9,11 @@
 #define BRILLLEXEME_H_
 
 #include <boost/foreach.hpp>
-#include "lexeme.h"
+#include <nlpcommon/lexeme.h>
 
 namespace BTagger {
+
+using namespace NLPCommon;
 
 template<class Tag>
 class BrillLexeme : public Lexeme<Tag>
@@ -28,11 +30,14 @@ public:
     // Vicinity parameter for marking nearby changes
     int vicinity;
 
+    BrillLexeme(typename Lexeme<Tag>::Type type = Lexeme<Tag>::SEGMENT)
+        : Lexeme<Tag>(type) { }
+
     static BrillLexeme<Tag> getNullLexeme() {
         BrillLexeme<Tag> lexeme;
         lexeme.setOrth("[null]");
         lexeme.addAllowedTag(Tag::getNullTag());
-        lexeme.addCorrectTag(Tag::getNullTag());
+        lexeme.addGoldenTag(Tag::getNullTag());
         lexeme.considered_tags.push_back(Tag::getNullTag());
         lexeme.expected_tag = Tag::getNullTag();
         lexeme.vicinity = 0;

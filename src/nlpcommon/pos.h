@@ -15,7 +15,7 @@
 #include <algorithm>
 
 
-namespace BTagger {
+namespace NLPCommon {
 
 using std::string;
 using std::vector;
@@ -61,6 +61,6 @@ public:
 
 };
 
-} // namespace BTagger
+} // namespace NLPCommon
 
 #endif /* POS_H_ */

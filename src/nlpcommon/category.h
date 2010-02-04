@@ -11,9 +11,9 @@
 #include <boost/unordered_map.hpp>
 #include <string>
 #include <vector>
-#include "exception.h"
+#include <nlpcommon/exception.h>
 
-namespace BTagger {
+namespace NLPCommon {
 
 using std::string;
 using std::vector;
@@ -57,6 +57,10 @@ public:
 
     const string& getName() const { return _name; }
 
+    const vector<string>& getValues() const {
+        return _valuesByIndex;
+    }
+
     int getIndex(const string& value) const {
         unordered_map<string, unsigned int>::const_iterator i =
                 _indexesByValue.find(value);
@@ -83,6 +87,6 @@ public:
     }
 };
 
-} // namespace BTagger
+} // namespace NLPCommon
 
 #endif /* CATEGORY_H_ */

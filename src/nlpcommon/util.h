@@ -12,7 +12,7 @@
 
 // Various utility functions.
 
-namespace BTagger {
+namespace NLPCommon {
 
 using std::string;
 
@@ -22,6 +22,6 @@ using std::string;
 // string.
 string find_prefix(string& haystack, char needle);
 
-} // namespace BTagger
+} // namespace NLPCommon
 
 #endif /* COMMON_H_ */

@@ -9,10 +9,10 @@
 #define TAGSETLOADER_H_
 
 #include <iostream>
-#include "exception.h"
-#include "tagset.h"
+#include <nlpcommon/exception.h>
+#include <nlpcommon/tagset.h>
 
-namespace BTagger {
+namespace NLPCommon {
 
 
 class TagsetLoaderError : public Exception
@@ -27,11 +27,13 @@ public:
 class TagsetLoader
 {
 public:
+    virtual ~TagsetLoader() { }
+
     // A method to read tagset specification from a specified
     // stream.
-    virtual Tagset* loadTagset(std::istream& stream) = 0;
+    virtual const Tagset* loadTagset(std::istream& stream) = 0;
 };
 
-} // namespace BTagger
+} // namespace NLPCommon
 
 #endif /* TAGSETLOADER_H_ */

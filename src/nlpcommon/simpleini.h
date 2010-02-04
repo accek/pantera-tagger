@@ -9,6 +9,6 @@
 #define SIMPLEINI_H_
 
 #define SI_SUPPORT_IOSTREAMS
-#include "../third_party/simpleini/SimpleIni.h"
+#include <nlpcommon/../../third_party/simpleini/SimpleIni.h>
 
 #endif /* SIMPLEINI_H_ */

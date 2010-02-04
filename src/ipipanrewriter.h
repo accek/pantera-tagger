@@ -10,10 +10,12 @@
 
 #include <boost/format.hpp>
 #include <iostream>
+#include <nlpcommon/exception.h>
 #include "rewriter.h"
-#include "exception.h"
 
 namespace BTagger {
+
+using namespace NLPCommon;
 
 using std::cerr;
 using std::endl;

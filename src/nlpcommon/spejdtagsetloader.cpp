@@ -10,27 +10,25 @@
 #include <iostream>
 #include <sstream>
 #include <iterator>
+
+#include <nlpcommon/spejdtagsetloader.h>
+
 #include "simpleini.h"
-#include "spejdtagsetloader.h"
 
 using boost::format;
 using boost::str;
 using std::auto_ptr;
 
-namespace BTagger {
-
-void SpejdTagsetLoader::reportError(SI_Error error) {
-    if (error != SI_OK)
-        throw TagsetLoaderError(str(
-                format("INI parser returned error %2%.") % (int)error));
-}
+namespace NLPCommon {
 
 Tagset* SpejdTagsetLoader::loadTagset(std::istream& stream) {
     CSimpleIniA parser;
     SI_Error err;
 
     err = parser.Load(stream);
-    reportError(err);
+    if (err != SI_OK)
+        throw TagsetLoaderError(str(
+                format("INI parser returned error %2%.") % (int)err));
 
     auto_ptr<Tagset> tagset(new Tagset());
 
