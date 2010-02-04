@@ -20,13 +20,6 @@ using std::string;
 using std::vector;
 
 template<class Tag>
-class LexerInfo
-{
-public:
-    virtual ~LexerInfo() { }
-};
-
-template<class Tag>
 class Lexeme
 {
 public:
@@ -45,12 +38,11 @@ private:
     vector<Tag> _golden_tags;
     vector<Tag> _autoselected_tags;
     Type _type;
-    LexerInfo<Tag>* _lexer_info;
 
 public:
     typedef Tag tag_type;
 
-    Lexeme(Type type = SEGMENT) : _type(type), _lexer_info(NULL) { }
+    Lexeme(Type type = SEGMENT) : _type(type) { }
 
     static Lexeme<Tag> getNullLexeme() {
         Lexeme<Tag> lexeme;
@@ -75,14 +67,6 @@ public:
     void setOrth(const string& orth) {
         assert(_orth.empty());
         _orth = orth;
-    }
-
-    LexerInfo<Tag>* getLexerInfo() const {
-        return _lexer_info;
-    }
-
-    void setLexerInfo(LexerInfo<Tag>* lexer_info) {
-        _lexer_info = lexer_info;
     }
 
     void addAllowedTag(const Tag& tag) {
