@@ -23,7 +23,7 @@ namespace NLPCommon {
 
 using namespace google::protobuf::io;
 
-template<class Lexeme = DefaultLexeme>
+template<class Lexeme>
 class CorpusWriter;
 
 template<class Lexeme = DefaultLexeme>
@@ -33,19 +33,6 @@ class CorpusLexer : public Lexer<Lexeme>
 
 private:
     const Tagset* tagset;
-
-    class CorpusLexerInfo : public LexerInfo<Lexeme::tag_type>
-    {
-    public:
-        CorpusProto::Token* token;
-
-        CorpusLexerInfo(CorpusProto::Token* token = NULL)
-            : LexerInfo<Token::tag_type>, token(token) { }
-
-        ~CorpusLexerInfo() {
-            delete token;
-        }
-    };
 
     void parseTagset(CodedInputStream& proto_stream) {
         uint32_t size;
@@ -99,7 +86,6 @@ private:
                 break;
         }
 
-        lex.setLexerInfo(new CorpusLexerInfo(new CorpusProto::Token(token)));
         return lex;
     }
 

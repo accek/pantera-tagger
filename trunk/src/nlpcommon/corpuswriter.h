@@ -31,16 +31,6 @@ private:
     {
         CorpusProto::Token proto_token;
 
-        CorpusLexer<Lexeme>::CorpusLexerInfo* info =
-            dynamic_cast<CorpusLexer<Lexeme>::CorpusLexerInfo*>(
-                    lex.getLexerInfo());
-
-        CorpusProto::Token* base_token = NULL;
-        if (info != NULL) {
-            base_token = info->token;
-            proto_token = *base_token;
-        }
-
         switch (lex.getType()) {
             case Lexeme::SEGMENT:
                 proto_token.set_type(CorpusProto::Token::SEGMENT);
@@ -50,14 +40,6 @@ private:
                 BOOST_FOREACH(const tag_type& tag, lex.getAllowedTags()) {
                     CorpusProto::Interpretation* interp = proto_token.add_interp();
                     string stag = tag.asString(tagset);
-                    if (base_token != NULL) {
-                        BOOST_FOREACH(const CorpusProto::Interpretation*
-                                binterp, base_token.interp()) {
-                            if (stag == binterp->tag())
-                                *interp = *binterp;
-                        }
-                    }
-
                     interp->set_tag(stag);
                     if (lex.isGoldenTag(tag))
                         interp->set_is_golden(true);
