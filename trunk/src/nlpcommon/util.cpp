@@ -6,11 +6,11 @@
  */
 
 #include <string>
-#include "util.h"
+#include <nlpcommon/util.h>
 
 using std::string;
 
-namespace BTagger {
+namespace NLPCommon {
 
 string find_prefix(string& haystack, char needle) {
     std::size_t index = haystack.find(needle);

@@ -11,11 +11,11 @@
 #include <vector>
 #include <boost/unordered_map.hpp>
 #include <string>
-#include "exception.h"
-#include "category.h"
-#include "pos.h"
+#include <nlpcommon/exception.h>
+#include <nlpcommon/category.h>
+#include <nlpcommon/pos.h>
 
-namespace BTagger {
+namespace NLPCommon {
 
 using std::vector;
 using std::string;
@@ -117,6 +117,6 @@ public:
 
 };
 
-} // namespace BTagger
+} // namespace NLPCommon
 
 #endif /* TAGSET_H_ */

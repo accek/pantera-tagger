@@ -5,9 +5,11 @@
 #include <cstdlib>
 #include <functional>
 
-#include "lexeme.h"
+#include <nlpcommon/lexeme.h>
 
 namespace BTagger {
+
+using namespace NLPCommon;
 
 template<class Lexeme>
 class Predicate;

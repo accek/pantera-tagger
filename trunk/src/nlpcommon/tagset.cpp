@@ -6,9 +6,9 @@
  */
 
 #include <boost/format.hpp>
-#include "tagset.h"
+#include <nlpcommon/tagset.h>
 
-namespace BTagger {
+namespace NLPCommon {
 
 using boost::format;
 using boost::str;

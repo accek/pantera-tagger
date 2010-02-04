@@ -8,20 +8,16 @@
 #ifndef SPEJDTAGSETLOADER_H_
 #define SPEJDTAGSETLOADER_H_
 
-#include "tagsetloader.h"
-#include "simpleini.h"
+#include <nlpcommon/tagsetloader.h>
 
-namespace BTagger {
+namespace NLPCommon {
 
 class SpejdTagsetLoader : public TagsetLoader
 {
-private:
-    void reportError(SI_Error error);
-
 public:
     virtual Tagset* loadTagset(std::istream& stream);
 };
 
-} // namespace BTagger
+} // namespace NLPCommon
 
 #endif /* SPEJDTAGSETLOADER_H_ */

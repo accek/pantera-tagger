@@ -18,10 +18,13 @@
 #include <cassert>
 #include <limits>
 #include <algorithm>
+
 #include "unigram.h"
 #include "rules.h"
 
 namespace BTagger {
+
+using namespace NLPCommon;
 
 using std::cerr;
 using std::cerr;
@@ -127,9 +130,9 @@ private:
 
         for (int i = start_index; i < end_index; ++i) {
             const Lexeme& lex = text[i];
-            int cs = lex.getCorrectTags().size();
+            int cs = lex.getGoldenTags().size();
             int as = lex.getAllowedTags().size();
-            if (lex.isCorrectTag(lex.chosen_tag[phase])) {
+            if (lex.isGoldenTag(lex.chosen_tag[phase])) {
                 tp++;
                 fn += cs - 1;
                 tn += as - cs;
@@ -189,10 +192,10 @@ private:
         return new_ctags;
     }
 
-    tag_type findCorrectTag(Lexeme& lexeme,
+    tag_type findGoldenTag(Lexeme& lexeme,
             const Tagset* new_tagset, const Tagset* previous_tagset,
              const tag_type& previous_tag) {
-        BOOST_FOREACH(const tag_type& tag, lexeme.getCorrectTags()) {
+        BOOST_FOREACH(const tag_type& tag, lexeme.getGoldenTags()) {
             tag_type projected = tag.project(previous_tagset);
             if (projected == previous_tag || previous_tagset == NULL)
                 return tag.project(new_tagset);
@@ -242,7 +245,7 @@ public:
                             previous_tag);
             lexeme.considered_tags = calculateConsideredTags(lexeme, tagset,
                     previous_tagset, previous_tag);
-            lexeme.expected_tag = findCorrectTag(lexeme, tagset, previous_tagset,
+            lexeme.expected_tag = findGoldenTag(lexeme, tagset, previous_tagset,
                     previous_tag);
         }
         cerr << "done." << endl;
@@ -336,12 +339,12 @@ public:
         if (scores.size() == 0) return;
 
         for (int round = 1; ; round++) {
-            int correct_tags = 0, incorrect_tags = 0;
+            int golden_tags = 0, ingolden_tags = 0;
             int f;
             Rule<Lexeme> b = this->findBestRule(&f);
 
             fprintf(stderr, "(%d) CHOSEN RULE (good=%d, bad=%d, candidates=%d): %s\n",
-                            round, scores[b].first, scores[b].second, scores.size(),
+                            round, scores[b].first, scores[b].second, (int)scores.size(),
                             b.asString().c_str());
 
             if (f < threshold || cancelled) break;
@@ -380,9 +383,9 @@ public:
                     Lexeme& lex1 = text[i];
                     Lexeme& lex2 = next_text[i];
                     if (lex2.chosen_tag[phase] == lex1.expected_tag)
-                        correct_tags++;
+                        golden_tags++;
                     else
-                        incorrect_tags++;
+                        ingolden_tags++;
 
                     if (lex2.vicinity != round) continue;
 
@@ -479,7 +482,7 @@ public:
 
             if (DBG) {
                 fprintf(stderr, "Correct tags: %d, incorrect tags: %d\n",
-                        correct_tags, incorrect_tags);
+                        golden_tags, ingolden_tags);
 
                 fprintf(stderr, "\nCURRENT TAGGING:\n\n");
                 //print_text();

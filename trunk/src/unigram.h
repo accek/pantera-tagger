@@ -10,9 +10,11 @@
 
 #include <boost/unordered_map.hpp>
 #include <boost/foreach.hpp>
-#include "lexeme.h"
+#include <nlpcommon/lexeme.h>
 
 namespace BTagger {
+
+using namespace NLPCommon;
 
 using boost::unordered_map;
 
@@ -31,7 +33,7 @@ public:
     }
 
     void train(const Lexeme& lexeme, const Tagset* projection_tagset = NULL) {
-        BOOST_FOREACH(const tag_type& tag, lexeme.getCorrectTags())
+        BOOST_FOREACH(const tag_type& tag, lexeme.getGoldenTags())
             _freq[lexeme.getOrth()][tag.project(projection_tagset)]++;
     }
 

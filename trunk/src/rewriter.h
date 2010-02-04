@@ -9,10 +9,12 @@
 #define REWRITER_H_
 
 #include <istream>
-#include "lexeme.h"
-#include "tagset.h"
+#include <nlpcommon/lexeme.h>
+#include <nlpcommon/tagset.h>
 
 namespace BTagger {
+
+using namespace NLPCommon;
 
 // Class responsible for rewriting data files with added disambiguation
 // information.

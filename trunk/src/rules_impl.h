@@ -17,7 +17,7 @@ namespace BTagger {
 namespace Rules {
 
 using namespace std;
-
+using namespace NLPCommon;
 
 #define STR_SIZE 250
 

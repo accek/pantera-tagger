@@ -1,24 +1,21 @@
-/*
- * tag.h
- *
- *  Created on: Jan 2, 2010
- *      Author: accek
- */
-
-#ifndef BASETAG_H_
-#define BASETAG_H_
+#ifndef TAG_H_
+#define TAG_H_
 
 #include <boost/format.hpp>
 #include <boost/unordered_map.hpp>
+#include <boost/cstdint.hpp>
+#include <boost/functional/hash.hpp>
 #include <string>
 #include <sstream>
 #include <iostream>
-#include "tagset.h"
-#include "pos.h"
-#include "util.h"
-#include "exception.h"
+#include <nlpcommon/tagset.h>
+#include <nlpcommon/pos.h>
+#include <nlpcommon/util.h>
+#include <nlpcommon/exception.h>
 
-namespace BTagger {
+// TODO: comment why implementation in headers
+
+namespace NLPCommon {
 
 using std::string;
 
@@ -70,6 +67,10 @@ private:
     }
 
 public:
+    static const int INVALID_POS = 255;
+
+    // TODO: comment -- no destructor, please!
+
     // TODO: comment
     static Final parseString(const Tagset* tagset, const string& tag_spec) {
         typedef typename std::pair<const Tagset*, string> key_type;
@@ -122,10 +123,18 @@ public:
     bool operator!=(const Final& other) const
             { assert(false); }
 
-    static const Final& getNullTag()
-            { assert(false); }
+    static const Final& getNullTag() {
+        static Final tag;
+        static bool initialized = false;
+        if (!initialized) {
+            tag.clear();
+            tag.setPos(INVALID_POS);
+            initialized = true;
+        }
+        return tag;
+    }
 
-    string asString(const Tagset* tagset) const {
+    const string asString(const Tagset* tagset) const {
         Final* fthis = (Final*)this;
 
         if (*fthis == Final::getNullTag())
@@ -147,6 +156,69 @@ public:
     }
 };
 
-} // namespace BTagger
+class Tag : public BaseTag<Tag>
+{
+private:
+    static const int max_num_categories = 15;
+
+    // First max_num_categories entries store values for categories.
+    // The last entry is part of speech.
+    boost::uint8_t _data[max_num_categories + 1];
+
+public:
+    void clear() {
+        memset(_data, 0, sizeof(_data));
+    }
+
+    void setValue(unsigned int category_index, unsigned int value_index) {
+        _data[category_index] = value_index;
+    }
+
+    unsigned int getValue(unsigned int category_index) const {
+        return _data[category_index];
+    }
+
+    void setPos(unsigned int pos_index) {
+        _data[max_num_categories] = pos_index;
+    }
+
+    unsigned int getPos() const {
+        return _data[max_num_categories];
+    }
+
+    bool operator==(const Tag& other) const {
+        return !memcmp(_data, other._data, sizeof(_data));
+    }
+
+    bool operator!=(const Tag& other) const {
+        return memcmp(_data, other._data, sizeof(_data));
+    }
+
+    bool operator<(const Tag& other) const {
+        return memcmp(_data, other._data, sizeof(_data)) < 0;
+    }
+
+    bool operator<=(const Tag& other) const {
+        return memcmp(_data, other._data, sizeof(_data)) <= 0;
+    }
+
+    bool operator>(const Tag& other) const {
+        return memcmp(_data, other._data, sizeof(_data)) > 0;
+    }
+
+    bool operator>=(const Tag& other) const {
+        return memcmp(_data, other._data, sizeof(_data)) >= 0;
+    }
+
+    std::size_t hash() const {
+        return boost::hash_range(_data, _data + max_num_categories + 1);
+    }
+};
+
+std::size_t hash_value(const Tag& tag) {
+    return tag.hash();
+}
+
+} // namespace NLPCommon
 
 #endif /* TAG_H_ */
