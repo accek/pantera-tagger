@@ -1,6 +1,12 @@
 #!/bin/bash
 
-DIR=/tmp/accek/wypluwka_2009-12-16-1756.xml.split
+#DIR=~/studia/doktoranckie/tager/dane/wypluwka_2009-12-16-1756.xml.split
+
+if [ -z "$DIR" ]; then
+    echo "DIR environment variable not set."
+    exit 1
+fi
+
 THRS=6
 
 export OMP_NUM_THREADS=2
