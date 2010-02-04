@@ -18,4 +18,4 @@ libnlpcommon_la_LIBADD = @BOOST_REGEX_LIB@ @PROTOBUF_LIBS@
 libnlpcommonincludedir = $(includedir)/nlpcommon
 libnlpcommoninclude_HEADERS = corpus.pb.h corpuslexer.h corpuswriter.h \
 	exception.h ipipanlexer.h lexer.h progress.h tag.h util.h writer.h \
-	tagset.h category.h pos.h
+	tagset.h category.h pos.h scorer.h

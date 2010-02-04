@@ -31,6 +31,7 @@ using namespace std;
 using namespace BTagger;
 
 typedef BrillLexeme<Tag> MyLexeme;
+typedef BestScoreMultiGoldenScorer<BinaryScorer<MyLexeme::tag_type> > MyScorer;
 
 void lexing_progress(int token) {
     cerr << "\rLexing...  " << token;
@@ -114,7 +115,7 @@ int main(int argc, char** argv) {
 //    BOOST_FOREACH(const Category* cat, findConstantCategories(tagset, text))
 //        cout << "  " << cat->getName() << endl;
 
-    BrillEngine<MyLexeme> engine;
+    BrillEngine<MyLexeme, MyScorer> engine;
     engine.init(text, tagset);
 
     ifstream config_stream2("tagset2.cfg");
@@ -124,23 +125,20 @@ int main(int argc, char** argv) {
 
     vector<const Tagset*> tagsets;
     tagsets.push_back(tagset2);
-    vector<PredicateTemplate<MyLexeme>*> r1;
-    Rules::make_p1_rules<MyLexeme, 0>(tagsets, r1);
+    RulesGenerator<MyLexeme>* g1 = Rules::make_p1_rules_generator<MyLexeme, 0>(tagsets);
     tagsets.push_back(tagset3);
-    vector<PredicateTemplate<MyLexeme>*> r2;
-    Rules::make_p2_rules<MyLexeme, 1>(tagsets, r2);
+    RulesGenerator<MyLexeme>* g2 = Rules::make_p2_rules_generator<MyLexeme, 1>(tagsets);
     tagsets.push_back(tagset);
-    vector<PredicateTemplate<MyLexeme>*> r3;
-    Rules::make_p2_rules<MyLexeme, 2>(tagsets, r3);
+    RulesGenerator<MyLexeme>* g3 = Rules::make_p2_rules_generator<MyLexeme, 2>(tagsets);
 
     int threshold = 50;
     if (argc >= 4) {
         threshold = atoi(argv[3]);
     }
 
-    engine.runPhase(tagset2, r1, threshold);
-    engine.runPhase(tagset3, r2, threshold);
-    engine.runPhase(tagset, r3, threshold);
+    engine.runPhase(tagset2, g1, threshold);
+    engine.runPhase(tagset3, g2, threshold);
+    engine.runPhase(tagset, g3, threshold);
 
     for (int i=0; i < 20; i++) {
         const MyLexeme& lex = engine.getText()[i];

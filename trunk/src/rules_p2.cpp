@@ -76,3 +76,14 @@ void make_p2_rules(const vector<const Tagset*>& tagsets,
     templates.push_back(new PartialNearby2TagsPredicateTemplate<Lexeme, Phase, 1, 2>(tagsets));
 }
 
+template<class Lexeme, int Phase>
+RulesGenerator<Lexeme>* make_p2_rules_generator(
+        const vector<const Tagset*>& tagsets) {
+    vector<PredicateTemplate<Lexeme>*> ptemplates;
+    make_p2_rules<Lexeme, Phase>(tagsets, ptemplates);
+
+    vector<ActionTemplate<Lexeme>*> atemplates;
+    atemplates.push_back(new ChangeTagActionTemplate<Lexeme, Phase>(tagsets));
+
+    return new AllPredicatesAllActionsGenerator<Lexeme>(ptemplates, atemplates);
+}

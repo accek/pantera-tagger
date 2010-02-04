@@ -8,6 +8,7 @@
 #ifndef RULES_IMPL_H_
 #define RULES_IMPL_H_
 
+#include <boost/format.hpp>
 #include <vector>
 #include <cstdlib>
 
@@ -18,6 +19,35 @@ namespace Rules {
 
 using namespace std;
 using namespace NLPCommon;
+
+template<class Lexeme>
+class AllPredicatesAllActionsGenerator : public RulesGenerator<Lexeme> {
+protected:
+    vector<PredicateTemplate<Lexeme>*> ptemplates;
+    vector<ActionTemplate<Lexeme>*> atemplates;
+
+public:
+    AllPredicatesAllActionsGenerator(
+            const vector<PredicateTemplate<Lexeme>*>& ptemplates,
+            const vector<ActionTemplate<Lexeme>*>& atemplates)
+        : ptemplates(ptemplates), atemplates(atemplates) { }
+
+    virtual void generateRules(vector<Lexeme>& text, int index,
+            vector<Rule<Lexeme> >& rules)
+    {
+        vector<Predicate<Lexeme> > predicates;
+        BOOST_FOREACH(PredicateTemplate<Lexeme>* ptpl, ptemplates) {
+            ptpl->findMatchingPredicates(predicates, text, index);
+        }
+        BOOST_FOREACH(const Predicate<Lexeme>& p, predicates) {
+            BOOST_FOREACH(ActionTemplate<Lexeme>* atpl, atemplates) {
+                atpl->findMatchingRules(p, rules, text, index);
+            }
+        }
+    }
+};
+
+#include "actions.cpp"
 
 #define STR_SIZE 250
 
@@ -34,6 +64,8 @@ using namespace NLPCommon;
 #undef T
 #undef S
 #undef STR_SIZE
+
+
 
 }} // namespace BTagger::Rules
 

@@ -8,6 +8,7 @@
 #ifndef BRILLENGINE_H_
 #define BRILLENGINE_H_
 
+#include <boost/scoped_ptr.hpp>
 #include <boost/unordered_map.hpp>
 #include <boost/foreach.hpp>
 #include <boost/format.hpp>
@@ -21,6 +22,7 @@
 
 #include "unigram.h"
 #include "rules.h"
+#include <nlpcommon/scorer.h>
 
 namespace BTagger {
 
@@ -32,14 +34,20 @@ using std::endl;
 using std::vector;
 using std::map;
 
-template<class Lexeme>
+template<class Lexeme, class Scorer>
 class BrillEngine
 {
+    BOOST_CONCEPT_ASSERT((MultiGoldenScorerConcept<Scorer>));
+
 public:
     typedef typename Lexeme::tag_type tag_type;
+    //typedef typename boost::same_type<Lexeme::tag_type, Scorer::tag_type>
+    //    tag_type;
 
 private:
-    typedef boost::unordered_map<Rule<Lexeme>, std::pair<int, int> > scores_map_type;
+    typedef typename Scorer::score_type score_type;
+    typedef boost::unordered_map<Rule<Lexeme>,
+            std::pair<score_type, score_type> > scores_map_type;
 
     UnigramTagger<Lexeme> unigram_tagger;
     const Tagset* full_tagset;
@@ -48,11 +56,12 @@ private:
     int phase;
     vector<const Tagset*> phase_tagsets;
     const Tagset* phase_tagset;
-    vector<PredicateTemplate<Lexeme>*> rule_templates;
+    RulesGenerator<Lexeme>* rules_generator;
     scores_map_type scores;
     vector<Rule<Lexeme> > generated_rules;
     vector<vector<Rule<Lexeme> > > phase_generated_rules;
     bool cancelled;
+    boost::scoped_ptr<Scorer> scorer;
 
     static const int INDEX_OFFSET = 4;
     static const int DBG = 0;
@@ -61,19 +70,21 @@ private:
 
     static void applyRule(int phase, Rule<Lexeme>& b, vector<Lexeme>& text1,
             vector<Lexeme>& text2,
-            int start_index = 0, int end_index = std::numeric_limits<int>::max(),
+            int start_index = 0,
+            int end_index = std::numeric_limits<int>::max(),
             int vicinity_value = 0, int vicinity_radius = 0) {
         assert(text1.size() == text2.size());
         start_index = std::min(start_index, (int)text1.size());
         end_index = std::min(end_index, (int)text1.size());
         #pragma omp parallel for default(shared)
         for (int i = start_index; i < end_index; ++i) {
-            if (text1[i].isConsideredTag(b.tag)
-                    && b.predicate.tpl
-                    && b.predicate.tpl->predicateMatches(b.predicate, text1, i)) {
-                text2[i].chosen_tag[phase] = b.tag;
+            if (b.isApplicable(text1, i)) {
+                text2[i].chosen_tag[phase] =
+                    b.changedTag(text1[i].chosen_tag[phase]);
                 for (int j = std::max(start_index, i - vicinity_radius),
-                         z = std::min(end_index - 1, i + vicinity_radius); j <= z; ++j) {
+                         z = std::min(end_index - 1, i + vicinity_radius);
+                         j <= z;
+                         ++j) {
                     text2[j].vicinity = vicinity_value;
                 }
             } else {
@@ -82,21 +93,27 @@ private:
         }
     }
 
-    static void calculateStats(int phase, vector<Lexeme>& text, double* prec,
+    static void calculatePhaseStats(const Tagset* tagset, int phase,
+            vector<Lexeme>& text, double* prec,
             double* recall, double* f_measure, int* errors,
-            int start_index = 0, int end_index = std::numeric_limits<int>::max()) {
+            double* avg_score,
+            int start_index = 0,
+            int end_index = std::numeric_limits<int>::max()) {
         start_index = std::min(start_index, (int)text.size());
         end_index = std::min(end_index, (int)text.size());
 
         int tp = 0, tn = 0, fp = 0, fn = 0;
         int e = 0;
+        score_type ss = score_type();
+        Scorer scorer(tagset);
 
         #pragma omp parallel for \
             default(shared) \
-            reduction(+: tp, tn, fp, fn, e) \
+            reduction(+: tp, tn, fp, fn, e, ss) \
            
         for (int i = start_index; i < end_index; ++i) {
             const Lexeme& lex = text[i];
+            ss += scorer.score(lex.chosen_tag[phase], lex.expected_tag);
             if (lex.chosen_tag[phase] == lex.expected_tag) {
                 tp++;
                 tn += lex.considered_tags.size() - 1;
@@ -114,24 +131,31 @@ private:
             *recall = tp / double(tp + fn);
         if (prec && recall && f_measure)
             *f_measure = 2 * *prec * *recall / (*prec + *recall);
-
-        if (errors) *errors = e;
+        if (avg_score)
+            *avg_score = double(ss) / double(scorer.maxScore())
+                / (end_index - start_index);
+        if (errors)
+            *errors = e;
     }
 
     void calculateTaggingStats(vector<Lexeme>& text,
             double* prec,
             double* recall, double* f_measure, int* errors,
-            int start_index = 0, int end_index = std::numeric_limits<int>::max()) {
+            double* avg_score,
+            int start_index = 0,
+            int end_index = std::numeric_limits<int>::max()) {
         start_index = std::min(start_index, (int)text.size());
         end_index = std::min(end_index, (int)text.size());
 
         int tp = 0, tn = 0, fp = 0, fn = 0;
         int e = 0;
+        score_type ss = score_type();
 
         for (int i = start_index; i < end_index; ++i) {
             const Lexeme& lex = text[i];
             int cs = lex.getGoldenTags().size();
             int as = lex.getAllowedTags().size();
+            ss += scorer->score(lex.chosen_tag[phase], lex.getAllowedTags());
             if (lex.isGoldenTag(lex.chosen_tag[phase])) {
                 tp++;
                 fn += cs - 1;
@@ -150,8 +174,11 @@ private:
             *recall = tp / double(tp + fn);
         if (prec && recall && f_measure)
             *f_measure = 2 * *prec * *recall / (*prec + *recall);
-
-        if (errors) *errors = e;
+        if (avg_score)
+            *avg_score = double(ss) / double(scorer->maxScore())
+                / (end_index - start_index);
+        if (errors)
+            *errors = e;
     }
 
     tag_type findBestInitialTag(Lexeme& lexeme,
@@ -268,9 +295,10 @@ public:
         }*/
     }
 
-    void generatePredicates(vector<Lexeme>& v, int i, vector<Predicate<Lexeme> >& preds) {
-        BOOST_FOREACH(PredicateTemplate<Lexeme>* tpl, rule_templates)
-            tpl->findMatchingPredicates(preds, v, i);
+    score_type scoreDelta(const Tag& chosen_tag, const Tag& new_tag, const Tag&
+            expected_tag) {
+        return scorer->score(new_tag, expected_tag)
+            - scorer->score(chosen_tag, expected_tag);
     }
 
     void generateInitialScores()
@@ -284,16 +312,18 @@ public:
         int n = text.size() - INDEX_OFFSET;
         for (int i = INDEX_OFFSET; i < n; ++i) {
             Lexeme& lex = text[i];
-            vector<Predicate<Lexeme> > preds;
-            generatePredicates(text, i, preds);
+            vector<Rule<Lexeme> > rules;
+            rules_generator->generateRules(text, i, rules);
 
             if (DBG) {
-                fprintf(stderr, "Init i: %d (%s) num_preds: %d ", i, lex.getOrth().c_str(), (int)preds.size());
-                if (preds.size() > 0) fprintf(stderr, "%s\n", preds[0].tpl->predicateAsString(preds[0]).c_str());
-                else fprintf(stderr, "\n");
+                fprintf(stderr, "Init i: %d (%s) num_rules: %d ", i,
+                        lex.getOrth().c_str(), (int)rules.size());
+                if (rules.size() > 0)
+                    fprintf(stderr, "%s\n", rules[0].asString().c_str());
+                else
+                    fprintf(stderr, "\n");
             }
 
-            //fprintf(stderr, "%s %s\n", lex.orth, tag_name(lex.chosen_tag[phase], phase).c_str());
             if (DBG) {
                 if (lex.considered_tags.empty())
                     throw Exception(boost::str(
@@ -307,65 +337,62 @@ public:
                                 lex.chosen_tag[phase].asString(phase_tagset)));
             }
 
-            if (lex.chosen_tag[phase] == lex.expected_tag) {
-                BOOST_FOREACH(const Predicate<Lexeme>& pred, preds) {
-                    BOOST_FOREACH(const tag_type& ctag, lex.considered_tags) {
-                        if (ctag == lex.expected_tag) continue;
-                        Rule<Lexeme> r = Rule<Lexeme>(pred, ctag);
-                        scores[r].second++;
-                    }
-                }
-            } else {
-                if (lex.expected_tag != tag_type::getNullTag()) {
-                    BOOST_FOREACH(const Predicate<Lexeme>& pred, preds) {
-                        Rule<Lexeme> r = Rule<Lexeme>(pred, lex.expected_tag);
-                        scores[r].first++;
-                    }
-                }
+            BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
+                const Tag& chosen_tag = lex.chosen_tag[phase];
+                score_type delta = scoreDelta(chosen_tag,
+                        r.changedTag(chosen_tag), lex.expected_tag);
+                std::pair<score_type, score_type>& spair = scores[r];
+                if (delta > 0)
+                    spair.first += delta;
+                else
+                    spair.second += -delta;
             }
         }
         cerr << "done." << endl;
     }
 
-    bool matchPredicate(Predicate<Lexeme>& p, vector<Lexeme>& v, int i) {
-        return p.tpl->predicateMatches(p, v, i);
-    }
-
     void process(int threshold) {
-        int errors = 0;
 
         // TODO: Wlepic napis, skad pochodzi ten algorytm.
 
         if (scores.size() == 0) return;
 
         for (int round = 1; ; round++) {
-            int golden_tags = 0, ingolden_tags = 0;
+            int correct_tags = 0, incorrect_tags = 0;
             int f;
             Rule<Lexeme> b = this->findBestRule(&f);
 
-            fprintf(stderr, "(%d) CHOSEN RULE (good=%d, bad=%d, candidates=%d): %s\n",
-                            round, scores[b].first, scores[b].second, (int)scores.size(),
+            fprintf(stderr, "(%d) CHOSEN RULE (good=%.1lf, bad=%.1lf, "
+                            "candidates=%d): %s\n",
+                            round,
+                            double(scores[b].first),
+                            double(scores[b].second),
+                            int(scores.size()),
                             b.asString().c_str());
 
             if (f < threshold || cancelled) break;
 
-            std::pair<int, int> good_scores = countScores(b);
+            std::pair<score_type, score_type> good_scores = countScores(b);
             if (good_scores != make_pair(scores[b].first, scores[b].second)) {
                 fprintf(stderr, "\n*** WRONG SCORES ***"
-                        "\n good is %d, should be %d"
-                        "\n bad is %d, should be %d\n\n",
-                        scores[b].first, good_scores.first,
-                        scores[b].second, good_scores.second);
+                        "\n good is %.1lf, should be %.1lf"
+                        "\n bad is %.1lf, should be %.1lf\n\n",
+                        double(scores[b].first),
+                        double(good_scores.first),
+                        double(scores[b].second),
+                        double(good_scores.second));
             }
 
-            double P, R, F;
+            int errors = 0;
+            double P, R, F, avg_score;
             applyRule(phase, b, text, next_text, INDEX_OFFSET,
                     text.size() - INDEX_OFFSET, round, VICINITY);
             if ((round % 10) == 1) {
-                calculateStats(phase, next_text, &P, &R, &F, &errors, INDEX_OFFSET,
-                        text.size() - INDEX_OFFSET);
-                fprintf(stderr, "Applied. P=%lf R=%lf F=%lf errors: %d\n",
-                        P, R, F, errors);
+                calculatePhaseStats(phase_tagset, phase, next_text, &P, &R, &F,
+                        &errors, &avg_score,
+                        INDEX_OFFSET, text.size() - INDEX_OFFSET);
+                fprintf(stderr, "Applied. P=%lf R=%lf F=%lf avgScore=%lf errors: %d\n",
+                        P, R, F, avg_score, errors);
             }
 
             generated_rules.push_back(b);
@@ -373,108 +400,60 @@ public:
             int n = text.size() - INDEX_OFFSET;
             #pragma omp parallel default(shared)
             {
-                vector<Rule<Lexeme> > first_dec;
-                vector<Rule<Lexeme> > second_dec;
-                vector<Rule<Lexeme> > first_inc;
-                vector<Rule<Lexeme> > second_inc;
+                typedef std::pair<Rule<Lexeme>, score_type> score_changes_type;
+                vector<score_changes_type> score_adds, score_subs;
 
                 #pragma omp for
                 for (int i = INDEX_OFFSET; i < n; ++i) {
                     Lexeme& lex1 = text[i];
                     Lexeme& lex2 = next_text[i];
                     if (lex2.chosen_tag[phase] == lex1.expected_tag)
-                        golden_tags++;
+                        correct_tags++;
                     else
-                        ingolden_tags++;
+                        incorrect_tags++;
 
                     if (lex2.vicinity != round) continue;
 
-                    if (lex2.chosen_tag[phase] == lex1.chosen_tag[phase]) {
-                        vector<Predicate<Lexeme> > preds;
-                        generatePredicates(text, i, preds);
-                        BOOST_FOREACH(Predicate<Lexeme>& pred, preds) {
-                            if (lex1.chosen_tag[phase] != lex1.expected_tag) {
-                                if (!matchPredicate(pred, next_text, i)
-                                        && lex1.expected_tag != tag_type::getNullTag()) {
-                                    first_dec.push_back(Rule<Lexeme>(pred, lex1.expected_tag));
-                                }
-                            } else {
-                                if (!matchPredicate(pred, next_text, i)) {
-                                    BOOST_FOREACH(const tag_type& ctag,
-                                            lex1.considered_tags) {
-                                        if (ctag != lex1.chosen_tag[phase]) {
-                                            second_dec.push_back(Rule<Lexeme>(pred, ctag));
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        preds.clear();
-                        generatePredicates(next_text, i, preds);
+                    const Tag& expected_tag = lex1.expected_tag;
+                    const Tag& chosen_tag1 = lex1.chosen_tag[phase];
+                    const Tag& chosen_tag2 = lex2.chosen_tag[phase];
 
-                        BOOST_FOREACH(Predicate<Lexeme>& pred, preds) {
-                            if (lex2.chosen_tag[phase] != lex1.expected_tag) {
-                                if (!matchPredicate(pred, text, i)
-                                        && lex1.expected_tag != tag_type::getNullTag()) {
-                                   first_inc.push_back(Rule<Lexeme>(pred, lex1.expected_tag));
-                                }
-                            } else {
-                                if (!matchPredicate(pred, text, i)) {
-                                    BOOST_FOREACH(const tag_type& ctag,
-                                            lex1.considered_tags) {
-                                        if (ctag != lex2.chosen_tag[phase]) {
-                                            second_inc.push_back(Rule<Lexeme>(pred, ctag));
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        vector<Predicate<Lexeme> > preds;
-                        generatePredicates(text, i, preds);
-                        BOOST_FOREACH(Predicate<Lexeme>& pred, preds) {
-                            if (lex1.chosen_tag[phase] != lex1.expected_tag) {
-                                if (lex1.expected_tag != tag_type::getNullTag() &&
-                                        (!matchPredicate(pred, next_text, i) ||
-                                         lex2.chosen_tag[phase] == lex1.expected_tag)) {
-                                    first_dec.push_back(Rule<Lexeme>(pred, lex1.expected_tag));
-                                }
-                            } else {
-                                BOOST_FOREACH(const tag_type& ctag,
-                                        lex1.considered_tags) {
-                                    if (ctag != lex1.chosen_tag[phase]) {
-                                        second_dec.push_back(Rule<Lexeme>(pred, ctag));
-                                    }
-                                }
-                            }
-                        }
-                        preds.clear();
-                        generatePredicates(next_text, i, preds);
-                        BOOST_FOREACH(Predicate<Lexeme>& pred, preds) {
-                            if (lex2.chosen_tag[phase] != lex1.expected_tag) {
-                                if (lex1.expected_tag != tag_type::getNullTag() &&
-                                        (!matchPredicate(pred, text, i) ||
-                                         lex1.chosen_tag[phase] == lex1.expected_tag)) {
-                                    first_inc.push_back(Rule<Lexeme>(pred, lex1.expected_tag));
-                                }
-                            } else {
-                                BOOST_FOREACH(const tag_type& ctag,
-                                        lex1.considered_tags) {
-                                    if (ctag != lex2.chosen_tag[phase]) {
-                                        second_inc.push_back(Rule<Lexeme>(pred, ctag));
-                                    }
-                                }
-                            }
-                        }
+                    // For each predicate which matched here before, we retract
+                    // the scores.
+                    vector<Rule<Lexeme> > rules;
+                    rules_generator->generateRules(text, i, rules);
+                    BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
+                        score_type s = scoreDelta(chosen_tag1,
+                                r.changedTag(chosen_tag1), expected_tag);
+                        if (s != 0)
+                            score_subs.push_back(make_pair(r, s));
+                    }
+
+                    // For each predicate which matches now, we add the scores.
+                    rules.clear();
+                    rules_generator->generateRules(next_text, i, rules);
+                    BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
+                        score_type s = scoreDelta(chosen_tag2,
+                                r.changedTag(chosen_tag2), expected_tag);
+                        if (s != 0)
+                            score_adds.push_back(make_pair(r, s));
                     }
                 }
 
                 #pragma omp critical (scores)
                 {
-                    BOOST_FOREACH(const Rule<Lexeme>& r, first_inc) scores[r].first++;
-                    BOOST_FOREACH(const Rule<Lexeme>& r, first_dec) scores[r].first--;
-                    BOOST_FOREACH(const Rule<Lexeme>& r, second_inc) scores[r].second++;
-                    BOOST_FOREACH(const Rule<Lexeme>& r, second_dec) scores[r].second--;
+                    BOOST_FOREACH(const score_changes_type& ch, score_adds) {
+                        if (ch.second > 0)
+                            scores[ch.first].first += ch.second;
+                        else if (ch.second < 0)
+                            scores[ch.first].second += -ch.second;
+                    }
+                    BOOST_FOREACH(const score_changes_type& ch, score_subs) {
+                        if (ch.second > 0)
+                            scores[ch.first].first -= ch.second;
+                        else if (ch.second < 0)
+                            scores[ch.first].second -= -ch.second;
+                    }
                 }
 
             }
@@ -482,7 +461,7 @@ public:
 
             if (DBG) {
                 fprintf(stderr, "Correct tags: %d, incorrect tags: %d\n",
-                        golden_tags, ingolden_tags);
+                        correct_tags, incorrect_tags);
 
                 fprintf(stderr, "\nCURRENT TAGGING:\n\n");
                 //print_text();
@@ -528,7 +507,7 @@ public:
                 }
             }
 
-            #pragma omp critical
+            #pragma omp critical (findBestRuleMax)
             if (max > gmax) {
                 gmax = max;
                 gmaxR = maxR;
@@ -540,12 +519,13 @@ public:
     }
 
     void runPhase(const Tagset* tagset,
-            const vector<PredicateTemplate<Lexeme>*>& rule_templates,
+            RulesGenerator<Lexeme>* rules_generator,
             int threshold) {
         phase++;
         phase_tagsets.push_back(tagset);
         phase_tagset = tagset;
-        this->rule_templates = rule_templates;
+        scorer.reset(new Scorer(tagset));
+        this->rules_generator = rules_generator;
         generated_rules.clear();
         cancelled = false;
 
@@ -568,28 +548,35 @@ public:
         double prec = 0, recall = 0, f_measure = 0;
 
         calculateTaggingStats(tagged_text, &prec, &recall, &f_measure,
-                NULL, INDEX_OFFSET, tagged_text.size() - INDEX_OFFSET);
+                NULL, NULL, INDEX_OFFSET, tagged_text.size() - INDEX_OFFSET);
 
         fprintf(stderr, "Stats -- P: %lf, R: %lf, F: %lf\n",
                 prec, recall, f_measure);
     }
 
-    std::pair<int, int> countScores(const Rule<Lexeme>& b) {
-        int countGood = 0, countBad = 0;
+    static score_type goodScore(score_type s) {
+        return s > 0 ? s : score_type();
+    }
+
+    static score_type badScore(score_type s) {
+        return s < 0 ? -s : score_type();
+    }
+
+    std::pair<score_type, score_type> countScores(const Rule<Lexeme>& b) {
+        score_type countGood = score_type();
+        score_type countBad = score_type();
 
         int n = text.size() - INDEX_OFFSET;
         #pragma omp parallel for default(shared) \
                 reduction(+: countGood, countBad)
         for (int i = INDEX_OFFSET; i < n; ++i) {
             const Lexeme& lex = text[i];
-            if (b.predicate.tpl->predicateMatches(b.predicate, text, i)
-                    && lex.isConsideredTag(b.tag)) {
-                if (lex.expected_tag == b.tag
-                        && lex.expected_tag != lex.chosen_tag[phase])
-                    countGood++;
-                else if (lex.expected_tag != b.tag
-                        && lex.expected_tag == lex.chosen_tag[phase])
-                    countBad++;
+            if (b.isApplicable(text, i)) {
+                const Tag& chosen_tag = lex.chosen_tag[phase];
+                score_type delta = scoreDelta(chosen_tag,
+                        b.changedTag(chosen_tag), lex.expected_tag);
+                countGood += goodScore(delta);
+                countBad += badScore(delta);
             }
         }
         return std::make_pair(countGood, countBad);
@@ -625,17 +612,18 @@ public:
 
     void applyAllRules(vector<Lexeme>& text, int phase) {
         vector<Lexeme> next_text = text;
-        double prec = 0, recall = 0, f_measure = 0;
+        double prec = 0, recall = 0, f_measure = 0, avg_score = 0;
         int last_errors = text.size();
         BOOST_FOREACH(Rule<Lexeme>& rule, phase_generated_rules[phase]) {
             int errors;
             applyRule(phase, rule, text, next_text, INDEX_OFFSET,
                     text.size() - INDEX_OFFSET);
-            calculateStats(phase, next_text, &prec, &recall, &f_measure,
-                    &errors, INDEX_OFFSET, text.size() - INDEX_OFFSET);
+            calculatePhaseStats(phase_tagset, phase, next_text, &prec, &recall,
+                    &f_measure, &errors, &avg_score, INDEX_OFFSET, text.size() -
+                    INDEX_OFFSET);
             fprintf(stderr, "%d. Applied rule: %s (P: %lf, R: %lf, F: %lf, "
-                    "errors: %d)\n", phase, rule.asString().c_str(), prec,
-                    recall, f_measure, errors);
+                    "score: %lf, errors: %d)\n", phase, rule.asString().c_str(),
+                    prec, recall, f_measure, avg_score, errors);
 
             if (errors > last_errors) {
                 fprintf(stderr, "    Bad rule :(  errors was %d, now %d\n",
