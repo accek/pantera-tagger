@@ -21,6 +21,7 @@
 #include <nlpcommon/tagset.h>
 #include <nlpcommon/spejdtagsetloader.h>
 #include <nlpcommon/ipipanlexer.h>
+#include <nlpcommon/cascorer.h>
 
 #include "rules_impl.h"
 #include "brilllexeme.h"
@@ -31,7 +32,8 @@ using namespace std;
 using namespace BTagger;
 
 typedef BrillLexeme<Tag> MyLexeme;
-typedef BestScoreMultiGoldenScorer<BinaryScorer<MyLexeme::tag_type> > MyScorer;
+typedef BestScoreMultiGoldenScorer<CAScorer<MyLexeme::tag_type> > MyScorer;
+//typedef BestScoreMultiGoldenScorer<BinaryScorer<MyLexeme::tag_type> > MyScorer;
 
 void lexing_progress(int token) {
     cerr << "\rLexing...  " << token;

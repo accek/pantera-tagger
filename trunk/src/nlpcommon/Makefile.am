@@ -12,7 +12,7 @@ libnlpcommon_la_LIBADD = @BOOST_REGEX_LIB@
 libnlpcommonincludedir = $(includedir)/nlpcommon
 libnlpcommoninclude_HEADERS = \
 	exception.h ipipanlexer.h lexer.h progress.h tag.h util.h writer.h \
-	tagset.h category.h pos.h scorer.h
+	tagset.h category.h pos.h scorer.h cascorer.h
 
 if HAVE_PROTOBUF
 
