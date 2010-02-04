@@ -70,14 +70,19 @@ AS_IF([test "x$have_profiler" = "xyes"],
 AX_BOOST_BASE([1.40.0])
 AX_BOOST_REGEX
 
-PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 2.0], ,
-                  [AC_MSG_ERROR([Google Protocol Buffer libraries not found])])
-AC_CHECK_PROG(ax_cv_protoc, protoc, yes, no)
-if test "x$ax_cv_protoc" != "xyes"; then
-  AC_MSG_ERROR(['protoc' Google Protocol Buffer compiler not found])
+PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 2.0],
+                  [have_protobuf=yes], [have_protobuf=no])
+if test "x$have_protobuf" = "xyes"; then
+    AC_CHECK_PROG(ax_cv_protoc, protoc, yes, no)
+    if test "x$ax_cv_protoc" = "xyes"; then
+        AC_SUBST(PROTOBUF_CFLAGS)
+        AC_SUBST(PROTOBUF_LIBS)
+        AC_DEFINE(HAVE_PROTOBUF, 1, [Google Protocol Buffers available])
+    else
+        have_protobuf=no
+    fi
 fi
-AC_SUBST(PROTOBUF_CFLAGS)
-AC_SUBST(PROTOBUF_LIBS)
+AM_CONDITIONAL(HAVE_PROTOBUF, test "x$have_protobuf" = "xyes")
 
 AX_OPENMP
 AC_SUBST(OPENMP_CXXFLAGS)
