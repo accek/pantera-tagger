@@ -26,8 +26,6 @@ namespace NLPCommon {
  *   score_t score(const tag_type& assigned, const tag_type& golden);
  *     // should return a value between score_type() and maxScore().
  *
- * - it must be assignable
- *
  * A MultiGoldenScorer additionaly has the following method:
  *
  *   score_t score(const tag_type& assigned, const vector<tag_type>& golden);
@@ -45,7 +43,7 @@ namespace NLPCommon {
 /* Concept checking classes. */
 
 template <class X>
-struct ScoreConcept : boost::Assignable<X>, boost::DefaultConstructible<X>
+struct ScoreConcept : boost::DefaultConstructible<X>, boost::Assignable<X>
 {
 public:
     BOOST_CONCEPT_USAGE(ScoreConcept) {
@@ -74,7 +72,7 @@ private:
 };
 
 template <class X>
-struct ScorerConcept : boost::Assignable<X>
+struct ScorerConcept
 {
 public:
     typedef typename X::score_type score_type;
