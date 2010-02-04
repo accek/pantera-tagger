@@ -13,7 +13,6 @@
 
 #include <nlpcommon/lexeme.h>
 #include <nlpcommon/progress.h>
-#include <nlpcommon/corpus.pb.h>
 
 namespace NLPCommon {
 

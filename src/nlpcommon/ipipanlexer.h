@@ -13,7 +13,6 @@
 #include <string>
 #include <iostream>
 #include <nlpcommon/lexer.h>
-#include <nlpcommon/corpus.pb.h>
 
 namespace NLPCommon {
 

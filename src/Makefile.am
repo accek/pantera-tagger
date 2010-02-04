@@ -1,12 +1,20 @@
 AM_CXXFLAGS = @BOOST_CPPFLAGS@ @OPENMP_CXXFLAGS@
 
+if HAVE_PROTOBUF
+AM_CXXFLAGS += @PROTOBUF_CFLAGS@
+endif
+
 SUBDIRS = nlpcommon
 
-bin_PROGRAMS = btagger xces2corpus corpus2corpus
+bin_PROGRAMS = btagger
 
 btagger_SOURCES = btagger.cpp
 btagger_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_REGEX_LIB@
 btagger_LDADD = nlpcommon/libnlpcommon.la
+
+if HAVE_PROTOBUF
+
+bin_PROGRAMS += xces2corpus corpus2corpus
 
 xces2corpus_SOURCES = xces2corpus.cpp
 xces2corpus_LDFLAGS = @BOOST_LDFLAGS@
@@ -16,3 +24,4 @@ corpus2corpus_SOURCES = corpus2corpus.cpp
 corpus2corpus_LDFLAGS = @BOOST_LDFLAGS@
 corpus2corpus_LDADD = nlpcommon/libnlpcommon.la
 
+endif
