@@ -40,12 +40,8 @@ void findMatchingPredicates(vector<Predicate<Lexeme> >& v,
     p.params.tags[0] = text[index].chosen_tag[Phase];
     p.params.tags[1] = text[index + Offset1].chosen_tag[Phase];
     v.push_back(p);
-
-    if (text[index + Offset2].chosen_tag[Phase] != text[index + Offset1].chosen_tag[Phase]) {
-        p.params.tags[1] = text[index + Offset2].chosen_tag[Phase];
-        v.push_back(p);
-    }
-
+    p.params.tags[1] = text[index + Offset2].chosen_tag[Phase];
+    v.push_back(p);
 }
 bool predicateMatches(const Predicate<Lexeme>& p,
             vector<Lexeme>& text, int index) {
@@ -75,17 +71,10 @@ void findMatchingPredicates(vector<Predicate<Lexeme> >& v,
     p.params.tags[0] = text[index].chosen_tag[Phase];
     p.params.tags[1] = text[index + Offset1].chosen_tag[Phase];
     v.push_back(p);
-
-    if (text[index + Offset2].chosen_tag[Phase] != text[index + Offset1].chosen_tag[Phase]) {
-        p.params.tags[1] = text[index + Offset2].chosen_tag[Phase];
-        v.push_back(p);
-    }
-
-    if (text[index + Offset3].chosen_tag[Phase] != text[index + Offset1].chosen_tag[Phase] &&
-            text[index + Offset3].chosen_tag[Phase] != text[index + Offset2].chosen_tag[Phase]) {
-        p.params.tags[1] = text[index + Offset3].chosen_tag[Phase];
-        v.push_back(p);
-    }
+    p.params.tags[1] = text[index + Offset2].chosen_tag[Phase];
+    v.push_back(p);
+    p.params.tags[1] = text[index + Offset3].chosen_tag[Phase];
+    v.push_back(p);
 }
 bool predicateMatches(const Predicate<Lexeme>& p,
             vector<Lexeme>& text, int index) {
@@ -237,37 +226,3 @@ string predicateAsString(const Predicate<Lexeme>& p) {
 
 
 
-// UTILITY FUNCTIONS
-
-template<class Lexeme, int Phase>
-void make_p1_rules(const vector<const Tagset*>& tagsets,
-        vector<PredicateTemplate<Lexeme>*>& templates) {
-    templates.push_back(new NearbyTagPredicateTemplate<Lexeme, Phase, -1>(tagsets));
-    templates.push_back(new NearbyTagPredicateTemplate<Lexeme, Phase, -2>(tagsets));
-    templates.push_back(new Nearby2TagsPredicateTemplate<Lexeme, Phase, -1, -2>(tagsets));
-    //templates.push_back(new Nearby3TagsPredicateTemplate<Lexeme, Phase, -1, -2, -3>(tagsets));
-    templates.push_back(new NearbyExact2TagsPredicateTemplate<Lexeme, Phase, -1, -2>(tagsets));
-    templates.push_back(new NearbyExact2TagsPredicateTemplate<Lexeme, Phase, -1, 1>(tagsets));
-    templates.push_back(new NearbyTagPredicateTemplate<Lexeme, Phase, 1>(tagsets));
-    templates.push_back(new NearbyTagPredicateTemplate<Lexeme, Phase, 2>(tagsets));
-    templates.push_back(new Nearby2TagsPredicateTemplate<Lexeme, Phase, 1, 2>(tagsets));
-    //templates.push_back(new Nearby3TagsPredicateTemplate<Lexeme, Phase, 1, 2, 3>(tagsets));
-    templates.push_back(new NearbyExact2TagsPredicateTemplate<Lexeme, Phase, 1, 2>(tagsets));
-
-    templates.push_back(new CCaseTagPredicateTemplate<Lexeme, Phase>(tagsets));
-    templates.push_back(new Prefix2TagPredicateTemplate<Lexeme, Phase>(tagsets));
-    templates.push_back(new Suffix2TagPredicateTemplate<Lexeme, Phase>(tagsets));
-
-}
-
-template<class Lexeme, int Phase>
-RulesGenerator<Lexeme>* make_p1_rules_generator(
-        const vector<const Tagset*>& tagsets) {
-    vector<PredicateTemplate<Lexeme>*> ptemplates;
-    make_p1_rules<Lexeme, Phase>(tagsets, ptemplates);
-
-    vector<ActionTemplate<Lexeme>*> atemplates;
-    atemplates.push_back(new ChangeTagActionTemplate<Lexeme, Phase>(tagsets));
-
-    return new AllPredicatesAllActionsGenerator<Lexeme>(ptemplates, atemplates);
-}

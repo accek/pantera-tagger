@@ -62,28 +62,3 @@ string predicateAsString(const Predicate<Lexeme>& p) {
 }
 };
 
-template<class Lexeme, int Phase>
-void make_p2_rules(const vector<const Tagset*>& tagsets,
-        vector<PredicateTemplate<Lexeme>*>& templates) {
-
-    make_p1_rules<Lexeme, Phase>(tagsets, templates);
-
-    templates.push_back(new PartialNearbyTagPredicateTemplate<Lexeme, Phase, -1>(tagsets));
-    templates.push_back(new PartialNearbyTagPredicateTemplate<Lexeme, Phase, -2>(tagsets));
-    templates.push_back(new PartialNearby2TagsPredicateTemplate<Lexeme, Phase, -1, -2>(tagsets));
-    templates.push_back(new PartialNearbyTagPredicateTemplate<Lexeme, Phase, 1>(tagsets));
-    templates.push_back(new PartialNearbyTagPredicateTemplate<Lexeme, Phase, 2>(tagsets));
-    templates.push_back(new PartialNearby2TagsPredicateTemplate<Lexeme, Phase, 1, 2>(tagsets));
-}
-
-template<class Lexeme, int Phase>
-RulesGenerator<Lexeme>* make_p2_rules_generator(
-        const vector<const Tagset*>& tagsets) {
-    vector<PredicateTemplate<Lexeme>*> ptemplates;
-    make_p2_rules<Lexeme, Phase>(tagsets, ptemplates);
-
-    vector<ActionTemplate<Lexeme>*> atemplates;
-    atemplates.push_back(new ChangeTagActionTemplate<Lexeme, Phase>(tagsets));
-
-    return new AllPredicatesAllActionsGenerator<Lexeme>(ptemplates, atemplates);
-}
