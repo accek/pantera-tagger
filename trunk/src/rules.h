@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstdlib>
 #include <functional>
+#include <algorithm>
 
 #include <nlpcommon/lexeme.h>
 
@@ -33,6 +34,10 @@ public:
             std::vector<Lexeme>& text, int index) = 0;
 
     virtual string predicateAsString(const Predicate<Lexeme>& p) = 0;
+
+    virtual bool usesCategory0() {
+        return false;
+    }
 };
 
 template<class Lexeme>
@@ -42,8 +47,9 @@ public:
     struct {
         typename Lexeme::tag_type tags[3];
         char chars[4];
-        uint8_t categories[3];
+        int8_t categories[3];
         uint8_t values[3];
+        uint8_t pos[3];
     } params;
 
     Predicate() :
@@ -100,8 +106,8 @@ public:
     virtual void findMatchingRules(const Predicate<Lexeme>& p,
             std::vector<Rule<Lexeme> >& rules,
             std::vector<Lexeme>& text, int index) = 0;
-    virtual const tag_type& changedTag(const Action<Lexeme>& a,
-            const tag_type& original_tag) const = 0;
+    virtual tag_type changedTag(const Action<Lexeme>& a,
+            std::vector<Lexeme>& text, int index) const = 0;
 
     virtual string actionAsString(const Action<Lexeme>& a) = 0;
 };
@@ -112,7 +118,9 @@ public:
     ActionTemplate<Lexeme>* tpl;
     struct {
         typename Lexeme::tag_type tag;
-        uint8_t category;
+        int8_t category;
+        uint8_t value;
+        uint8_t pos;
     } params;
 
     Action() :
@@ -164,8 +172,8 @@ public:
             action.tpl->actionApplicable(action, text, index);
     }
 
-    const tag_type& changedTag(const Tag& original_tag) const {
-        return action.tpl->changedTag(action, original_tag);
+    tag_type changedTag(std::vector<Lexeme>& text, int index) const {
+        return action.tpl->changedTag(action, text, index);
     }
 
     bool operator==(const Rule<Lexeme>& r) const {
@@ -175,7 +183,7 @@ public:
     bool operator<(const Rule<Lexeme>& r) const {
         if (action < r.action)
             return true;
-        if (action > r.action)
+        if (r.action < action)
             return false;
         return predicate < r.predicate;
     }
@@ -206,6 +214,14 @@ class RulesGenerator {
 public:
     virtual void generateRules(vector<Lexeme>& text, int index,
             vector<Rule<Lexeme> >& rules) = 0;
+
+    virtual void generateUniqueRules(vector<Lexeme>& text, int index,
+            vector<Rule<Lexeme> >& rules) {
+        generateRules(text, index, rules);
+        std::sort(rules.begin(), rules.end());
+        rules.resize(std::unique(rules.begin(), rules.end()) - rules.begin());
+    }
+
 };
 
 } // namespace BTagger

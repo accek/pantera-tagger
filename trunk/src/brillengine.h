@@ -80,7 +80,7 @@ private:
         for (int i = start_index; i < end_index; ++i) {
             if (b.isApplicable(text1, i)) {
                 text2[i].chosen_tag[phase] =
-                    b.changedTag(text1[i].chosen_tag[phase]);
+                    b.changedTag(text1, i);
                 for (int j = std::max(start_index, i - vicinity_radius),
                          z = std::min(end_index - 1, i + vicinity_radius);
                          j <= z;
@@ -311,9 +311,19 @@ public:
 
         int n = text.size() - INDEX_OFFSET;
         for (int i = INDEX_OFFSET; i < n; ++i) {
+            if ((i % 1000) == 0) {
+                cerr << "\rGenerating initial rules for phase " << phase
+                    << " ...  " << i << '/' << n << " (rules for now: "
+                    << scores.size() << ')';
+            }
             Lexeme& lex = text[i];
+
+            if (lex.chosen_tag[phase] == Lexeme::tag_type::getNullTag()) {
+                cerr << "\n\nNULL TAG AT " << i << endl;
+            }
+
             vector<Rule<Lexeme> > rules;
-            rules_generator->generateRules(text, i, rules);
+            rules_generator->generateUniqueRules(text, i, rules);
 
             if (DBG) {
                 fprintf(stderr, "Init i: %d (%s) num_rules: %d ", i,
@@ -340,7 +350,7 @@ public:
             BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
                 const Tag& chosen_tag = lex.chosen_tag[phase];
                 score_type delta = scoreDelta(chosen_tag,
-                        r.changedTag(chosen_tag), lex.expected_tag);
+                        r.changedTag(text, i), lex.expected_tag);
                 std::pair<score_type, score_type>& spair = scores[r];
                 if (delta > 0)
                     spair.first += delta;
@@ -421,20 +431,20 @@ public:
                     // For each predicate which matched here before, we retract
                     // the scores.
                     vector<Rule<Lexeme> > rules;
-                    rules_generator->generateRules(text, i, rules);
+                    rules_generator->generateUniqueRules(text, i, rules);
                     BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
                         score_type s = scoreDelta(chosen_tag1,
-                                r.changedTag(chosen_tag1), expected_tag);
+                                r.changedTag(text, i), expected_tag);
                         if (s != 0)
                             score_subs.push_back(make_pair(r, s));
                     }
 
                     // For each predicate which matches now, we add the scores.
                     rules.clear();
-                    rules_generator->generateRules(next_text, i, rules);
+                    rules_generator->generateUniqueRules(next_text, i, rules);
                     BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
                         score_type s = scoreDelta(chosen_tag2,
-                                r.changedTag(chosen_tag2), expected_tag);
+                                r.changedTag(next_text, i), expected_tag);
                         if (s != 0)
                             score_adds.push_back(make_pair(r, s));
                     }
@@ -574,7 +584,7 @@ public:
             if (b.isApplicable(text, i)) {
                 const Tag& chosen_tag = lex.chosen_tag[phase];
                 score_type delta = scoreDelta(chosen_tag,
-                        b.changedTag(chosen_tag), lex.expected_tag);
+                        b.changedTag(text, i), lex.expected_tag);
                 countGood += goodScore(delta);
                 countBad += badScore(delta);
             }

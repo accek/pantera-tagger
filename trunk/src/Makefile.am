@@ -6,9 +6,15 @@ endif
 
 SUBDIRS = nlpcommon
 
+SUFFIXES = .m4 .m4h
+
+.m4.m4h:
+	m4 -I rules/m4 -P $< > $@
+
 bin_PROGRAMS = btagger
 
-btagger_SOURCES = btagger.cpp
+btagger_SOURCES = rules/c1.m4h \
+				  btagger.cpp
 btagger_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_REGEX_LIB@
 btagger_LDADD = nlpcommon/libnlpcommon.la
 

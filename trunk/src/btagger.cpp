@@ -23,7 +23,7 @@
 #include <nlpcommon/ipipanlexer.h>
 #include <nlpcommon/cascorer.h>
 
-#include "rules_impl.h"
+#include "rules/impl.h"
 #include "brilllexeme.h"
 #include "brillengine.h"
 #include "ipipanrewriter.h"

@@ -55,7 +55,7 @@ public:
         return _categoriesByIndex;
     }
 
-    const Category* getCategory(unsigned int index) {
+    const Category* getCategory(unsigned int index) const {
         if (index < 0 || index >= _categoriesByIndex.size())
             throw CategoryNotFoundException::ById(index);
         return _categoriesByIndex[index];
