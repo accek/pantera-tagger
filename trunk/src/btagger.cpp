@@ -32,8 +32,16 @@ using namespace std;
 using namespace BTagger;
 
 typedef BrillLexeme<Tag> MyLexeme;
-typedef BestScoreMultiGoldenScorer<CAScorer<MyLexeme::tag_type> > MyScorer;
+//typedef BestScoreMultiGoldenScorer<CAScorer<MyLexeme::tag_type> > MyScorer;
 //typedef BestScoreMultiGoldenScorer<BinaryScorer<MyLexeme::tag_type> > MyScorer;
+
+class MySingleScorer : public CAScorer<MyLexeme::tag_type>{
+    public:
+        MySingleScorer(const Tagset* tagset) :
+            CAScorer<MyLexeme::tag_type>(tagset) { }
+};
+
+typedef BestScoreMultiGoldenScorer<MySingleScorer> MyScorer;
 
 void lexing_progress(int token) {
     cerr << "\rLexing...  " << token;

@@ -33,6 +33,10 @@ protected:
         return 1.0;
     }
 
+    score_type nonExactMatchFactor() {
+        return 0.5;
+    }
+
 public:
     CAScorer(const Tagset* tagset)
             : tagset(tagset)
@@ -93,7 +97,7 @@ public:
             i++;
         }
 
-        return result;
+        return result * nonExactMatchFactor();
     }
 };
 
