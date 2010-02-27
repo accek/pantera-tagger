@@ -51,6 +51,8 @@ PTEMPLATE_BEGIN(`Nearby'$1`CatPredicateTemplate', $1)
         } NEXTCAT
 
         p.params.categories[0] = -1;
+        p.params.values[0] = -1;
+        p.params.values[1] = -1;
         PTEMPLATE_FOR_EACH_OFFSET(`
             if (pos`'O) {
                 p.params.pos[1] = POSNUM(Offset);
@@ -106,12 +108,14 @@ PTEMPLATE_BEGIN(`NearbyExact'$1`CatPredicateTemplate', $1)
         } NEXTCAT
 
         p.params.categories[0] = -1;
+        p.params.values[0] = -1;
         PTEMPLATE_FOR_EACH_OFFSET(`
             if (!pos`'O)
                 return;
+            p.params.values[O] = -1;
             p.params.pos[O] = POSNUM(Offset);
-            v.push_back(p);
         ')
+        v.push_back(p);
     }
 
     PTEMPLATE_MATCH {
@@ -140,7 +144,6 @@ PTEMPLATE_END
 NEARBY_CAT(`1')
 NEARBY_CAT(`2')
 NEARBY_CAT(`3')
-NEARBY_EXACT_CAT(`1')
 NEARBY_EXACT_CAT(`2')
 
 template<class Lexeme, int Phase>

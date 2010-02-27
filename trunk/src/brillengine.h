@@ -79,8 +79,7 @@ private:
         #pragma omp parallel for default(shared)
         for (int i = start_index; i < end_index; ++i) {
             if (b.isApplicable(text1, i)) {
-                text2[i].chosen_tag[phase] =
-                    b.changedTag(text1, i);
+                text2[i].chosen_tag[phase] = b.changedTag(text1, i);
                 for (int j = std::max(start_index, i - vicinity_radius),
                          z = std::min(end_index - 1, i + vicinity_radius);
                          j <= z;
@@ -301,6 +300,29 @@ public:
             - scorer->score(chosen_tag, expected_tag);
     }
 
+    void applyScoreChanges(
+            vector<std::pair<Rule<Lexeme>, score_type> >& score_adds,
+            vector<std::pair<Rule<Lexeme>, score_type> >& score_subs) {
+        typedef std::pair<Rule<Lexeme>, score_type> score_changes_type;
+        #pragma omp critical (applyScoreChanges)
+        {
+            BOOST_FOREACH(const score_changes_type& ch, score_adds) {
+                if (ch.second > 0)
+                    scores[ch.first].first += ch.second;
+                else if (ch.second < 0)
+                    scores[ch.first].second += -ch.second;
+            }
+            BOOST_FOREACH(const score_changes_type& ch, score_subs) {
+                if (ch.second > 0)
+                    scores[ch.first].first -= ch.second;
+                else if (ch.second < 0)
+                    scores[ch.first].second -= -ch.second;
+            }
+        }
+        score_adds.clear();
+        score_subs.clear();
+    }
+
     void generateInitialScores()
     {
         scores.clear();
@@ -310,54 +332,61 @@ public:
             cerr << endl;
 
         int n = text.size() - INDEX_OFFSET;
-        for (int i = INDEX_OFFSET; i < n; ++i) {
-            if ((i % 1000) == 0) {
-                cerr << "\rGenerating initial rules for phase " << phase
-                    << " ...  " << i << '/' << n << " (rules for now: "
-                    << scores.size() << ')';
-            }
-            Lexeme& lex = text[i];
+        int num = 0;
+        #pragma omp parallel default(shared)
+        {
+            typedef std::pair<Rule<Lexeme>, score_type> score_changes_type;
+            vector<score_changes_type> score_adds, score_subs;
 
-            if (lex.chosen_tag[phase] == Lexeme::tag_type::getNullTag()) {
-                cerr << "\n\nNULL TAG AT " << i << endl;
+            #pragma omp for
+            for (int i = INDEX_OFFSET; i < n; ++i) {
+                if (((++num) % 1000) == 0) {
+                    cerr << "\rGenerating initial rules for phase " << phase
+                        << " ...  " << num << '/' << n << " (rules for now: "
+                        << scores.size() << ')';
+                }
+                Lexeme& lex = text[i];
+
+                vector<Rule<Lexeme> > rules;
+                rules_generator->generateUniqueRules(text, i, rules);
+
+                if (DBG) {
+                    fprintf(stderr, "Init i: %d (%s) num_rules: %d ", i,
+                            lex.getUtf8Orth().c_str(), (int)rules.size());
+                    if (rules.size() > 0)
+                        fprintf(stderr, "%s\n", rules[0].asString().c_str());
+                    else
+                        fprintf(stderr, "\n");
+                }
+
+                if (DBG) {
+                    if (lex.considered_tags.empty())
+                        throw Exception(boost::str(
+                                boost::format("lexeme '%1%' at %2% has no "
+                                        "considered_tags") % lex.getUtf8Orth() % i));
+                    if (!lex.isConsideredTag(lex.chosen_tag[phase]))
+                        throw Exception(boost::str(
+                                boost::format("chosen_tag not in considered_tags "
+                                    "(lex: %1%, pos: %2%, chosen_tag: %3%)") %
+                                    lex.getUtf8Orth() % i %
+                                    lex.chosen_tag[phase].asString(phase_tagset)));
+                }
+
+                BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
+                    assert(r.isApplicable(text, i));
+                    const Tag& chosen_tag = lex.chosen_tag[phase];
+                    score_type delta = scoreDelta(chosen_tag,
+                            r.changedTag(text, i), lex.expected_tag);
+                    score_adds.push_back(make_pair(r, delta));
+                }
+
+                if (score_adds.size() + score_subs.size() > 10000)
+                    applyScoreChanges(score_adds, score_subs);
             }
 
-            vector<Rule<Lexeme> > rules;
-            rules_generator->generateUniqueRules(text, i, rules);
-
-            if (DBG) {
-                fprintf(stderr, "Init i: %d (%s) num_rules: %d ", i,
-                        lex.getUtf8Orth().c_str(), (int)rules.size());
-                if (rules.size() > 0)
-                    fprintf(stderr, "%s\n", rules[0].asString().c_str());
-                else
-                    fprintf(stderr, "\n");
-            }
-
-            if (DBG) {
-                if (lex.considered_tags.empty())
-                    throw Exception(boost::str(
-                            boost::format("lexeme '%1%' at %2% has no "
-                                    "considered_tags") % lex.getUtf8Orth() % i));
-                if (!lex.isConsideredTag(lex.chosen_tag[phase]))
-                    throw Exception(boost::str(
-                            boost::format("chosen_tag not in considered_tags "
-                                "(lex: %1%, pos: %2%, chosen_tag: %3%)") %
-                                lex.getUtf8Orth() % i %
-                                lex.chosen_tag[phase].asString(phase_tagset)));
-            }
-
-            BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
-                const Tag& chosen_tag = lex.chosen_tag[phase];
-                score_type delta = scoreDelta(chosen_tag,
-                        r.changedTag(text, i), lex.expected_tag);
-                std::pair<score_type, score_type>& spair = scores[r];
-                if (delta > 0)
-                    spair.first += delta;
-                else
-                    spair.second += -delta;
-            }
+            applyScoreChanges(score_adds, score_subs);
         }
+
         cerr << "done." << endl;
     }
 
@@ -448,24 +477,12 @@ public:
                         if (s != 0)
                             score_adds.push_back(make_pair(r, s));
                     }
+
+                    if (score_adds.size() + score_subs.size() > 10000)
+                        applyScoreChanges(score_adds, score_subs);
                 }
 
-                #pragma omp critical (scores)
-                {
-                    BOOST_FOREACH(const score_changes_type& ch, score_adds) {
-                        if (ch.second > 0)
-                            scores[ch.first].first += ch.second;
-                        else if (ch.second < 0)
-                            scores[ch.first].second += -ch.second;
-                    }
-                    BOOST_FOREACH(const score_changes_type& ch, score_subs) {
-                        if (ch.second > 0)
-                            scores[ch.first].first -= ch.second;
-                        else if (ch.second < 0)
-                            scores[ch.first].second -= -ch.second;
-                    }
-                }
-
+                applyScoreChanges(score_adds, score_subs);
             }
             std::swap(text, next_text);
 
@@ -582,6 +599,17 @@ public:
         for (int i = INDEX_OFFSET; i < n; ++i) {
             const Lexeme& lex = text[i];
             if (b.isApplicable(text, i)) {
+                vector<Rule<Lexeme> > rules;
+                rules_generator->generateUniqueRules(text, i, rules);
+                if (std::find(rules.begin(), rules.end(), b) == rules.end()) {
+                    cerr << endl << "*** Inconsistency detected" << endl;
+                    cerr << "RULE: " << b.asString() << endl;
+                    cerr << "Is applicable at offset " << i
+                        << ", but not reported by rules generator.";
+                    throw new Exception("Internal inconsistency: "
+                            "broken rule templates.");
+                }
+
                 const Tag& chosen_tag = lex.chosen_tag[phase];
                 score_type delta = scoreDelta(chosen_tag,
                         b.changedTag(text, i), lex.expected_tag);

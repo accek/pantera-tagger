@@ -41,6 +41,14 @@ class MySingleScorer : public CAScorer<MyLexeme::tag_type>{
     public:
         MySingleScorer(const Tagset* tagset) :
             CAScorer<MyLexeme::tag_type>(tagset) { }
+
+        score_type getPosRelativeWeight() {
+            return 0.3;
+        }
+
+        score_type getNonExactMatchFactor() {
+            return 0.3;
+        }
 };
 
 typedef BestScoreMultiGoldenScorer<MySingleScorer> MyScorer;

@@ -47,12 +47,16 @@ class Predicate {
 public:
     PredicateTemplate<Lexeme>* tpl;
     struct {
-        typename Lexeme::tag_type tags[3];
+        union {
+            typename Lexeme::tag_type tags[4];
+            struct {
+                int8_t categories[4];
+                uint8_t values[4];
+                uint8_t pos[4];
+            } __attribute__((packed));
+        } __attribute__((packed));
         wchar_t chars[4];
-        int8_t categories[3];
-        uint8_t values[3];
-        uint8_t pos[3];
-    } params;
+    } __attribute__((packed)) params;
 
     Predicate() :
         tpl(NULL) {
@@ -123,7 +127,7 @@ public:
         int8_t category;
         uint8_t value;
         uint8_t pos;
-    } params;
+    } __attribute__((packed)) params;
 
     Action() :
         tpl(NULL) {

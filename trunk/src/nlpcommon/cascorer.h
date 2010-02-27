@@ -33,7 +33,7 @@ protected:
         return 1.0;
     }
 
-    score_type nonExactMatchFactor() {
+    score_type getNonExactMatchFactor() {
         return 0.5;
     }
 
@@ -97,7 +97,7 @@ public:
             i++;
         }
 
-        return result * nonExactMatchFactor();
+        return result * getNonExactMatchFactor();
     }
 };
 
