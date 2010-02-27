@@ -13,6 +13,7 @@
 #include <map>
 #include <cassert>
 #include <algorithm>
+#include <nlpcommon/util.h>
 
 
 namespace NLPCommon {
@@ -31,6 +32,7 @@ public:
     PartOfSpeech(const string& name) : _name(name) { }
 
     const string& getName() const { return _name; }
+    wstring getWName() const { return ascii_to_wstring(getName()); }
 
     const vector<const Category*>& getCategories(void) const {
         return _categories;

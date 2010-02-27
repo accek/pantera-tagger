@@ -6,9 +6,8 @@
  */
 
 #include <string>
+#include <algorithm>
 #include <nlpcommon/util.h>
-
-using std::string;
 
 namespace NLPCommon {
 
@@ -23,6 +22,13 @@ string find_prefix(string& haystack, char needle) {
         haystack = haystack.substr(index + 1);
     }
     return ret;
+}
+
+wstring ascii_to_wstring(const string& wstring) {
+    std::wstring res;
+    res.resize(wstring.length());
+    std::copy(wstring.begin(), wstring.end(), res.begin());
+    return res;
 }
 
 }

@@ -34,7 +34,7 @@ private:
         switch (lex.getType()) {
             case Lexeme::SEGMENT:
                 proto_token.set_type(CorpusProto::Token::SEGMENT);
-                proto_token.set_orth(lex.getOrth());
+                proto_token.set_orth(lex.getUtf8Orth());
                 proto_token.clear_interp();
                 typedef typename Lexeme::tag_type tag_type;
                 BOOST_FOREACH(const tag_type& tag, lex.getAllowedTags()) {

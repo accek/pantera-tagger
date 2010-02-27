@@ -69,6 +69,7 @@ AS_IF([test "x$have_profiler" = "xyes"],
 
 AX_BOOST_BASE([1.40.0])
 AX_BOOST_REGEX
+AX_BOOST_PROGRAM_OPTIONS
 
 PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 2.0],
                   [have_protobuf=yes], [have_protobuf=no])

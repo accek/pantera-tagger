@@ -12,6 +12,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
+#include <clocale>
 
 #if HAVE_OPENMP
 #include <omp.h>
@@ -22,6 +23,7 @@
 #include <nlpcommon/spejdtagsetloader.h>
 #include <nlpcommon/ipipanlexer.h>
 #include <nlpcommon/cascorer.h>
+#include <nlpcommon/finderrors.h>
 
 #include "rules/impl.h"
 #include "brilllexeme.h"
@@ -44,11 +46,11 @@ class MySingleScorer : public CAScorer<MyLexeme::tag_type>{
 typedef BestScoreMultiGoldenScorer<MySingleScorer> MyScorer;
 
 void lexing_progress(int token) {
-    cerr << "\rLexing...  " << token;
+    wcerr << "\rLexing...  " << token;
 }
 
 void rewriting_progress(int token) {
-    cerr << "\rRewriting...  " << token;
+    wcerr << "\rRewriting...  " << token;
 }
 
 template<class Lexeme>
@@ -77,9 +79,9 @@ vector<const Category*> findConstantCategories(const Tagset* tagset, vector<Lexe
                         cats.end(), cat);
                 if (it != cats.end()) {
                     cats.erase(it);
-                    cerr << "  NOT CONSTANT: " << cat->getName() << " (" <<
-                        cat->getValue(values[0]) << ' ' <<
-                        cat->getValue(values[1]) << ") " << lex.getOrth() <<
+                    wcerr << "  NOT CONSTANT: " << cat->getWName() << " (" <<
+                        cat->getWValue(values[0]) << ' ' <<
+                        cat->getWValue(values[1]) << ") " << lex.getOrth() <<
                         endl;
                 }
             }
@@ -89,10 +91,37 @@ vector<const Category*> findConstantCategories(const Tagset* tagset, vector<Lexe
     return cats;
 }
 
+template<class Lexeme>
+void analyzeErrors(wostream& stream, const Tagset* tagset,
+        const vector<Lexeme>& text) {
+    wcerr << endl << "Analyzing errors ..." << endl;
+    TaggingErrorsCollector<MyLexeme> errors_collector(tagset);
+    errors_collector.addTaggingErrors(text);
+
+    const vector<TaggingErrorsCollector<MyLexeme>::error_type>& errors =
+        errors_collector.getErrors();
+    wcerr << "found " << errors.size() << " errors." << endl;
+
+    const vector<TaggingErrorsCollector<MyLexeme>::group_type>& groups =
+        errors_collector.getGroups();
+    wcerr << "found " << groups.size() << " groups." << endl;
+
+    for (int i = 0; i < groups.size(); i++) {
+        stream << "=== ERROR GROUP " << i << " ===" << endl;
+        stream << "  " << groups[i].second.size() << ' ' << groups[i].first
+            << endl;
+        for (int j = 0; j < groups[i].second.size(); j++)
+            stream << groups[i].second[j] << endl;
+        stream << endl;
+    }
+}
+
 int main(int argc, char** argv) {
-    //ios_base::sync_with_stdio(false);
+    // This is needed for correct wcin/wcout behaviour.
+    setlocale(LC_CTYPE, "");
+
 #if HAVE_OPENMP
-    cerr << "OpenMP parallelism enabled (processors: " <<
+    wcerr << "OpenMP parallelism enabled (processors: " <<
         omp_get_num_procs() << ", dynamic thread allocation: "
         << omp_get_dynamic() << ")" << endl;
 
@@ -105,25 +134,25 @@ int main(int argc, char** argv) {
     ifstream config_stream("tagset.cfg");
     const Tagset* tagset = tagset_loader.loadTagset(config_stream);
 
-    cout << "Loaded " << tagset->getCategories().size() << " categories." << endl;
-    cout << "Loaded " << tagset->getPartsOfSpeech().size() << " parts of speech." << endl;
+    wcout << "Loaded " << tagset->getCategories().size() << " categories." << endl;
+    wcout << "Loaded " << tagset->getPartsOfSpeech().size() << " parts of speech." << endl;
 
-    cerr << endl << "Lexing ...";
+    wcerr << endl << "Lexing ...";
     ifstream data_stream(argv[1]);
     IpiPanLexer<MyLexeme> lexer(data_stream);
     vector<MyLexeme> text;
     lexer.setProgressHandler(lexing_progress, 1000);
     lexer.parseStreamToVector(text, &tagset);
-    cerr << "\rLexing ...  done.       " << endl;
+    wcerr << "\rLexing ...  done.       " << endl;
 
     for (int i=0; i < 20; i++) {
         MyLexeme& lex = text[i];
-        cout << "  " << lex.getOrth() << " " << lex.getAllowedTags()[0].asString(tagset) << endl;
+        wcout << "  " << lex.getOrth() << " " << lex.getAllowedTags()[0].asWString(tagset) << endl;
     }
 
-//    cout << "Looking for constant categories ..." << endl;
+//    wcout << "Looking for constant categories ..." << endl;
 //    BOOST_FOREACH(const Category* cat, findConstantCategories(tagset, text))
-//        cout << "  " << cat->getName() << endl;
+//        wcout << "  " << cat->getName() << endl;
 
     BrillEngine<MyLexeme, MyScorer> engine;
     engine.init(text, tagset);
@@ -152,18 +181,19 @@ int main(int argc, char** argv) {
 
     for (int i=0; i < 20; i++) {
         const MyLexeme& lex = engine.getText()[i];
-        cout << "  " << lex.getOrth() << " " << lex.chosen_tag[2].asString(tagset) << endl;
+        wcout << "  " << lex.getOrth() << " "
+            << lex.chosen_tag[2].asWString(tagset) << endl;
     }
 
     string rewrite_filename = argv[1];
     if (argc >= 3) {
-        cerr << endl << "Lexing ...";
+        wcerr << endl << "Lexing ...";
         text.clear();
         ifstream data_stream(argv[2]);
         IpiPanLexer<MyLexeme> lexer(data_stream);
         lexer.setProgressHandler(lexing_progress, 1000);
         lexer.parseStreamToVector(text, &tagset);
-        cerr << "\rLexing ...  done.       " << endl;
+        wcerr << "\rLexing ...  done.       " << endl;
         engine.tagText(text);
 
         rewrite_filename = argv[2];
@@ -171,12 +201,15 @@ int main(int argc, char** argv) {
         text = engine.getText();
     }
 
-    cerr << endl << "Rewriting ...";
+    wofstream errors_report((rewrite_filename + ".errors.txt").c_str());
+    analyzeErrors(errors_report, tagset, text);
+
+    wcerr << endl << "Rewriting ...";
     ifstream rewrite_in(rewrite_filename.c_str());
     ofstream rewrite_out((rewrite_filename + ".disamb").c_str());
     IpiPanRewriter<MyLexeme> rewriter;
     rewriter.setProgressHandler(rewriting_progress, 1000);
     rewriter.rewriteStream(engine.getPhase(), tagset, text,
             rewrite_in, rewrite_out);
-    cerr << "\rRewriting ...  done.       " << endl;
+    wcerr << "\rRewriting ...  done.       " << endl;
 }

@@ -154,6 +154,10 @@ public:
         }
         return stream.str();
     }
+
+    const wstring asWString(const Tagset* tagset) const {
+        return ascii_to_wstring(this->asString(tagset));
+    }
 };
 
 class Tag : public BaseTag<Tag>

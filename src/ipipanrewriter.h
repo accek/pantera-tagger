@@ -47,7 +47,7 @@ public:
 
             if (line.substr(0, 6) == "<orth>") {
                 string orth = line.substr(6, line.length() - 13);
-                while (i < lexemes.size() && lexemes[i].getOrth() != orth)
+                while (i < lexemes.size() && lexemes[i].getUtf8Orth() != orth)
                     i++;
                 if (i >= lexemes.size())
                     throw Exception(boost::str(
