@@ -217,7 +217,7 @@ public:
     std::size_t hash() const {
         return boost::hash_range(_data, _data + max_num_categories + 1);
     }
-};
+} __attribute__((packed));
 
 std::size_t hash_value(const Tag& tag) {
     return tag.hash();

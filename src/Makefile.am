@@ -11,10 +11,14 @@ SUFFIXES = .m4 .m4h
 .m4.m4h:
 	m4 -I rules/m4 -P $< > $@
 
+BUILT_SOURCES = rules/c1.m4h
+
 bin_PROGRAMS = btagger
 
-btagger_SOURCES = rules/c1.m4h \
-				  btagger.cpp
+btagger_SOURCES = btagger.cpp \
+	rules/a.h rules/c1.m4h rules/p1.h rules/p2.h \
+	rules/impl.h rules/make.h brillengine.h \
+	brillexeme.h unigram.h rules.h
 btagger_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@
 btagger_LDADD = nlpcommon/libnlpcommon.la
 

@@ -105,7 +105,7 @@ public:
 private:
     X x;
     tag_type tag;
-    vector<tag_type>& tags;
+    vector<tag_type> tags;
 };
 
 template <class X>
@@ -120,7 +120,7 @@ struct MultiScorerConcept : MultiGoldenScorerConcept<X>
 
 private:
     X x;
-    vector<tag_type>& tags;
+    vector<tag_type> tags;
 };
 
 /* Implementations. */
