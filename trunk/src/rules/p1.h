@@ -132,8 +132,7 @@ CCaseTagPredicateTemplate(const vector<const Tagset*> tagsets) : PredicateTempla
 void findMatchingPredicates(vector<Predicate<Lexeme> >& v,
                                                       vector<Lexeme>& text,
                                                       int index) {
-
-    if (text[index].getOrth()[0] >= 'A' && text[index].getOrth()[0] <= 'Z') {
+    if (isupper(text[index].getOrth()[0], this->tagsets[Phase]->getLocale())) {
         Predicate<Lexeme> p = Predicate<Lexeme>(this);
         p.params.tags[0] = text[index].chosen_tag[Phase];
         v.push_back(p);
@@ -142,7 +141,7 @@ void findMatchingPredicates(vector<Predicate<Lexeme> >& v,
 bool predicateMatches(const Predicate<Lexeme>& p,
             vector<Lexeme>& text, int index) {
     return (p.params.tags[0] == text[index].chosen_tag[Phase]
-            && text[index].getOrth()[0] >= 'A' && text[index].getOrth()[0] <= 'Z');
+            && isupper(text[index].getOrth()[0], this->tagsets[Phase]->getLocale()));
 }
 string predicateAsString(const Predicate<Lexeme>& p) {
 
@@ -162,7 +161,7 @@ void findMatchingPredicates(vector<Predicate<Lexeme> >& v,
                                                       vector<Lexeme>& text,
                                                       int index) {
 
-    const string& orth = text[index].getOrth();
+    const wstring& orth = text[index].getOrth();
     int len = orth.length();
     if (len >= 2) {
         Predicate<Lexeme> p = Predicate<Lexeme>(this);
@@ -174,7 +173,7 @@ void findMatchingPredicates(vector<Predicate<Lexeme> >& v,
 }
 bool predicateMatches(const Predicate<Lexeme>& p,
             vector<Lexeme>& text, int index) {
-    const string& orth = text[index].getOrth();
+    const wstring& orth = text[index].getOrth();
     int len = orth.length();
     return (len >= 2 && p.params.tags[0] == text[index].chosen_tag[Phase]
             && orth[0] == p.params.chars[0]
@@ -198,7 +197,7 @@ void findMatchingPredicates(vector<Predicate<Lexeme> >& v,
                                                       vector<Lexeme>& text,
                                                       int index) {
 
-    const string& orth = text[index].getOrth();
+    const wstring& orth = text[index].getOrth();
     int len = orth.length();
     if (len >= 2) {
         Predicate<Lexeme> p = Predicate<Lexeme>(this);
@@ -210,7 +209,7 @@ void findMatchingPredicates(vector<Predicate<Lexeme> >& v,
 }
 bool predicateMatches(const Predicate<Lexeme>& p,
             vector<Lexeme>& text, int index) {
-    const string& orth = text[index].getOrth();
+    const wstring& orth = text[index].getOrth();
     int len = orth.length();
     return (len >= 2 && p.params.tags[0] == text[index].chosen_tag[Phase]
             && orth[len - 2] == p.params.chars[0]

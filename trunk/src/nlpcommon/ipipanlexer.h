@@ -8,10 +8,13 @@
 #ifndef IPIPANLEXER_H_
 #define IPIPANLEXER_H_
 
+#include <boost/program_options/detail/convert.hpp>
+#include <boost/program_options/detail/utf8_codecvt_facet.hpp>
 #include <boost/regex.hpp>
 #include <boost/format.hpp>
 #include <string>
 #include <iostream>
+#include <locale>
 #include <nlpcommon/lexer.h>
 
 namespace NLPCommon {
@@ -24,6 +27,7 @@ class IpiPanLexer : public Lexer<Lexeme>
 private:
     LexerCollector<Lexeme>* collector;
     Lexeme current_lex;
+    boost::program_options::detail::utf8_codecvt_facet utf8_facet;
 
     inline void newLexeme(typename Lexeme::Type lexeme_type) {
         current_lex = Lexeme(lexeme_type);
@@ -37,7 +41,7 @@ private:
 
     void handleOrth(const string& orth) {
         newLexeme(Lexeme::SEGMENT);
-        current_lex.setOrth(orth);
+        current_lex.setOrth(boost::from_8_bit(orth, utf8_facet));
     }
 
     void handleCtag(const string& ctag, bool disamb) {
@@ -54,7 +58,8 @@ private:
     }
 
 public:
-    IpiPanLexer(std::istream& stream) : Lexer<Lexeme>(stream) { }
+    IpiPanLexer(std::istream& stream)
+            : Lexer<Lexeme>(stream) { }
 
     virtual void parseStream(LexerCollector<Lexeme>& collector)
     {

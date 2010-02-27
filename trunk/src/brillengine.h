@@ -185,7 +185,7 @@ private:
             const Tagset* new_tagset, const Tagset* previous_tagset,
              const tag_type& previous_tag = tag_type::getNullTag())
     {
-        const string& orth = lexeme.getOrth();
+        const wstring& orth = lexeme.getOrth();
 
         tag_type best_tag;
         int best_freq = -1;
@@ -280,7 +280,7 @@ public:
         /*int cnt = 0;
         BOOST_FOREACH(Lexeme& lexeme, text_to_tag) {
             if (lexeme.chosen_tag[phase] != lexeme.expected_tag) {
-                cerr << "Mismatch " << lexeme.getOrth() << " chosen " <<
+                cerr << "Mismatch " << lexeme.getUtf8Orth() << " chosen " <<
                         lexeme.chosen_tag[phase].asString(tagset) <<
                         ", expected " << lexeme.expected_tag.asString(tagset) <<
                         " (freqs: " <<
@@ -327,7 +327,7 @@ public:
 
             if (DBG) {
                 fprintf(stderr, "Init i: %d (%s) num_rules: %d ", i,
-                        lex.getOrth().c_str(), (int)rules.size());
+                        lex.getUtf8Orth().c_str(), (int)rules.size());
                 if (rules.size() > 0)
                     fprintf(stderr, "%s\n", rules[0].asString().c_str());
                 else
@@ -338,12 +338,12 @@ public:
                 if (lex.considered_tags.empty())
                     throw Exception(boost::str(
                             boost::format("lexeme '%1%' at %2% has no "
-                                    "considered_tags") % lex.getOrth() % i));
+                                    "considered_tags") % lex.getUtf8Orth() % i));
                 if (!lex.isConsideredTag(lex.chosen_tag[phase]))
                     throw Exception(boost::str(
                             boost::format("chosen_tag not in considered_tags "
                                 "(lex: %1%, pos: %2%, chosen_tag: %3%)") %
-                                lex.getOrth() % i %
+                                lex.getUtf8Orth() % i %
                                 lex.chosen_tag[phase].asString(phase_tagset)));
             }
 
@@ -604,6 +604,11 @@ public:
         return phase;
     }
 
+    void setAutoselectedTags(vector<Lexeme>& text) {
+        BOOST_FOREACH(Lexeme& lex, text)
+            lex.setAutoselectedTag(lex.chosen_tag[phase]);
+    }
+
     void tagText(vector<Lexeme>& text_to_tag) {
         vector<Lexeme> our_text_to_tag;
         addSentinels(text_to_tag, our_text_to_tag);
@@ -613,6 +618,7 @@ public:
             applyAllRules(our_text_to_tag, i);
         }
         reportTaggingStats(our_text_to_tag);
+        setAutoselectedTags(our_text_to_tag);
 
         text_to_tag.clear();
         text_to_tag.insert(text_to_tag.end(),

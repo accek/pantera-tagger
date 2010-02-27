@@ -8,6 +8,8 @@
 #ifndef CORPUSLEXER_H_
 #define CORPUSLEXER_H_
 
+#include <boost/program_options/detail/convert.hpp>
+#include <boost/program_options/detail/utf8_codecvt_facet.hpp>
 #include <boost/cstdint.hpp>
 #include <vector>
 #include <google/protobuf/io/zero_copy_stream.h>
@@ -33,6 +35,7 @@ class CorpusLexer : public Lexer<Lexeme>
 
 private:
     const Tagset* tagset;
+    boost::program_options::detail::utf8_codecvt_facet utf8_facet;
 
     void parseTagset(CodedInputStream& proto_stream) {
         uint32_t size;
@@ -52,7 +55,7 @@ private:
 
         switch (token.type()) {
             case CorpusProto::Token::SEGMENT:
-                lex.setOrth(token.orth());
+                lex.setOrth(boost::from_8_bit(token.orth(), utf8_facet));
                 BOOST_FOREACH(const CorpusProto::Interpretation& interp,
                         token.interp()) {
                     typename Lexeme::tag_type tag =

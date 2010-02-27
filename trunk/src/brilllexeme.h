@@ -35,7 +35,7 @@ public:
 
     static BrillLexeme<Tag> getNullLexeme() {
         BrillLexeme<Tag> lexeme;
-        lexeme.setOrth("[null]");
+        lexeme.setOrth(L"[null]");
         lexeme.addAllowedTag(Tag::getNullTag());
         lexeme.addGoldenTag(Tag::getNullTag());
         lexeme.considered_tags.push_back(Tag::getNullTag());

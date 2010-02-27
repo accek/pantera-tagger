@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include <nlpcommon/exception.h>
+#include <nlpcommon/util.h>
 
 namespace NLPCommon {
 
@@ -56,6 +57,7 @@ public:
     }
 
     const string& getName() const { return _name; }
+    wstring getWName() const { return ascii_to_wstring(getName()); }
 
     const vector<string>& getValues() const {
         return _valuesByIndex;
@@ -77,6 +79,10 @@ public:
         if (id < 0 || id >= _valuesByIndex.size())
             throw CategoryValueNotFoundException::ById(*this, id);
         return _valuesByIndex[id];
+    }
+
+    wstring getWValue(unsigned int id) const {
+        return ascii_to_wstring(getValue(id));
     }
 
     unsigned int addValue(const string& value) {

@@ -1,10 +1,12 @@
 #ifndef _RULES_H_
 #define _RULES_H_
 
+#include <boost/functional/hash.hpp>
 #include <vector>
 #include <cstdlib>
 #include <functional>
 #include <algorithm>
+#include <locale>
 
 #include <nlpcommon/lexeme.h>
 
@@ -46,7 +48,7 @@ public:
     PredicateTemplate<Lexeme>* tpl;
     struct {
         typename Lexeme::tag_type tags[3];
-        char chars[4];
+        wchar_t chars[4];
         int8_t categories[3];
         uint8_t values[3];
         uint8_t pos[3];

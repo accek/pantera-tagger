@@ -10,12 +10,14 @@
 
 #include <boost/unordered_map.hpp>
 #include <boost/foreach.hpp>
+#include <string>
 #include <nlpcommon/lexeme.h>
 
 namespace BTagger {
 
 using namespace NLPCommon;
 
+using std::wstring;
 using boost::unordered_map;
 
 template<class Lexeme>
@@ -25,7 +27,7 @@ public:
     typedef typename Lexeme::tag_type tag_type;
 
 private:
-    unordered_map<string, unordered_map<tag_type, int> > _freq;
+    unordered_map<wstring, unordered_map<tag_type, int> > _freq;
 
 public:
     void clear() {
@@ -43,8 +45,8 @@ public:
             train(lexeme, projection_tagset);
     }
 
-    int getFrequency(const string& str, const tag_type& tag) const {
-        typename unordered_map<string, unordered_map<tag_type, int> >::const_iterator i
+    int getFrequency(const wstring& str, const tag_type& tag) const {
+        typename unordered_map<wstring, unordered_map<tag_type, int> >::const_iterator i
             = _freq.find(str);
         if (i == _freq.end())
             return 0;
@@ -54,7 +56,7 @@ public:
         return j->second;
     }
 
-    tag_type getBestTag(const string& string, const tag_type& default_tag) {
+    tag_type getBestTag(const wstring& string, const tag_type& default_tag) {
         typedef std::pair<tag_type, int> entry_type;
         entry_type best = std::make_pair(tag_type(), -1);
         unordered_map<tag_type, int>& freqs = _freq[string];

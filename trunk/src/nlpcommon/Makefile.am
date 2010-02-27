@@ -7,12 +7,12 @@ libnlpcommon_la_SOURCES = \
     progress.cpp util.cpp category.cpp tagset.cpp \
 	spejdtagsetloader.cpp
 libnlpcommon_la_LDFLAGS = @BOOST_LDFLAGS@
-libnlpcommon_la_LIBADD = @BOOST_REGEX_LIB@
+libnlpcommon_la_LIBADD = @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@
 
 libnlpcommonincludedir = $(includedir)/nlpcommon
 libnlpcommoninclude_HEADERS = \
 	exception.h ipipanlexer.h lexer.h progress.h tag.h util.h writer.h \
-	tagset.h category.h pos.h scorer.h cascorer.h
+	tagset.h category.h pos.h scorer.h cascorer.h finderrors.h
 
 if HAVE_PROTOBUF
 

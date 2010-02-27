@@ -11,6 +11,7 @@
 #include <vector>
 #include <boost/unordered_map.hpp>
 #include <string>
+#include <locale>
 #include <nlpcommon/exception.h>
 #include <nlpcommon/category.h>
 #include <nlpcommon/pos.h>
@@ -44,6 +45,7 @@ public:
 
 class Tagset {
 private:
+    std::locale _locale;
     vector<const Category*> _categoriesByIndex;
     unordered_map<string, const Category*> _categoriesByName;
     unordered_map<const Category*, unsigned int> _categoriesIndex;
@@ -113,6 +115,14 @@ public:
         _posByName[pos->getName()] = pos;
         _posByIndex.push_back(pos);
         return index;
+    }
+
+    void setLocale(const std::locale& locale) {
+        _locale = locale;
+    }
+
+    const std::locale& getLocale() const {
+        return _locale;
     }
 
 };

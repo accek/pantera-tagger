@@ -8,15 +8,19 @@
 #ifndef LEXEME_H_
 #define LEXEME_H_
 
+#include <boost/program_options/detail/convert.hpp>
+#include <boost/program_options/detail/utf8_codecvt_facet.hpp>
 #include <boost/foreach.hpp>
 #include <string>
 #include <vector>
+#include <ostream>
+#include <iomanip>
 
 #include <nlpcommon/tag.h>
 
 namespace NLPCommon {
 
-using std::string;
+using std::wstring;
 using std::vector;
 
 template<class Tag>
@@ -33,13 +37,15 @@ public:
     };
 
 private:
-    string _orth;
+    wstring _orth;
     vector<Tag> _allowed_tags;
     vector<Tag> _golden_tags;
     vector<Tag> _autoselected_tags;
     Type _type;
 
 public:
+    static const int ORTH_DISPLAY_WIDTH = 25;
+
     typedef Tag tag_type;
 
     Lexeme(Type type = SEGMENT) : _type(type) { }
@@ -60,11 +66,16 @@ public:
         _type = type;
     }
 
-    const string& getOrth() const {
+    const wstring& getOrth() const {
         return _orth;
     }
 
-    void setOrth(const string& orth) {
+    string getUtf8Orth() const {
+        boost::program_options::detail::utf8_codecvt_facet utf8_facet;
+        return boost::to_8_bit(_orth, utf8_facet);
+    }
+
+    void setOrth(const wstring& orth) {
         assert(_orth.empty());
         _orth = orth;
     }
@@ -117,8 +128,8 @@ public:
     }
 
     bool isAutoselectedTag(const Tag& tag) const {
-        return std::find(_autoselected_tags.begin(), _autoselected_tags.end(), tag)
-                != _autoselected_tags.end();
+        return std::find(_autoselected_tags.begin(), _autoselected_tags.end(),
+                tag) != _autoselected_tags.end();
     }
 
     void containsAutoselectedTag(const vector<Tag>& tags) const {
@@ -132,6 +143,17 @@ public:
         return _autoselected_tags;
     }
 
+    void setAutoselectedTag(const Tag& tag) {
+        _autoselected_tags.clear();
+        _autoselected_tags.push_back(tag);
+    }
+
+    void writeToStreamWithTags(std::wostream& stream, const Tagset* tagset) const {
+        stream << std::setw(ORTH_DISPLAY_WIDTH) << getOrth();
+        writeTagsDifference(stream, tagset,
+                getAutoselectedTags(), getGoldenTags());
+        stream << std::endl;
+    }
 };
 
 typedef Lexeme<Tag> DefaultLexeme;

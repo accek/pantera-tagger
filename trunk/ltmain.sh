@@ -1,6 +1,6 @@
 # Generated from ltmain.m4sh.
 
-# ltmain.sh (GNU libtool) 2.2.6
+# ltmain.sh (GNU libtool) 2.2.6b
 # Written by Gordon Matzigkeit <gord@gnu.ai.mit.edu>, 1996
 
 # Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2003, 2004, 2005, 2006, 2007 2008 Free Software Foundation, Inc.
@@ -65,7 +65,7 @@
 #       compiler:		$LTCC
 #       compiler flags:		$LTCFLAGS
 #       linker:		$LD (gnu? $with_gnu_ld)
-#       $progname:		(GNU libtool) 2.2.6
+#       $progname:		(GNU libtool) 2.2.6b
 #       automake:		$automake_version
 #       autoconf:		$autoconf_version
 #
@@ -73,9 +73,9 @@
 
 PROGRAM=ltmain.sh
 PACKAGE=libtool
-VERSION=2.2.6
+VERSION=2.2.6b
 TIMESTAMP=""
-package_revision=1.3012
+package_revision=1.3017
 
 # Be Bourne compatible
 if test -n "${ZSH_VERSION+set}" && (emulate sh) >/dev/null 2>&1; then
@@ -5761,7 +5761,6 @@ func_mode_link ()
 
 	  if test "$linkmode" = prog || test "$mode" = relink; then
 	    add_shlibpath=
-	    add_prefix_dir=
 	    add_dir=
 	    add=
 	    # Finalize command for both is simple: just hardcode it.
@@ -5798,22 +5797,10 @@ func_mode_link ()
 	      add="-l$name"
 	    fi
 
-	    if test -n "$inst_prefix_dir"; then
-	      case "$libdir" in
-	      [\\/]*)
-		add_prefix_dir="-L$inst_prefix_dir$libdir"
-		;;
-	      esac
-	    fi
-
-	    # add_prefix_dir must be appended instead, otherwise it can
-	    # possibly be overrided by any hardcoded -L/... path in deplibs
 	    if test "$linkmode" = prog; then
-	      test -n "$add_prefix_dir" && finalize_deplibs="$finalize_deplibs $add_prefix_dir"
 	      test -n "$add_dir" && finalize_deplibs="$add_dir $finalize_deplibs"
 	      test -n "$add" && finalize_deplibs="$add $finalize_deplibs"
 	    else
-	      test -n "$add_prefix_dir" && deplibs="$deplibs $add_prefix_dir"
 	      test -n "$add_dir" && deplibs="$add_dir $deplibs"
 	      test -n "$add" && deplibs="$add $deplibs"
 	    fi
