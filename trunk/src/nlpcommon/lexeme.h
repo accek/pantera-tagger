@@ -11,6 +11,7 @@
 #include <boost/program_options/detail/convert.hpp>
 #include <boost/program_options/detail/utf8_codecvt_facet.hpp>
 #include <boost/foreach.hpp>
+#include <boost/serialization/access.hpp>
 #include <string>
 #include <vector>
 #include <ostream>
@@ -42,6 +43,16 @@ private:
     vector<Tag> _golden_tags;
     vector<Tag> _autoselected_tags;
     Type _type;
+
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+        ar & _orth;
+        ar & _allowed_tags;
+        ar & _golden_tags;
+        ar & _autoselected_tags;
+        ar & _type;
+    }
 
 public:
     static const int ORTH_DISPLAY_WIDTH = 25;

@@ -5,6 +5,7 @@
 #include <boost/unordered_map.hpp>
 #include <boost/cstdint.hpp>
 #include <boost/functional/hash.hpp>
+#include <boost/serialization/access.hpp>
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -168,6 +169,12 @@ private:
     // First max_num_categories entries store values for categories.
     // The last entry is part of speech.
     boost::uint8_t _data[max_num_categories + 1];
+
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+        ar & _data;
+    }
 
 public:
     void clear() {

@@ -13,7 +13,8 @@ public:
             a.params.tag != lex.chosen_tag[Phase];
     }
 
-    virtual void findMatchingRules(const Predicate<Lexeme>& p,
+    virtual void findMatchingRules(const TemplatesStore<Lexeme>* tstore,
+            const Predicate<Lexeme>& p,
             std::vector<Rule<Lexeme> >& rules,
             std::vector<Lexeme>& text, int index) {
         typedef typename Lexeme::tag_type tag_type;
@@ -82,10 +83,11 @@ public:
         return tag != tag_type::getNullTag() && tag != lex.chosen_tag[Phase];
     }
 
-    virtual void findMatchingRules(const Predicate<Lexeme>& p,
+    virtual void findMatchingRules(const TemplatesStore<Lexeme>* tstore,
+            const Predicate<Lexeme>& p,
             std::vector<Rule<Lexeme> >& rules,
             std::vector<Lexeme>& text, int index) {
-        if (!p.tpl->usesCategory0())
+        if (!tstore->getPTemplate(p.tpl_id)->usesCategory0())
             return;
         int c = p.params.categories[0];
         if (c == -1)
@@ -135,7 +137,8 @@ public:
         return tag != tag_type::getNullTag() && tag != lex.chosen_tag[Phase];
     }
 
-    virtual void findMatchingRules(const Predicate<Lexeme>& p,
+    virtual void findMatchingRules(const TemplatesStore<Lexeme>* tstore,
+            const Predicate<Lexeme>& p,
             std::vector<Rule<Lexeme> >& rules,
             std::vector<Lexeme>& text, int index) {
         Action<Lexeme> act(this);

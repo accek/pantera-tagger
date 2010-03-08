@@ -13,7 +13,7 @@ SUFFIXES = .m4 .m4h
 
 BUILT_SOURCES = rules/c1.m4h
 
-bin_PROGRAMS = btagger
+bin_PROGRAMS = btagger xces2dat dat2dat
 
 btagger_SOURCES = btagger.cpp \
 	rules/a.h rules/c1.m4h rules/p1.h rules/p2.h \
@@ -21,6 +21,14 @@ btagger_SOURCES = btagger.cpp \
 	brillexeme.h unigram.h rules.h
 btagger_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@
 btagger_LDADD = nlpcommon/libnlpcommon.la
+
+xces2dat_SOURCES = xces2dat.cpp
+xces2dat_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@
+xces2dat_LDADD = nlpcommon/libnlpcommon.la
+
+dat2dat_SOURCES = dat2dat.cpp
+dat2dat_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@
+dat2dat_LDADD = nlpcommon/libnlpcommon.la
 
 if HAVE_PROTOBUF
 

@@ -56,6 +56,7 @@ private:
     vector<const Tagset*> phase_tagsets;
     const Tagset* phase_tagset;
     RulesGenerator<Lexeme>* rules_generator;
+    const TemplatesStore<Lexeme>* tstore;
     scores_map_type scores;
     vector<Rule<Lexeme> > generated_rules;
     vector<vector<Rule<Lexeme> > > phase_generated_rules;
@@ -66,7 +67,7 @@ private:
     static const int DBG = 0;
     static const int VICINITY = 3;
 
-    static void applyRule(int phase, Rule<Lexeme>& b, vector<Lexeme>& text1,
+    void applyRule(int phase, Rule<Lexeme>& b, vector<Lexeme>& text1,
             vector<Lexeme>& text2,
             int start_index = 0,
             int end_index = std::numeric_limits<int>::max(),
@@ -76,8 +77,8 @@ private:
         end_index = std::min(end_index, (int)text1.size());
         #pragma omp parallel for default(shared)
         for (int i = start_index; i < end_index; ++i) {
-            if (b.isApplicable(text1, i)) {
-                text2[i].chosen_tag[phase] = b.changedTag(text1, i);
+            if (b.isApplicable(tstore, text1, i)) {
+                text2[i].chosen_tag[phase] = b.changedTag(tstore, text1, i);
                 for (int j = std::max(start_index, i - vicinity_radius),
                          z = std::min(end_index - 1, i + vicinity_radius);
                          j <= z;
@@ -106,8 +107,7 @@ private:
 
         #pragma omp parallel for \
             default(shared) \
-            reduction(+: tp, tn, fp, fn, e, ss) \
-           
+            reduction(+: tp, tn, fp, fn, e, ss)
         for (int i = start_index; i < end_index; ++i) {
             const Lexeme& lex = text[i];
             ss += scorer.score(lex.chosen_tag[phase], lex.expected_tag);
@@ -407,7 +407,7 @@ public:
                     wcerr << "Init i: " << i << '(' << lex.getOrth() <<
                         ") num_rules: " << rules.size();
                     if (rules.size() > 0)
-                        wcerr << ascii_to_wstring(rules[0].asString());
+                        wcerr << ascii_to_wstring(rules[0].asString(tstore));
                     wcerr << endl;
                 }
 
@@ -425,11 +425,11 @@ public:
                 }
 
                 BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
-                    if (!r.isApplicable(text, i)) {
+                    if (!r.isApplicable(tstore, text, i)) {
                         #pragma omp critical
                         {
                             wcerr << endl << "*** Inconsistency detected" << endl;
-                            wcerr << "RULE: " << ascii_to_wstring(r.asString()) << endl;
+                            wcerr << "RULE: " << ascii_to_wstring(r.asString(tstore)) << endl;
                             wcerr << "Is not applicable at offset " << i
                                 << ", but reported by rules generator.";
                             throw new Exception("Internal inconsistency: "
@@ -442,7 +442,7 @@ public:
 
                     const Tag& chosen_tag = lex.chosen_tag[phase];
                     score_type delta = scoreDelta(chosen_tag,
-                            r.changedTag(text, i), lex.expected_tag);
+                            r.changedTag(tstore, text, i), lex.expected_tag);
                     score_adds.push_back(make_pair(r, delta));
                 }
 
@@ -473,7 +473,7 @@ public:
                             double(scores[b].first) %
                             double(scores[b].second) %
                             int(scores.size()) %
-                            b.asString().c_str() << endl;
+                            b.asString(tstore).c_str() << endl;
 
             if (f < threshold || cancelled) break;
 
@@ -529,7 +529,7 @@ public:
                     rules_generator->generateUniqueRules(text, i, rules);
                     BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
                         score_type s = scoreDelta(chosen_tag1,
-                                r.changedTag(text, i), expected_tag);
+                                r.changedTag(tstore, text, i), expected_tag);
                         if (s != 0)
                             score_subs.push_back(make_pair(r, s));
                     }
@@ -539,7 +539,7 @@ public:
                     rules_generator->generateUniqueRules(next_text, i, rules);
                     BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
                         score_type s = scoreDelta(chosen_tag2,
-                                r.changedTag(next_text, i), expected_tag);
+                                r.changedTag(tstore, next_text, i), expected_tag);
                         if (s != 0)
                             score_adds.push_back(make_pair(r, s));
                     }
@@ -575,7 +575,7 @@ public:
                 for (typename scores_map_type::const_local_iterator j = scores.begin(i);
                         j != end; j++) {
                     if (DBG) {
-                        wcerr << "\t" << ascii_to_wstring(j->first.asString())
+                        wcerr << "\t" << ascii_to_wstring(j->first.asString(tstore))
                             << " (good: " << j->second.first
                             << ", bad: " << j->second.second << ")" << endl;
                         assert(countScores(j->first)
@@ -609,6 +609,7 @@ public:
         phase_tagset = tagset;
         scorer.reset(new Scorer(tagset));
         this->rules_generator = rules_generator;
+        this->tstore = rules_generator->getTStore();
         generated_rules.clear();
         cancelled = false;
 
@@ -654,14 +655,14 @@ public:
                 reduction(+: countGood, countBad)
         for (int i = INDEX_OFFSET; i < n; ++i) {
             const Lexeme& lex = text[i];
-            if (b.isApplicable(text, i)) {
+            if (b.isApplicable(tstore, text, i)) {
                 vector<Rule<Lexeme> > rules;
                 rules_generator->generateUniqueRules(text, i, rules);
                 if (std::find(rules.begin(), rules.end(), b) == rules.end()) {
                     #pragma omp critical
                     {
                         wcerr << endl << "*** Inconsistency detected" << endl;
-                        wcerr << "RULE: " << ascii_to_wstring(b.asString()) << endl;
+                        wcerr << "RULE: " << ascii_to_wstring(b.asString(tstore)) << endl;
                         wcerr << "Is applicable at offset " << i
                             << ", but not reported by rules generator.";
                         throw new Exception("Internal inconsistency: "
@@ -671,7 +672,7 @@ public:
 
                 const Tag& chosen_tag = lex.chosen_tag[phase];
                 score_type delta = scoreDelta(chosen_tag,
-                        b.changedTag(text, i), lex.expected_tag);
+                        b.changedTag(tstore, text, i), lex.expected_tag);
                 countGood += goodScore(delta);
                 countBad += badScore(delta);
             }
@@ -725,7 +726,7 @@ public:
                     &f_measure, &errors, &avg_score, INDEX_OFFSET, text.size() -
                     INDEX_OFFSET);
             wcerr << boost::wformat(L"%d. Applied rule: %s (P: %lf, R: %lf, F: %lf, "
-                    "score: %lf, errors: %d)\n") % phase % ascii_to_wstring(rule.asString()) %
+                    "score: %lf, errors: %d)\n") % phase % ascii_to_wstring(rule.asString(tstore)) %
                     prec % recall % f_measure % avg_score % errors;
 
             if (errors > last_errors) {
