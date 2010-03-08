@@ -9,6 +9,8 @@
 #define TAGSET_H_
 
 #include <vector>
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/split_member.hpp>
 #include <boost/unordered_map.hpp>
 #include <string>
 #include <locale>
@@ -51,6 +53,39 @@ private:
     unordered_map<const Category*, unsigned int> _categoriesIndex;
     vector<const PartOfSpeech*> _posByIndex;
     unordered_map<string, const PartOfSpeech*> _posByName;
+
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void save(Archive& ar, const unsigned int version) const {
+        ar << _locale.name();
+        ar << _categoriesByIndex;
+        ar << _posByIndex;
+    }
+
+    template <class Archive>
+    void load(Archive& ar, const unsigned int version) {
+        string locale_name;
+        ar >> locale_name;
+        _locale = std::locale(locale_name);
+
+        vector<const Category*> categories;
+        ar >> categories;
+        _categoriesByIndex.clear();
+        _categoriesByName.clear();
+        _categoriesIndex.clear();
+        BOOST_FOREACH(const Category* cat, categories)
+            addCategory(cat);
+
+        vector<const PartOfSpeech*> poss;
+        ar >> poss;
+        _posByIndex.clear();
+        _posByName.clear();
+        BOOST_FOREACH(const PartOfSpeech* pos, poss)
+            addPartOfSpeech(pos);
+    }
+
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 
 public:
     const vector<const Category*>& getCategories() const {

@@ -8,6 +8,8 @@
 #ifndef BRILLLEXEME_H_
 #define BRILLLEXEME_H_
 
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/base_object.hpp>
 #include <boost/foreach.hpp>
 #include <nlpcommon/lexeme.h>
 
@@ -30,6 +32,18 @@ public:
     // Vicinity parameter for marking nearby changes
     int vicinity;
 
+private:
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+        ar & boost::serialization::base_object<Lexeme<Tag> >(*this);
+        ar & considered_tags;
+        ar & chosen_tag;
+        ar & expected_tag;
+        ar & vicinity;
+    }
+
+public:
     BrillLexeme(typename Lexeme<Tag>::Type type = Lexeme<Tag>::SEGMENT)
         : Lexeme<Tag>(type) { }
 

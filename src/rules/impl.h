@@ -23,27 +23,19 @@ using namespace NLPCommon;
 
 template<class Lexeme>
 class AllPredicatesAllActionsGenerator : public RulesGenerator<Lexeme> {
-protected:
-    vector<PredicateTemplate<Lexeme>*> ptemplates;
-    vector<ActionTemplate<Lexeme>*> atemplates;
-
 public:
-    AllPredicatesAllActionsGenerator(
-            const vector<PredicateTemplate<Lexeme>*>& ptemplates,
-            const vector<ActionTemplate<Lexeme>*>& atemplates)
-        : ptemplates(ptemplates), atemplates(atemplates) { }
+    AllPredicatesAllActionsGenerator(const TemplatesStore<Lexeme>* tstore)
+        : RulesGenerator<Lexeme>(tstore) { }
 
     virtual void generateRules(vector<Lexeme>& text, int index,
-            vector<Rule<Lexeme> >& rules)
+            vector<Rule<Lexeme> >& rules) const
     {
         vector<Predicate<Lexeme> > predicates;
-        BOOST_FOREACH(PredicateTemplate<Lexeme>* ptpl, ptemplates) {
+        BOOST_FOREACH(PredicateTemplate<Lexeme>* ptpl, this->tstore->getPTemplates())
             ptpl->findMatchingPredicates(predicates, text, index);
-        }
         BOOST_FOREACH(const Predicate<Lexeme>& p, predicates) {
-            BOOST_FOREACH(ActionTemplate<Lexeme>* atpl, atemplates) {
-                atpl->findMatchingRules(p, rules, text, index);
-            }
+            BOOST_FOREACH(ActionTemplate<Lexeme>* atpl, this->tstore->getATemplates())
+                atpl->findMatchingRules(this->tstore, p, rules, text, index);
         }
     }
 };
@@ -52,14 +44,14 @@ public:
 
 #define STR_SIZE 250
 
-#define T(a) (p.params.a.asString(p.tpl->tagsets[Phase]).c_str())
+#define T(a) (p.params.a.asString(this->tagsets[Phase]).c_str())
 
 #include "p1.h"
 #include "c1.m4h"
 
 #undef T
-#define T(a) (p.params.a.asString(p.tpl->tagsets[Phase - 1]).c_str())
-#define S(a) (p.params.a.asString(p.tpl->tagsets[Phase]).c_str())
+#define T(a) (p.params.a.asString(this->tagsets[Phase - 1]).c_str())
+#define S(a) (p.params.a.asString(this->tagsets[Phase]).c_str())
 
 #include "p2.h"
 
