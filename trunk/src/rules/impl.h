@@ -11,6 +11,7 @@
 #include <boost/format.hpp>
 #include <vector>
 #include <cstdlib>
+#include <cassert>
 
 #include "../rules.h"
 

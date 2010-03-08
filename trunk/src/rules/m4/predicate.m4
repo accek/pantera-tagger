@@ -11,7 +11,7 @@ m4_define(`PTEMPLATE_BEGIN', `
 template<class Lexeme, int Phase`'m4_dnl
 m4_define(`PTEMPLATE_NUM_OFFSETS', m4_ifelse(`$2', `', `0', `$2'))m4_dnl
 forloop(`i', `1', PTEMPLATE_NUM_OFFSETS, `, int `Offset'i')m4_dnl
->
+$3>
 __MAKE_PTEMPLATE_CLASSHDR($1)
 ')
 
@@ -20,6 +20,14 @@ forloop(`O', `1', PTEMPLATE_NUM_OFFSETS, `m4_dnl
 m4_define(`Offset', ``Offset'O')m4_dnl
 m4_ifelse(O, `1', `', `$2')m4_dnl
 $1`'m4_dnl
+m4_undefine(``Offset'')`'')
+')
+
+m4_define(`PTEMPLATE_LOOP_EACH_OFFSET', `
+forloop(`O', `1', PTEMPLATE_NUM_OFFSETS, `m4_dnl
+m4_define(`Offset', ``Offset'O')m4_dnl
+m4_ifelse(O, `1', `', `$2')m4_dnl
+do { $1 } while(0);`'m4_dnl
 m4_undefine(``Offset'')`'')
 ')
 

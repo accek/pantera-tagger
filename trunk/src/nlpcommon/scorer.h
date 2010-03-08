@@ -138,6 +138,10 @@ public:
         return 1;
     }
 
+    bool isLessThanEpsilon(score_type value) {
+        return value == 0;
+    }
+
     score_type score(const tag_type& assigned, const tag_type& golden) {
         return assigned == golden;
     }
@@ -160,6 +164,10 @@ public:
 
     score_type maxScore() {
         return _single_scorer.maxScore();
+    }
+
+    bool isLessThanEpsilon(score_type value) {
+        return _single_scorer.isLessThanEpsilon(value);
     }
 
     score_type score(const tag_type& assigned, const tag_type& golden) {

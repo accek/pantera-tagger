@@ -74,6 +74,10 @@ public:
         return 1.0;
     }
 
+    bool isLessThanEpsilon(score_type value) {
+        return value < 1.0e-2;
+    }
+
     score_type score(const tag_type& assigned, const tag_type& golden) {
         if (assigned == golden)
             return 1.0;

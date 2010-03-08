@@ -28,8 +28,7 @@ namespace BTagger {
 
 using namespace NLPCommon;
 
-using std::cerr;
-using std::cerr;
+using std::wcerr;
 using std::endl;
 using std::vector;
 using std::map;
@@ -66,7 +65,6 @@ private:
     static const int INDEX_OFFSET = 4;
     static const int DBG = 0;
     static const int VICINITY = 3;
-
 
     static void applyRule(int phase, Rule<Lexeme>& b, vector<Lexeme>& text1,
             vector<Lexeme>& text2,
@@ -251,12 +249,12 @@ public:
     void generateInitialTags(int phase, vector<Lexeme>& text_to_tag) {
         const Tagset* tagset = phase_tagsets[phase];
 
-        cerr << "Training unigram tagger ...";
+        wcerr << "Training unigram tagger ...";
         unigram_tagger.clear();
         unigram_tagger.train(text, tagset == full_tagset ? NULL : tagset);
-        cerr << "  done." << endl;
+        wcerr << "  done." << endl;
 
-        cerr << "Preparing initial tagging for phase " << phase
+        wcerr << "Preparing initial tagging for phase " << phase
                 << " ...  ";
         const Tagset* previous_tagset =
                 phase == 0 ? NULL : phase_tagsets[phase - 1];
@@ -274,12 +272,12 @@ public:
             lexeme.expected_tag = findGoldenTag(lexeme, tagset, previous_tagset,
                     previous_tag);
         }
-        cerr << "done." << endl;
+        wcerr << "done." << endl;
 
         /*int cnt = 0;
         BOOST_FOREACH(Lexeme& lexeme, text_to_tag) {
             if (lexeme.chosen_tag[phase] != lexeme.expected_tag) {
-                cerr << "Mismatch " << lexeme.getUtf8Orth() << " chosen " <<
+                wcerr << "Mismatch " << lexeme.getUtf8Orth() << " chosen " <<
                         lexeme.chosen_tag[phase].asString(tagset) <<
                         ", expected " << lexeme.expected_tag.asString(tagset) <<
                         " (freqs: " <<
@@ -307,16 +305,28 @@ public:
         #pragma omp critical (applyScoreChanges)
         {
             BOOST_FOREACH(const score_changes_type& ch, score_adds) {
+                if (ch.second == 0)
+                    continue;
                 if (ch.second > 0)
                     scores[ch.first].first += ch.second;
-                else if (ch.second < 0)
+                else
                     scores[ch.first].second += -ch.second;
+                typename scores_map_type::iterator i = scores.find(ch.first);
+                if (scorer->isLessThanEpsilon(i->second.first) &&
+                        scorer->isLessThanEpsilon(i->second.second))
+                    scores.erase(i);
             }
             BOOST_FOREACH(const score_changes_type& ch, score_subs) {
+                if (ch.second == 0)
+                    continue;
                 if (ch.second > 0)
                     scores[ch.first].first -= ch.second;
-                else if (ch.second < 0)
+                else
                     scores[ch.first].second -= -ch.second;
+                typename scores_map_type::iterator i = scores.find(ch.first);
+                if (scorer->isLessThanEpsilon(i->second.first) &&
+                        scorer->isLessThanEpsilon(i->second.second))
+                    scores.erase(i);
             }
         }
         score_adds.clear();
@@ -327,12 +337,55 @@ public:
     {
         scores.clear();
 
-        cerr << "Generating initial rules for phase " << phase << " ...  ";
+        wcerr << "Generating initial rules for phase " << phase << " ...  ";
         if (DBG)
-            cerr << endl;
+            wcerr << endl;
 
         int n = text.size() - INDEX_OFFSET;
         int num = 0;
+
+        // TODO: move somewhere
+        size_t num_buckets = 16 * (1 << 20);
+        int min_rule_count = 3;
+
+        vector<uint32_t> bucket_counts;
+        bucket_counts.resize(num_buckets);
+        int num_rules = 0;
+
+        #pragma omp parallel for default(shared) \
+                reduction(+: num_rules)
+        for (int i = INDEX_OFFSET; i < n; ++i) {
+            if (((++num) % 1000) == 0) {
+                wcerr << "\rCounting initial rules for phase " << phase
+                    << " ...  " << num << '/' << n;
+            }
+            Lexeme& lex = text[i];
+
+            vector<Rule<Lexeme> > rules;
+            rules_generator->generateUniqueRules(text, i, rules);
+            BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
+                num_rules++;
+                bucket_counts[hash_value(r) % num_buckets]++;
+            }
+        }
+
+        wcerr << "done." << endl;
+
+        vector<bool> buckets_map;
+        buckets_map.resize(num_buckets);
+
+        int single_buckets = 0;
+        for (int i = 0; i < num_buckets; i++) {
+            if (bucket_counts[i] > 0 && bucket_counts[i] < min_rule_count)
+                single_buckets++;
+            else
+                buckets_map[i] = true;
+        }
+
+        bucket_counts.clear();
+        wcerr << single_buckets << " rules matching less than " << min_rule_count << " times eliminated." << endl;
+
+        num = 0;
         #pragma omp parallel default(shared)
         {
             typedef std::pair<Rule<Lexeme>, score_type> score_changes_type;
@@ -341,7 +394,7 @@ public:
             #pragma omp for
             for (int i = INDEX_OFFSET; i < n; ++i) {
                 if (((++num) % 1000) == 0) {
-                    cerr << "\rGenerating initial rules for phase " << phase
+                    wcerr << "\rGenerating initial rules for phase " << phase
                         << " ...  " << num << '/' << n << " (rules for now: "
                         << scores.size() << ')';
                 }
@@ -351,12 +404,11 @@ public:
                 rules_generator->generateUniqueRules(text, i, rules);
 
                 if (DBG) {
-                    fprintf(stderr, "Init i: %d (%s) num_rules: %d ", i,
-                            lex.getUtf8Orth().c_str(), (int)rules.size());
+                    wcerr << "Init i: " << i << '(' << lex.getOrth() <<
+                        ") num_rules: " << rules.size();
                     if (rules.size() > 0)
-                        fprintf(stderr, "%s\n", rules[0].asString().c_str());
-                    else
-                        fprintf(stderr, "\n");
+                        wcerr << ascii_to_wstring(rules[0].asString());
+                    wcerr << endl;
                 }
 
                 if (DBG) {
@@ -373,7 +425,21 @@ public:
                 }
 
                 BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
-                    assert(r.isApplicable(text, i));
+                    if (!r.isApplicable(text, i)) {
+                        #pragma omp critical
+                        {
+                            wcerr << endl << "*** Inconsistency detected" << endl;
+                            wcerr << "RULE: " << ascii_to_wstring(r.asString()) << endl;
+                            wcerr << "Is not applicable at offset " << i
+                                << ", but reported by rules generator.";
+                            throw new Exception("Internal inconsistency: "
+                                    "broken rule templates.");
+                        }
+                    }
+
+                    if (!buckets_map[hash_value(r) % num_buckets])
+                        continue;
+
                     const Tag& chosen_tag = lex.chosen_tag[phase];
                     score_type delta = scoreDelta(chosen_tag,
                             r.changedTag(text, i), lex.expected_tag);
@@ -387,7 +453,7 @@ public:
             applyScoreChanges(score_adds, score_subs);
         }
 
-        cerr << "done." << endl;
+        wcerr << "done." << endl;
     }
 
     void process(int threshold) {
@@ -401,25 +467,25 @@ public:
             int f;
             Rule<Lexeme> b = this->findBestRule(&f);
 
-            fprintf(stderr, "(%d) CHOSEN RULE (good=%.1lf, bad=%.1lf, "
-                            "candidates=%d): %s\n",
-                            round,
-                            double(scores[b].first),
-                            double(scores[b].second),
-                            int(scores.size()),
-                            b.asString().c_str());
+            wcerr << boost::wformat(
+                    L"(%d) CHOSEN RULE (good=%.1lf, bad=%.1lf, candidates=%d): %s") %
+                            round %
+                            double(scores[b].first) %
+                            double(scores[b].second) %
+                            int(scores.size()) %
+                            b.asString().c_str() << endl;
 
             if (f < threshold || cancelled) break;
 
             std::pair<score_type, score_type> good_scores = countScores(b);
             if (good_scores != make_pair(scores[b].first, scores[b].second)) {
-                fprintf(stderr, "\n*** WRONG SCORES ***"
+                wcerr << boost::wformat(L"\n*** WRONG SCORES ***"
                         "\n good is %.1lf, should be %.1lf"
-                        "\n bad is %.1lf, should be %.1lf\n\n",
-                        double(scores[b].first),
-                        double(good_scores.first),
-                        double(scores[b].second),
-                        double(good_scores.second));
+                        "\n bad is %.1lf, should be %.1lf\n\n") %
+                        double(scores[b].first) %
+                        double(good_scores.first) %
+                        double(scores[b].second) %
+                        double(good_scores.second);
             }
 
             int errors = 0;
@@ -430,8 +496,8 @@ public:
                 calculatePhaseStats(phase_tagset, phase, next_text, &P, &R, &F,
                         &errors, &avg_score,
                         INDEX_OFFSET, text.size() - INDEX_OFFSET);
-                fprintf(stderr, "Applied. P=%lf R=%lf F=%lf avgScore=%lf errors: %d\n",
-                        P, R, F, avg_score, errors);
+                wcerr << boost::wformat(L"Applied. P=%lf R=%lf F=%lf avgScore=%lf errors: %d\n")
+                        % P % R % F % avg_score % errors;
             }
 
             generated_rules.push_back(b);
@@ -485,16 +551,6 @@ public:
                 applyScoreChanges(score_adds, score_subs);
             }
             std::swap(text, next_text);
-
-            if (DBG) {
-                fprintf(stderr, "Correct tags: %d, incorrect tags: %d\n",
-                        correct_tags, incorrect_tags);
-
-                fprintf(stderr, "\nCURRENT TAGGING:\n\n");
-                //print_text();
-                fprintf(stderr, "\n");
-            }
-
         }
     }
 
@@ -503,7 +559,7 @@ public:
         int gmax = scores[gmaxR].first - scores[gmaxR].second;
 
         if (DBG) {
-            cerr << "Rules: " << endl;
+            wcerr << "Rules: " << endl;
         }
 
         int n = scores.bucket_count();
@@ -519,7 +575,7 @@ public:
                 for (typename scores_map_type::const_local_iterator j = scores.begin(i);
                         j != end; j++) {
                     if (DBG) {
-                        cerr << "\t" << j->first.asString()
+                        wcerr << "\t" << ascii_to_wstring(j->first.asString())
                             << " (good: " << j->second.first
                             << ", bad: " << j->second.second << ")" << endl;
                         assert(countScores(j->first)
@@ -577,8 +633,8 @@ public:
         calculateTaggingStats(tagged_text, &prec, &recall, &f_measure,
                 NULL, NULL, INDEX_OFFSET, tagged_text.size() - INDEX_OFFSET);
 
-        fprintf(stderr, "Stats -- P: %lf, R: %lf, F: %lf\n",
-                prec, recall, f_measure);
+        wcerr << boost::wformat(L"Stats -- P: %lf, R: %lf, F: %lf\n")
+                % prec % recall % f_measure;
     }
 
     static score_type goodScore(score_type s) {
@@ -602,12 +658,15 @@ public:
                 vector<Rule<Lexeme> > rules;
                 rules_generator->generateUniqueRules(text, i, rules);
                 if (std::find(rules.begin(), rules.end(), b) == rules.end()) {
-                    cerr << endl << "*** Inconsistency detected" << endl;
-                    cerr << "RULE: " << b.asString() << endl;
-                    cerr << "Is applicable at offset " << i
-                        << ", but not reported by rules generator.";
-                    throw new Exception("Internal inconsistency: "
-                            "broken rule templates.");
+                    #pragma omp critical
+                    {
+                        wcerr << endl << "*** Inconsistency detected" << endl;
+                        wcerr << "RULE: " << ascii_to_wstring(b.asString()) << endl;
+                        wcerr << "Is applicable at offset " << i
+                            << ", but not reported by rules generator.";
+                        throw new Exception("Internal inconsistency: "
+                                "broken rule templates.");
+                    }
                 }
 
                 const Tag& chosen_tag = lex.chosen_tag[phase];
@@ -665,13 +724,13 @@ public:
             calculatePhaseStats(phase_tagset, phase, next_text, &prec, &recall,
                     &f_measure, &errors, &avg_score, INDEX_OFFSET, text.size() -
                     INDEX_OFFSET);
-            fprintf(stderr, "%d. Applied rule: %s (P: %lf, R: %lf, F: %lf, "
-                    "score: %lf, errors: %d)\n", phase, rule.asString().c_str(),
-                    prec, recall, f_measure, avg_score, errors);
+            wcerr << boost::wformat(L"%d. Applied rule: %s (P: %lf, R: %lf, F: %lf, "
+                    "score: %lf, errors: %d)\n") % phase % ascii_to_wstring(rule.asString()) %
+                    prec % recall % f_measure % avg_score % errors;
 
             if (errors > last_errors) {
-                fprintf(stderr, "    Bad rule :(  errors was %d, now %d\n",
-                        last_errors, errors);
+                wcerr << boost::wformat(L"    Bad rule :(  errors was %d, now %d\n")
+                        % last_errors % errors;
             }
 
             swap(text, next_text);

@@ -34,8 +34,6 @@ using namespace std;
 using namespace BTagger;
 
 typedef BrillLexeme<Tag> MyLexeme;
-//typedef BestScoreMultiGoldenScorer<CAScorer<MyLexeme::tag_type> > MyScorer;
-//typedef BestScoreMultiGoldenScorer<BinaryScorer<MyLexeme::tag_type> > MyScorer;
 
 class MySingleScorer : public CAScorer<MyLexeme::tag_type>{
     public:
@@ -51,7 +49,9 @@ class MySingleScorer : public CAScorer<MyLexeme::tag_type>{
         }
 };
 
-typedef BestScoreMultiGoldenScorer<MySingleScorer> MyScorer;
+//typedef BestScoreMultiGoldenScorer<MySingleScorer> MyScorer;
+//typedef BestScoreMultiGoldenScorer<CAScorer<MyLexeme::tag_type> > MyScorer;
+typedef BestScoreMultiGoldenScorer<BinaryScorer<MyLexeme::tag_type> > MyScorer;
 
 void lexing_progress(int token) {
     wcerr << "\rLexing...  " << token;
@@ -158,6 +158,11 @@ int main(int argc, char** argv) {
         wcout << "  " << lex.getOrth() << " " << lex.getAllowedTags()[0].asWString(tagset) << endl;
     }
 
+    // Check if golden \subset allowed
+    BOOST_FOREACH(MyLexeme& lex, text)
+        BOOST_FOREACH(const Tag& tag, lex.getGoldenTags())
+            assert(lex.isAllowedTag(tag));
+
 //    wcout << "Looking for constant categories ..." << endl;
 //    BOOST_FOREACH(const Category* cat, findConstantCategories(tagset, text))
 //        wcout << "  " << cat->getName() << endl;
@@ -210,7 +215,9 @@ int main(int argc, char** argv) {
     }
 
     wofstream errors_report((rewrite_filename + ".errors.txt").c_str());
+    errors_report.imbue(std::locale(""));
     analyzeErrors(errors_report, tagset, text);
+    errors_report.close();
 
     wcerr << endl << "Rewriting ...";
     ifstream rewrite_in(rewrite_filename.c_str());
