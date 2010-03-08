@@ -17,17 +17,63 @@ void make_p1_rules(const vector<const Tagset*>& tagsets,
     templates.push_back(new Prefix2TagPredicateTemplate<Lexeme, Phase>(tagsets));
     templates.push_back(new Suffix2TagPredicateTemplate<Lexeme, Phase>(tagsets));
 
-    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -1>(tagsets));
-    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -2>(tagsets));
-    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, -1, -2>(tagsets));
-    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, -1, -2, -3>(tagsets));
-    templates.push_back(new NearbyExact2CatPredicateTemplate<Lexeme, Phase, -1, -2>(tagsets));
-    templates.push_back(new NearbyExact2CatPredicateTemplate<Lexeme, Phase, -1, 1>(tagsets));
-    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 1>(tagsets));
-    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 2>(tagsets));
-    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, 1, 2>(tagsets));
-    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, 1, 2, 3>(tagsets));
-    templates.push_back(new NearbyExact2CatPredicateTemplate<Lexeme, Phase, 1, 2>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -1, false>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -2, false>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, -1, -2, false>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, -1, -2, -3, false>(tagsets));
+    templates.push_back(new NearbyExact2CatPredicateTemplate<Lexeme, Phase, -1, -2, false>(tagsets));
+    templates.push_back(new NearbyExact2CatPredicateTemplate<Lexeme, Phase, -1, 1, false>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 1, false>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 2, false>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, 1, 2, false>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, 1, 2, 3, false>(tagsets));
+    templates.push_back(new NearbyExact2CatPredicateTemplate<Lexeme, Phase, 1, 2, false>(tagsets));
+
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -1, true>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -2, true>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, -1, -2, true>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, -1, -2, -3, true>(tagsets));
+    templates.push_back(new NearbyExact2CatPredicateTemplate<Lexeme, Phase, -1, -2, true>(tagsets));
+    templates.push_back(new NearbyExact2CatPredicateTemplate<Lexeme, Phase, -1, 1, true>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 1, true>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 2, true>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, 1, 2, true>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, 1, 2, 3, true>(tagsets));
+    templates.push_back(new NearbyExact2CatPredicateTemplate<Lexeme, Phase, 1, 2, true>(tagsets));
+
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -1, false, false, 0, 1>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -2, false, false, 0, 1>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, -1, -2, false, false, 0, 1>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, -1, -2, -3, false, false, 0, 1>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 1, false, false, 0, 1>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 2, false, false, 0, 1>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, 1, 2, false, false, 0, 1>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, 1, 2, 3, false, false, 0, 1>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -1, false, false, 0, 2>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -2, false, false, 0, 2>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, -1, -2, false, false, 0, 2>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, -1, -2, -3, false, false, 0, 2>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 1, false, false, 0, 2>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 2, false, false, 0, 2>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, 1, 2, false, false, 0, 2>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, 1, 2, 3, false, false, 0, 2>(tagsets));
+    //
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -1, false, true, 0, 1>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -2, false, true, 0, 1>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, -1, -2, false, true, 0, 1>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, -1, -2, -3, false, true, 0, 1>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 1, false, true, 0, 1>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 2, false, true, 0, 1>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, 1, 2, false, true, 0, 1>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, 1, 2, 3, false, true, 0, 1>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -1, false, true, 0, 2>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -2, false, true, 0, 2>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, -1, -2, false, true, 0, 2>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, -1, -2, -3, false, true, 0, 2>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 1, false, true, 0, 2>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 2, false, true, 0, 2>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, 1, 2, false, true, 0, 2>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, 1, 2, 3, false, true, 0, 2>(tagsets));
 }
 
 template<class Lexeme, int Phase>
@@ -71,3 +117,5 @@ RulesGenerator<Lexeme>* make_p2_rules_generator(
 
     return new AllPredicatesAllActionsGenerator<Lexeme>(ptemplates, atemplates);
 }
+
+// vim:nowrap

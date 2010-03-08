@@ -182,7 +182,7 @@ bool predicateMatches(const Predicate<Lexeme>& p,
 string predicateAsString(const Predicate<Lexeme>& p) {
 
     char str[STR_SIZE];
-    sprintf(str, "T[0] = %s AND ORTH starts with %c%c", T(tags[0]), p.params.chars[0], p.params.chars[1]);
+    sprintf(str, "T[0] = %s AND ORTH starts with %lc%lc", T(tags[0]), p.params.chars[0], p.params.chars[1]);
     return string(str);
 }
 };
@@ -218,7 +218,7 @@ bool predicateMatches(const Predicate<Lexeme>& p,
 string predicateAsString(const Predicate<Lexeme>& p) {
 
     char str[STR_SIZE];
-    sprintf(str, "T[0] = %s AND ORTH ends with %c%c", T(tags[0]), p.params.chars[0], p.params.chars[1]);
+    sprintf(str, "T[0] = %s AND ORTH ends with %lc%lc", T(tags[0]), p.params.chars[0], p.params.chars[1]);
     return string(str);
 }
 };
