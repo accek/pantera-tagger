@@ -10,7 +10,9 @@
 
 #include <boost/unordered_map.hpp>
 #include <boost/foreach.hpp>
+#include "../third_party/serialization/unordered_map.hpp"
 #include <string>
+
 #include <nlpcommon/lexeme.h>
 
 namespace BTagger {
@@ -28,6 +30,12 @@ public:
 
 private:
     unordered_map<wstring, unordered_map<tag_type, int> > _freq;
+
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+        ar & _freq;
+    }
 
 public:
     void clear() {

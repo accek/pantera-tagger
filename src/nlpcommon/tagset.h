@@ -10,6 +10,8 @@
 
 #include <vector>
 #include <boost/serialization/access.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
 #include <boost/serialization/split_member.hpp>
 #include <boost/unordered_map.hpp>
 #include <string>
