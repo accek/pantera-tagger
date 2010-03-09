@@ -12,6 +12,7 @@
 #include <boost/unordered_map.hpp>
 #include <boost/foreach.hpp>
 #include <boost/format.hpp>
+#include <boost/mpi.hpp>
 #include <iostream>
 #include <cstdio>
 #include <vector>
@@ -33,6 +34,8 @@ using std::endl;
 using std::vector;
 using std::map;
 
+namespace mpi = boost::mpi;
+
 template<class Lexeme, class Scorer>
 class BrillEngine
 {
@@ -53,15 +56,19 @@ private:
     vector<Lexeme> text;
     vector<Lexeme> next_text;
     int phase;
-    vector<const Tagset*> phase_tagsets;
     const Tagset* phase_tagset;
     RulesGenerator<Lexeme>* rules_generator;
-    const TemplatesStore<Lexeme>* tstore;
+    TemplatesStore<Lexeme>* tstore;
     scores_map_type scores;
     vector<Rule<Lexeme> > generated_rules;
-    vector<vector<Rule<Lexeme> > > phase_generated_rules;
     bool cancelled;
     boost::scoped_ptr<Scorer> scorer;
+
+    vector<const Tagset*> phase_tagsets;
+    vector<TemplatesStore<Lexeme>*> phase_tstores;
+    vector<vector<Rule<Lexeme> > > phase_generated_rules;
+
+    mpi::communicator mpi_world;
 
     static const int INDEX_OFFSET = 4;
     static const int DBG = 0;
@@ -243,7 +250,6 @@ public:
 
         this->full_tagset = full_tagset;
         this->phase = -1;
-
     }
 
     void generateInitialTags(int phase, vector<Lexeme>& text_to_tag) {
@@ -456,6 +462,53 @@ public:
         wcerr << "done." << endl;
     }
 
+    void updateScores(int round) {
+        int n = text.size() - INDEX_OFFSET;
+        #pragma omp parallel default(shared)
+        {
+            typedef std::pair<Rule<Lexeme>, score_type> score_changes_type;
+            vector<score_changes_type> score_adds, score_subs;
+
+            #pragma omp for
+            for (int i = INDEX_OFFSET; i < n; ++i) {
+                Lexeme& lex1 = text[i];
+                Lexeme& lex2 = next_text[i];
+
+                if (lex2.vicinity != round) continue;
+
+                const Tag& expected_tag = lex1.expected_tag;
+                const Tag& chosen_tag1 = lex1.chosen_tag[phase];
+                const Tag& chosen_tag2 = lex2.chosen_tag[phase];
+
+                // For each predicate which matched here before, we retract
+                // the scores.
+                vector<Rule<Lexeme> > rules;
+                rules_generator->generateUniqueRules(text, i, rules);
+                BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
+                    score_type s = scoreDelta(chosen_tag1,
+                            r.changedTag(tstore, text, i), expected_tag);
+                    if (s != 0)
+                        score_subs.push_back(make_pair(r, s));
+                }
+
+                // For each predicate which matches now, we add the scores.
+                rules.clear();
+                rules_generator->generateUniqueRules(next_text, i, rules);
+                BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
+                    score_type s = scoreDelta(chosen_tag2,
+                            r.changedTag(tstore, next_text, i), expected_tag);
+                    if (s != 0)
+                        score_adds.push_back(make_pair(r, s));
+                }
+
+                if (score_adds.size() + score_subs.size() > 10000)
+                    applyScoreChanges(score_adds, score_subs);
+            }
+
+            applyScoreChanges(score_adds, score_subs);
+        }
+    }
+
     void process(int threshold) {
 
         // TODO: Wlepic napis, skad pochodzi ten algorytm.
@@ -463,36 +516,38 @@ public:
         if (scores.size() == 0) return;
 
         for (int round = 1; ; round++) {
-            int correct_tags = 0, incorrect_tags = 0;
-            int f;
+            score_type f;
             Rule<Lexeme> b = this->findBestRule(&f);
-
-            wcerr << boost::wformat(
-                    L"(%d) CHOSEN RULE (good=%.1lf, bad=%.1lf, candidates=%d): %s") %
-                            round %
-                            double(scores[b].first) %
-                            double(scores[b].second) %
-                            int(scores.size()) %
-                            b.asString(tstore).c_str() << endl;
 
             if (f < threshold || cancelled) break;
 
-            std::pair<score_type, score_type> good_scores = countScores(b);
-            if (good_scores != make_pair(scores[b].first, scores[b].second)) {
-                wcerr << boost::wformat(L"\n*** WRONG SCORES ***"
-                        "\n good is %.1lf, should be %.1lf"
-                        "\n bad is %.1lf, should be %.1lf\n\n") %
-                        double(scores[b].first) %
-                        double(good_scores.first) %
-                        double(scores[b].second) %
-                        double(good_scores.second);
+            if (mpi_world.rank() == 0) {
+                wcerr << boost::wformat(
+                        L"(%d) CHOSEN RULE (good=%.1lf, bad=%.1lf, candidates=%d): %s") %
+                                round %
+                                double(scores[b].first) %
+                                double(scores[b].second) %
+                                int(scores.size()) %
+                                b.asString(tstore).c_str() << endl;
+
+                std::pair<score_type, score_type> good_scores = countScores(b);
+                if (good_scores != make_pair(scores[b].first, scores[b].second)) {
+                    wcerr << boost::wformat(L"\n*** WRONG SCORES ***"
+                            "\n good is %.1lf, should be %.1lf"
+                            "\n bad is %.1lf, should be %.1lf\n\n") %
+                            double(scores[b].first) %
+                            double(good_scores.first) %
+                            double(scores[b].second) %
+                            double(good_scores.second);
+                }
             }
 
             int errors = 0;
             double P, R, F, avg_score;
             applyRule(phase, b, text, next_text, INDEX_OFFSET,
                     text.size() - INDEX_OFFSET, round, VICINITY);
-            if ((round % 10) == 1) {
+
+            if ((round % 10) == 1 && mpi_world.rank() == 0) {
                 calculatePhaseStats(phase_tagset, phase, next_text, &P, &R, &F,
                         &errors, &avg_score,
                         INDEX_OFFSET, text.size() - INDEX_OFFSET);
@@ -502,61 +557,17 @@ public:
 
             generated_rules.push_back(b);
 
-            int n = text.size() - INDEX_OFFSET;
-            #pragma omp parallel default(shared)
-            {
-                typedef std::pair<Rule<Lexeme>, score_type> score_changes_type;
-                vector<score_changes_type> score_adds, score_subs;
-
-                #pragma omp for
-                for (int i = INDEX_OFFSET; i < n; ++i) {
-                    Lexeme& lex1 = text[i];
-                    Lexeme& lex2 = next_text[i];
-                    if (lex2.chosen_tag[phase] == lex1.expected_tag)
-                        correct_tags++;
-                    else
-                        incorrect_tags++;
-
-                    if (lex2.vicinity != round) continue;
-
-                    const Tag& expected_tag = lex1.expected_tag;
-                    const Tag& chosen_tag1 = lex1.chosen_tag[phase];
-                    const Tag& chosen_tag2 = lex2.chosen_tag[phase];
-
-                    // For each predicate which matched here before, we retract
-                    // the scores.
-                    vector<Rule<Lexeme> > rules;
-                    rules_generator->generateUniqueRules(text, i, rules);
-                    BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
-                        score_type s = scoreDelta(chosen_tag1,
-                                r.changedTag(tstore, text, i), expected_tag);
-                        if (s != 0)
-                            score_subs.push_back(make_pair(r, s));
-                    }
-
-                    // For each predicate which matches now, we add the scores.
-                    rules.clear();
-                    rules_generator->generateUniqueRules(next_text, i, rules);
-                    BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
-                        score_type s = scoreDelta(chosen_tag2,
-                                r.changedTag(tstore, next_text, i), expected_tag);
-                        if (s != 0)
-                            score_adds.push_back(make_pair(r, s));
-                    }
-
-                    if (score_adds.size() + score_subs.size() > 10000)
-                        applyScoreChanges(score_adds, score_subs);
-                }
-
-                applyScoreChanges(score_adds, score_subs);
-            }
+            updateScores(round);
             std::swap(text, next_text);
         }
     }
 
-    Rule<Lexeme> findBestRule(int* max) {
-        Rule<Lexeme> gmaxR = scores.begin()->first;
-        int gmax = scores[gmaxR].first - scores[gmaxR].second;
+    Rule<Lexeme> findBestRule(score_type* max) {
+        typedef std::pair<score_type, Rule<Lexeme> > max_type;
+
+        max_type gmax = std::make_pair(
+                scores.begin()->second.first - scores.begin()->second.second,
+                scores.begin()->first);
 
         if (DBG) {
             wcerr << "Rules: " << endl;
@@ -566,8 +577,7 @@ public:
 
         #pragma omp parallel default(shared)
         {
-            Rule<Lexeme> maxR = scores.begin()->first;
-            int max = scores[maxR].first - scores[maxR].second;
+            max_type max = gmax;
 
             #pragma omp for
             for (int i = 0; i < n; i++) {
@@ -582,38 +592,58 @@ public:
                                 == std::make_pair(j->second.first, j->second.second));
                     }
 
-                    int val = j->second.first - j->second.second;
+                    max_type val = std::make_pair(
+                            j->second.first - j->second.second,
+                            j->first);
                     if (val > max) {
                         max = val;
-                        maxR = j->first;
                     }
                 }
             }
 
             #pragma omp critical (findBestRuleMax)
-            if (max > gmax) {
+            if (max > gmax)
                 gmax = max;
-                gmaxR = maxR;
-            }
         }
 
-        *max = gmax;
-        return gmaxR;
+        mpi::reduce(mpi_world, gmax, gmax, mpi::maximum<max_type>(), 0);
+        mpi::broadcast(mpi_world, gmax, 0);
+
+        *max = gmax.first;
+        return gmax.second;
     }
 
-    void runPhase(const Tagset* tagset,
+    void addPhase(const Tagset* tagset, TemplatesStore<Lexeme>* tstore) {
+        phase_tagsets.push_back(tagset);
+        phase_tstores.push_back(tstore);
+    }
+
+    void distributePTemplates() {
+        int num_pt = tstore->getAllPTemplates().size();
+        vector<int> my_ids;
+        for (int i = mpi_world.rank(); i < num_pt; i += mpi_world.size())
+            my_ids.push_back(i);
+        tstore->setEnabledPTemplates(my_ids);
+    }
+
+    void runPhase(int phase,
             RulesGenerator<Lexeme>* rules_generator,
             int threshold) {
-        phase++;
-        phase_tagsets.push_back(tagset);
-        phase_tagset = tagset;
-        scorer.reset(new Scorer(tagset));
+        int original_phase = phase;
+
+        this->phase = phase;
         this->rules_generator = rules_generator;
-        this->tstore = rules_generator->getTStore();
+        this->phase_tagset = phase_tagsets[phase];
+        this->tstore = phase_tstores[phase];
+
+        scorer.reset(new Scorer(phase_tagset));
+        assert(this->tstore == rules_generator->getTStore());
+
         generated_rules.clear();
         cancelled = false;
 
         try {
+            distributePTemplates();
             generateInitialTags(phase, text);
             generateInitialScores();
             next_text = text;
@@ -622,7 +652,7 @@ public:
             if (!cancelled)
                 phase_generated_rules.push_back(generated_rules);
         } catch (...) {
-            phase--;
+            phase = original_phase;
             throw;
         }
 
@@ -658,7 +688,8 @@ public:
             if (b.isApplicable(tstore, text, i)) {
                 vector<Rule<Lexeme> > rules;
                 rules_generator->generateUniqueRules(text, i, rules);
-                if (std::find(rules.begin(), rules.end(), b) == rules.end()) {
+                if (std::find(rules.begin(), rules.end(), b) == rules.end() &&
+                        mpi_world.size() == 1) {
                     #pragma omp critical
                     {
                         wcerr << endl << "*** Inconsistency detected" << endl;

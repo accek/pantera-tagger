@@ -24,7 +24,7 @@ using namespace NLPCommon;
 template<class Lexeme>
 class AllPredicatesAllActionsGenerator : public RulesGenerator<Lexeme> {
 public:
-    AllPredicatesAllActionsGenerator(const TemplatesStore<Lexeme>* tstore)
+    AllPredicatesAllActionsGenerator(TemplatesStore<Lexeme>* tstore)
         : RulesGenerator<Lexeme>(tstore) { }
 
     virtual void generateRules(vector<Lexeme>& text, int index,

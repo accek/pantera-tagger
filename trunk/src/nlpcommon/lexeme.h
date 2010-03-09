@@ -12,6 +12,8 @@
 #include <boost/program_options/detail/utf8_codecvt_facet.hpp>
 #include <boost/foreach.hpp>
 #include <boost/serialization/access.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
 #include <string>
 #include <vector>
 #include <ostream>
@@ -45,14 +47,29 @@ private:
     Type _type;
 
     friend class boost::serialization::access;
+
     template <class Archive>
-    void serialize(Archive& ar, const unsigned int version) {
-        ar & _orth;
+    void save(Archive& ar, const unsigned int version) const {
+        string orth = this->getUtf8Orth();
+        ar & orth;
         ar & _allowed_tags;
         ar & _golden_tags;
         ar & _autoselected_tags;
         ar & _type;
     }
+
+    template <class Archive>
+    void load(Archive& ar, const unsigned int version) {
+        string utf8_orth;
+        ar & utf8_orth;
+        this->setUtf8Orth(utf8_orth);
+        ar & _allowed_tags;
+        ar & _golden_tags;
+        ar & _autoselected_tags;
+        ar & _type;
+    }
+
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 
 public:
     static const int ORTH_DISPLAY_WIDTH = 25;
@@ -84,6 +101,11 @@ public:
     string getUtf8Orth() const {
         boost::program_options::detail::utf8_codecvt_facet utf8_facet;
         return boost::to_8_bit(_orth, utf8_facet);
+    }
+
+    void setUtf8Orth(const string& orth) {
+        boost::program_options::detail::utf8_codecvt_facet utf8_facet;
+        setOrth(boost::from_8_bit(orth, utf8_facet));
     }
 
     void setOrth(const wstring& orth) {

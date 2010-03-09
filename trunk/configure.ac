@@ -11,11 +11,16 @@ AC_PROG_CXX
 AC_PROG_LIBTOOL
 AC_SUBST(LIBTOOL_DEPS)
 
+AC_SUBST(CXX)
 AC_SUBST(CFLAGS)
 AC_SUBST(CXXFLAGS)
 AC_SUBST(LDFLAGS)
 
 AC_LANG([C++])
+
+ACX_MPI
+CXX="$MPICXX"
+AC_SUBST(MPILIBS)
 
 ACX_PTHREAD([], [AC_MSG_ERROR([pthread development bits not found])])
 CXXFLAGS="$CXXFLAGS $PTHREAD_CFLAGS"
@@ -70,6 +75,8 @@ AS_IF([test "x$have_profiler" = "xyes"],
 AX_BOOST_BASE([1.40.0])
 AX_BOOST_REGEX
 AX_BOOST_PROGRAM_OPTIONS
+AX_BOOST_SERIALIZATION
+AX_BOOST_MPI
 
 PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 2.0],
                   [have_protobuf=yes], [have_protobuf=no])

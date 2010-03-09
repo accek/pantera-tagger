@@ -19,7 +19,8 @@ btagger_SOURCES = btagger.cpp \
 	rules/a.h rules/c1.m4h rules/p1.h rules/p2.h \
 	rules/impl.h rules/make.h brillengine.h \
 	brillexeme.h unigram.h rules.h
-btagger_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@
+btagger_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_REGEX_LIB@ \
+				  @BOOST_PROGRAM_OPTIONS_LIB@ @BOOST_MPI_LIB@
 btagger_LDADD = nlpcommon/libnlpcommon.la
 
 xces2dat_SOURCES = xces2dat.cpp

@@ -2,6 +2,8 @@
 #define _RULES_H_
 
 #include <boost/functional/hash.hpp>
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/binary_object.hpp>
 #include <vector>
 #include <cstdlib>
 #include <functional>
@@ -51,7 +53,6 @@ public:
 template<class Lexeme>
 class Predicate {
 public:
-    //PredicateTemplate<Lexeme>* tpl;
     int tpl_id;
     struct {
         union {
@@ -60,11 +61,21 @@ public:
                 int8_t categories[4];
                 uint8_t values[4];
                 uint8_t pos[4];
-            } __attribute__((packed));
-        } __attribute__((packed));
+            };
+        };
         wchar_t chars[4];
-    } __attribute__((packed)) params;
+    } params;
 
+private:
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+        ar & tpl_id;
+        boost::serialization::binary_object bo(&params, sizeof(params));
+        ar & bo;
+    }
+
+public:
     Predicate() :
         tpl_id(-1) {
         std::memset(&params, 0xff, sizeof(params));
@@ -146,8 +157,20 @@ public:
         int8_t category;
         uint8_t value;
         uint8_t pos;
-    } __attribute__((packed)) params;
+    } params;
 
+private:
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+        ar & tpl_id;
+        ar & params.tag;
+        ar & params.category;
+        ar & params.value;
+        ar & params.pos;
+    }
+
+public:
     Action() :
         tpl_id(NULL) {
         std::memset(&params, 0xff, sizeof(params));
@@ -188,6 +211,15 @@ public:
 
     typedef typename Lexeme::tag_type tag_type;
 
+private:
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+        ar & predicate;
+        ar & action;
+    }
+
+public:
     Rule() { }
 
     Rule(const Predicate<Lexeme>& p, const Action<Lexeme>& a) :
@@ -260,11 +292,22 @@ public:
             const vector<ActionTemplate<Lexeme>*> atemplates) :
         _ptemplates(ptemplates), _atemplates(atemplates)
     {
-        for (int i = 0; i < ptemplates.size(); i++)
+        for (int i = 0; i < ptemplates.size(); i++) {
+            ptemplates[i]->setId(i);
             _enabled_pids.push_back(i);
-        for (int i = 0; i < atemplates.size(); i++)
+        }
+        for (int i = 0; i < atemplates.size(); i++) {
+            atemplates[i]->setId(i);
             _enabled_aids.push_back(i);
+        }
         updateEnabledTemplates();
+    }
+
+    ~TemplatesStore() {
+        BOOST_FOREACH(PredicateTemplate<Lexeme>* ptmpl, _ptemplates)
+            delete ptmpl;
+        BOOST_FOREACH(ActionTemplate<Lexeme>* atmpl, _atemplates)
+            delete atmpl;
     }
 
     void setEnabledPTemplates(const vector<int> ids) {
@@ -292,18 +335,26 @@ public:
     const vector<ActionTemplate<Lexeme>*> getATemplates() const {
         return _enabled_atemplates;
     }
+
+    const vector<PredicateTemplate<Lexeme>*> getAllPTemplates() const {
+        return _ptemplates;
+    }
+
+    const vector<ActionTemplate<Lexeme>*> getAllATemplates() const {
+        return _atemplates;
+    }
 };
 
 template<class Lexeme>
 class RulesGenerator {
 protected:
-    const TemplatesStore<Lexeme>* tstore;
+    TemplatesStore<Lexeme>* tstore;
 
 public:
-    RulesGenerator(const TemplatesStore<Lexeme>* tstore)
+    RulesGenerator(TemplatesStore<Lexeme>* tstore)
         : tstore(tstore) { }
 
-    const TemplatesStore<Lexeme>* getTStore() const { return tstore; }
+    TemplatesStore<Lexeme>* getTStore() const { return tstore; }
 
     virtual void generateRules(vector<Lexeme>& text, int index,
             vector<Rule<Lexeme> >& rules) const = 0;
