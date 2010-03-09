@@ -51,6 +51,10 @@ private:
     typedef boost::unordered_map<Rule<Lexeme>,
             std::pair<score_type, score_type> > scores_map_type;
 
+    enum {
+        MSG_PROGRESS = 1
+    };
+
     UnigramTagger<Lexeme> unigram_tagger;
     const Tagset* full_tagset;
     vector<Lexeme> text;
@@ -63,6 +67,7 @@ private:
     vector<Rule<Lexeme> > generated_rules;
     bool cancelled;
     boost::scoped_ptr<Scorer> scorer;
+    vector<float> progress;
 
     vector<const Tagset*> phase_tagsets;
     vector<TemplatesStore<Lexeme>*> phase_tstores;
@@ -252,16 +257,57 @@ public:
         this->phase = -1;
     }
 
+    void resetProgress() {
+        this->progress.clear();
+        this->progress.resize(mpi_world.size());
+    }
+
+    void communicateProgress(const wstring& msg, float p) {
+        if (mpi_world.rank() == 0) {
+            boost::optional<mpi::status> status;
+            while ((status = mpi_world.iprobe(mpi::any_source, MSG_PROGRESS))) {
+                float recv_p;
+                mpi_world.recv(status.get().source(), MSG_PROGRESS, recv_p);
+                progress[status.get().source()] = recv_p;
+            }
+
+            progress[0] = p;
+            p = std::accumulate(progress.begin(), progress.end(), 0.0)
+                / progress.size();
+
+            wcerr << '\r' << msg << boost::wformat(L"  %.2f%%") % (p*100.0);
+        } else {
+            mpi_world.isend(0, MSG_PROGRESS, p);
+        }
+    }
+
+    void finishProgress() {
+        mpi_world.barrier();
+        if (mpi_world.rank() == 0) {
+            boost::optional<mpi::status> status;
+            float p;
+            while ((status = mpi_world.iprobe(mpi::any_source, MSG_PROGRESS))) {
+                mpi_world.recv(status.get().source(), MSG_PROGRESS, p);
+            }
+
+            wcerr << "  done." << endl;
+        }
+    }
+
     void generateInitialTags(int phase, vector<Lexeme>& text_to_tag) {
         const Tagset* tagset = phase_tagsets[phase];
 
-        wcerr << "Training unigram tagger ...";
+        if (mpi_world.rank() == 0)
+            wcerr << "Training unigram tagger ...";
         unigram_tagger.clear();
         unigram_tagger.train(text, tagset == full_tagset ? NULL : tagset);
-        wcerr << "  done." << endl;
+        mpi_world.barrier();
+        if (mpi_world.rank() == 0)
+            wcerr << "  done." << endl;
 
-        wcerr << "Preparing initial tagging for phase " << phase
-                << " ...  ";
+        if (mpi_world.rank() == 0)
+            wcerr << "Preparing initial tagging for phase " << phase
+                    << " ...  ";
         const Tagset* previous_tagset =
                 phase == 0 ? NULL : phase_tagsets[phase - 1];
         int n = text_to_tag.size();
@@ -278,7 +324,9 @@ public:
             lexeme.expected_tag = findGoldenTag(lexeme, tagset, previous_tagset,
                     previous_tag);
         }
-        wcerr << "done." << endl;
+        mpi_world.barrier();
+        if (mpi_world.rank() == 0)
+            wcerr << "done." << endl;
 
         /*int cnt = 0;
         BOOST_FOREACH(Lexeme& lexeme, text_to_tag) {
@@ -343,9 +391,10 @@ public:
     {
         scores.clear();
 
-        wcerr << "Generating initial rules for phase " << phase << " ...  ";
-        if (DBG)
-            wcerr << endl;
+        if (mpi_world.rank() == 0) {
+            wcerr << "Generating initial rules for phase " << phase << " ...  ";
+            resetProgress();
+        }
 
         int n = text.size() - INDEX_OFFSET;
         int num = 0;
@@ -362,8 +411,10 @@ public:
                 reduction(+: num_rules)
         for (int i = INDEX_OFFSET; i < n; ++i) {
             if (((++num) % 1000) == 0) {
-                wcerr << "\rCounting initial rules for phase " << phase
-                    << " ...  " << num << '/' << n;
+                #pragma omp critical (generateInitialScores_progress)
+                communicateProgress(boost::str(boost::wformat(
+                    L"Counting initial rules for phase %d ...") % phase),
+                        num/(float)n);
             }
             Lexeme& lex = text[i];
 
@@ -375,7 +426,7 @@ public:
             }
         }
 
-        wcerr << "done." << endl;
+        finishProgress();
 
         vector<bool> buckets_map;
         buckets_map.resize(num_buckets);
@@ -389,9 +440,16 @@ public:
         }
 
         bucket_counts.clear();
-        wcerr << single_buckets << " rules matching less than " << min_rule_count << " times eliminated." << endl;
+
+        int total_buckets;
+        mpi::reduce(mpi_world, single_buckets, total_buckets, std::plus<int>(),
+                0);
+        if (mpi_world.rank() == 0)
+            wcerr << single_buckets << " rules matching less than "
+                << min_rule_count << " times eliminated." << endl;
 
         num = 0;
+        resetProgress();
         #pragma omp parallel default(shared)
         {
             typedef std::pair<Rule<Lexeme>, score_type> score_changes_type;
@@ -400,9 +458,10 @@ public:
             #pragma omp for
             for (int i = INDEX_OFFSET; i < n; ++i) {
                 if (((++num) % 1000) == 0) {
-                    wcerr << "\rGenerating initial rules for phase " << phase
-                        << " ...  " << num << '/' << n << " (rules for now: "
-                        << scores.size() << ')';
+                    #pragma omp critical (generateInitialScores_progress)
+                    communicateProgress(boost::str(boost::wformat(
+                        L"Generating initial rules for phase %d ...") % phase),
+                            num/float(n));
                 }
                 Lexeme& lex = text[i];
 
@@ -459,7 +518,7 @@ public:
             applyScoreChanges(score_adds, score_subs);
         }
 
-        wcerr << "done." << endl;
+        finishProgress();
     }
 
     void updateScores(int round) {
@@ -507,6 +566,7 @@ public:
 
             applyScoreChanges(score_adds, score_subs);
         }
+        mpi_world.barrier();
     }
 
     void process(int threshold) {
@@ -529,7 +589,9 @@ public:
                                 double(scores[b].second) %
                                 int(scores.size()) %
                                 b.asString(tstore).c_str() << endl;
+            }
 
+            if (scores.count(b) > 0) {
                 std::pair<score_type, score_type> good_scores = countScores(b);
                 if (good_scores != make_pair(scores[b].first, scores[b].second)) {
                     wcerr << boost::wformat(L"\n*** WRONG SCORES ***"
