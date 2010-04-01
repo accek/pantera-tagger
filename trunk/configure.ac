@@ -92,7 +92,10 @@ if test "x$have_protobuf" = "xyes"; then
 fi
 AM_CONDITIONAL(HAVE_PROTOBUF, test "x$have_protobuf" = "xyes")
 
-AX_OPENMP
+AC_ARG_WITH([openmp],
+    AS_HELP_STRING([--without-openmp], [Do not use OpenMP parallelism]))
+
+AS_IF([test "x$with_openmp" = "xno"], [], [AX_OPENMP])
 AC_SUBST(OPENMP_CXXFLAGS)
 
 AC_CONFIG_FILES(Makefile src/Makefile src/nlpcommon/Makefile)

@@ -57,11 +57,11 @@ AC_DEFUN([AX_BOOST_MPI],
         AC_REQUIRE([AC_PROG_CC])
 		CPPFLAGS_SAVED="$CPPFLAGS"
 		CPPFLAGS="$CPPFLAGS $BOOST_CPPFLAGS"
-#		export CPPFLAGS
+		export CPPFLAGS
 
 		LDFLAGS_SAVED="$LDFLAGS"
 		LDFLAGS="$LDFLAGS $BOOST_LDFLAGS"
-#		export LDFLAGS
+		export LDFLAGS
 
         AC_CACHE_CHECK(whether the Boost::Mpi library is available,
 					   ax_cv_boost_mpi,
@@ -70,7 +70,7 @@ AC_DEFUN([AX_BOOST_MPI],
                                    [[namespace mpi=boost::mpi;  mpi::environment env;  mpi::communicator world;
                                      return 0;
                                    ]]),
-         ax_cv_boost_mpi=yes, ax_cv_boost_mpi=no)
+         ax_cv_boost_mpi=yes, ax_cv_boost_mpi=yes)
          AC_LANG_POP([C++])
 		])
 		if test "x$ax_cv_boost_mpi" = "xyes"; then

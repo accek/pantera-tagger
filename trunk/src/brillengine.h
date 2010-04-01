@@ -13,6 +13,9 @@
 #include <boost/foreach.hpp>
 #include <boost/format.hpp>
 #include <boost/mpi.hpp>
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
 #include <iostream>
 #include <cstdio>
 #include <vector>
@@ -20,6 +23,8 @@
 #include <cassert>
 #include <limits>
 #include <algorithm>
+#include <functional>
+#include <numeric>
 
 #include "unigram.h"
 #include "rules.h"
@@ -35,6 +40,8 @@ using std::vector;
 using std::map;
 
 namespace mpi = boost::mpi;
+
+static const int INDEX_OFFSET = 4;
 
 template<class Lexeme, class Scorer>
 class BrillEngine
@@ -52,10 +59,10 @@ private:
             std::pair<score_type, score_type> > scores_map_type;
 
     enum {
-        MSG_PROGRESS = 1
+        MSG_PROGRESS = 1,
+        MSG_DONE = 2
     };
 
-    UnigramTagger<Lexeme> unigram_tagger;
     const Tagset* full_tagset;
     vector<Lexeme> text;
     vector<Lexeme> next_text;
@@ -64,41 +71,84 @@ private:
     RulesGenerator<Lexeme>* rules_generator;
     TemplatesStore<Lexeme>* tstore;
     scores_map_type scores;
+    scores_map_type good_scores;
     vector<Rule<Lexeme> > generated_rules;
     bool cancelled;
     boost::scoped_ptr<Scorer> scorer;
     vector<float> progress;
+    int progress_done;
+    wstring progress_msg;
+    vector<int> in_vicinity;
 
     vector<const Tagset*> phase_tagsets;
     vector<TemplatesStore<Lexeme>*> phase_tstores;
+    vector<UnigramTagger<Lexeme> > phase_unigram_taggers;
     vector<vector<Rule<Lexeme> > > phase_generated_rules;
 
     mpi::communicator mpi_world;
 
-    static const int INDEX_OFFSET = 4;
     static const int DBG = 0;
     static const int VICINITY = 3;
+
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+        bool is_trained = isTrained();
+        ar & is_trained;
+        if (is_trained) {
+            ar & phase_unigram_taggers;
+            ar & phase_generated_rules;
+        } else {
+            ar & text;
+        }
+    }
+
+    score_type ruleScore(const std::pair<score_type, score_type>& s) {
+        return s.first - s.second;
+    }
+
+    score_type ruleScore(const Rule<Lexeme>& r) {
+        std::pair<score_type, score_type> s = scores[r];
+        return ruleScore(s);
+    }
 
     void applyRule(int phase, Rule<Lexeme>& b, vector<Lexeme>& text1,
             vector<Lexeme>& text2,
             int start_index = 0,
             int end_index = std::numeric_limits<int>::max(),
-            int vicinity_value = 0, int vicinity_radius = 0) {
+            int vicinity_estimate = 0, bool use_mpi = true) {
         assert(text1.size() == text2.size());
         start_index = std::min(start_index, (int)text1.size());
         end_index = std::min(end_index, (int)text1.size());
-        #pragma omp parallel for default(shared)
-        for (int i = start_index; i < end_index; ++i) {
-            if (b.isApplicable(tstore, text1, i)) {
-                text2[i].chosen_tag[phase] = b.changedTag(tstore, text1, i);
-                for (int j = std::max(start_index, i - vicinity_radius),
-                         z = std::min(end_index - 1, i + vicinity_radius);
-                         j <= z;
-                         ++j) {
-                    text2[j].vicinity = vicinity_value;
+
+        BOOST_FOREACH(int i, in_vicinity)
+            text2[i].chosen_tag[phase] = text1[i].chosen_tag[phase];
+
+        in_vicinity.clear();
+        if (vicinity_estimate)
+            in_vicinity.reserve(vicinity_estimate);
+
+        if (mpi_world.rank() == 0) {
+            wcerr << "APP>";
+            int j, z = -1;
+            for (int i = start_index; i < end_index; ++i) {
+                assert(text2[i].chosen_tag[phase] == text1[i].chosen_tag[phase]);
+                if (b.isApplicable(phase_tstores[phase], text1, i)) {
+                    text2[i].chosen_tag[phase] = b.changedTag(phase_tstores[phase], text1, i);
+                    in_vicinity.push_back(i);
+                }
+            }
+            wcerr << "<LY";
+        }
+        if (use_mpi) {
+            mpi::broadcast(mpi_world, in_vicinity, 0);
+            if (mpi_world.rank() != 0) {
+                BOOST_FOREACH(int i, in_vicinity) {
+                    assert(b.isApplicable(phase_tstores[phase], text1, i));
+                    text2[i].chosen_tag[phase] = b.changedTag(phase_tstores[phase], text1, i);
                 }
             } else {
-                text2[i].chosen_tag[phase] = text1[i].chosen_tag[phase];
+                wcerr << ">CAST" << endl;
             }
         }
     }
@@ -156,6 +206,7 @@ private:
         start_index = std::min(start_index, (int)text.size());
         end_index = std::min(end_index, (int)text.size());
 
+        int phase = numPhases() - 1;
         int tp = 0, tn = 0, fp = 0, fn = 0;
         int e = 0;
         score_type ss = score_type();
@@ -195,6 +246,8 @@ private:
              const tag_type& previous_tag = tag_type::getNullTag())
     {
         const wstring& orth = lexeme.getOrth();
+        const UnigramTagger<Lexeme>& unigram_tagger =
+            phase_unigram_taggers[phase];
 
         tag_type best_tag;
         int best_freq = -1;
@@ -249,61 +302,97 @@ private:
     }
 public:
 
-    void init(vector<Lexeme>& text, const Tagset* full_tagset) {
+    void setText(vector<Lexeme>& text) {
         // Add sentinel segments.
         addSentinels(text, this->text);
-
-        this->full_tagset = full_tagset;
-        this->phase = -1;
     }
 
-    void resetProgress() {
-        this->progress.clear();
-        this->progress.resize(mpi_world.size());
+    bool isTrained() {
+        return phase_generated_rules.size() == phase_tstores.size();
     }
 
-    void communicateProgress(const wstring& msg, float p) {
+    void initProgress(const wstring& msg) {
+        mpi_world.barrier();
+        if (mpi_world.rank() == 0) {
+            this->progress.clear();
+            this->progress.resize(mpi_world.size());
+            this->progress_done = 0;
+            this->progress_msg = msg;
+        }
+    }
+
+    void printProgress() {
+        float p = std::accumulate(progress.begin(), progress.end(), 0.0)
+            / progress.size();
+        wcerr << '\r' << this->progress_msg << boost::wformat(L"  %.2f%%") % (p*100.0);
+    }
+
+    void communicateProgress(float p) {
         if (mpi_world.rank() == 0) {
             boost::optional<mpi::status> status;
             while ((status = mpi_world.iprobe(mpi::any_source, MSG_PROGRESS))) {
                 float recv_p;
                 mpi_world.recv(status.get().source(), MSG_PROGRESS, recv_p);
+                assert(progress[status.get().source()] <= recv_p);
                 progress[status.get().source()] = recv_p;
             }
 
             progress[0] = p;
-            p = std::accumulate(progress.begin(), progress.end(), 0.0)
-                / progress.size();
-
-            wcerr << '\r' << msg << boost::wformat(L"  %.2f%%") % (p*100.0);
+            printProgress();
         } else {
             mpi_world.isend(0, MSG_PROGRESS, p);
         }
     }
 
     void finishProgress() {
-        mpi_world.barrier();
         if (mpi_world.rank() == 0) {
-            boost::optional<mpi::status> status;
-            float p;
-            while ((status = mpi_world.iprobe(mpi::any_source, MSG_PROGRESS))) {
-                mpi_world.recv(status.get().source(), MSG_PROGRESS, p);
+            this->progress_done++;
+            progress[0] = 1.0;
+            while (this->progress_done < mpi_world.size()) {
+                mpi::status status = mpi_world.probe(mpi::any_source, mpi::any_tag);
+                if (status.tag() == MSG_PROGRESS) {
+                    float p;
+                    mpi_world.recv(status.source(), MSG_PROGRESS, p);
+                    assert(progress[status.source()] <= p);
+                    progress[status.source()] = p;
+                    printProgress();
+                } else if (status.tag() == MSG_DONE) {
+                    mpi_world.recv(status.source(), MSG_DONE);
+                    progress[status.source()] = 1.0;
+                    this->progress_done++;
+                    printProgress();
+                } else {
+                    assert(false);
+                }
             }
 
             wcerr << "  done." << endl;
+        } else {
+            mpi_world.send(0, MSG_DONE);
+        }
+        mpi_world.barrier();
+    }
+
+    void trainUnigramTaggers() {
+        if (!phase_unigram_taggers.empty()) {
+            assert(phase_unigram_taggers.size() == numPhases());
+            return;
+        }
+
+        phase_unigram_taggers.resize(numPhases());
+        for (int p = 0; p < numPhases(); p++) {
+            if (mpi_world.rank() == 0)
+                wcerr << "Training unigram tagger for phase " << p << "..." << endl;
+            const Tagset* tagset = phase_tagsets[p];
+            phase_unigram_taggers[p].train(text,
+                    tagset == full_tagset ? NULL : tagset);
         }
     }
 
     void generateInitialTags(int phase, vector<Lexeme>& text_to_tag) {
         const Tagset* tagset = phase_tagsets[phase];
 
-        if (mpi_world.rank() == 0)
-            wcerr << "Training unigram tagger ...";
-        unigram_tagger.clear();
-        unigram_tagger.train(text, tagset == full_tagset ? NULL : tagset);
-        mpi_world.barrier();
-        if (mpi_world.rank() == 0)
-            wcerr << "  done." << endl;
+        trainUnigramTaggers();
 
         if (mpi_world.rank() == 0)
             wcerr << "Preparing initial tagging for phase " << phase
@@ -324,7 +413,6 @@ public:
             lexeme.expected_tag = findGoldenTag(lexeme, tagset, previous_tagset,
                     previous_tag);
         }
-        mpi_world.barrier();
         if (mpi_world.rank() == 0)
             wcerr << "done." << endl;
 
@@ -391,30 +479,26 @@ public:
     {
         scores.clear();
 
-        if (mpi_world.rank() == 0) {
-            wcerr << "Generating initial rules for phase " << phase << " ...  ";
-            resetProgress();
-        }
-
         int n = text.size() - INDEX_OFFSET;
         int num = 0;
 
         // TODO: move somewhere
-        size_t num_buckets = 16 * (1 << 20);
+        /*size_t num_buckets = 16 * (1 << 20);
         int min_rule_count = 3;
 
         vector<uint32_t> bucket_counts;
         bucket_counts.resize(num_buckets);
         int num_rules = 0;
 
+        initProgress(boost::str(boost::wformat(
+            L"Counting initial rules for phase %d ...") % phase));
+
         #pragma omp parallel for default(shared) \
                 reduction(+: num_rules)
         for (int i = INDEX_OFFSET; i < n; ++i) {
             if (((++num) % 1000) == 0) {
                 #pragma omp critical (generateInitialScores_progress)
-                communicateProgress(boost::str(boost::wformat(
-                    L"Counting initial rules for phase %d ...") % phase),
-                        num/(float)n);
+                communicateProgress(num/(float)n);
             }
             Lexeme& lex = text[i];
 
@@ -427,6 +511,7 @@ public:
         }
 
         finishProgress();
+        mpi_world.barrier();
 
         vector<bool> buckets_map;
         buckets_map.resize(num_buckets);
@@ -448,8 +533,11 @@ public:
             wcerr << single_buckets << " rules matching less than "
                 << min_rule_count << " times eliminated." << endl;
 
+        */
         num = 0;
-        resetProgress();
+        initProgress(boost::str(boost::wformat(
+            L"Generating initial rules for phase %d ...") % phase));
+
         #pragma omp parallel default(shared)
         {
             typedef std::pair<Rule<Lexeme>, score_type> score_changes_type;
@@ -459,24 +547,14 @@ public:
             for (int i = INDEX_OFFSET; i < n; ++i) {
                 if (((++num) % 1000) == 0) {
                     #pragma omp critical (generateInitialScores_progress)
-                    communicateProgress(boost::str(boost::wformat(
-                        L"Generating initial rules for phase %d ...") % phase),
-                            num/float(n));
+                    communicateProgress(num/(float)n);
                 }
                 Lexeme& lex = text[i];
 
                 vector<Rule<Lexeme> > rules;
                 rules_generator->generateUniqueRules(text, i, rules);
 
-                if (DBG) {
-                    wcerr << "Init i: " << i << '(' << lex.getOrth() <<
-                        ") num_rules: " << rules.size();
-                    if (rules.size() > 0)
-                        wcerr << ascii_to_wstring(rules[0].asString(tstore));
-                    wcerr << endl;
-                }
-
-                if (DBG) {
+                if (DBG && mpi_world.rank() == 0) {
                     if (lex.considered_tags.empty())
                         throw Exception(boost::str(
                                 boost::format("lexeme '%1%' at %2% has no "
@@ -487,10 +565,24 @@ public:
                                     "(lex: %1%, pos: %2%, chosen_tag: %3%)") %
                                     lex.getUtf8Orth() % i %
                                     lex.chosen_tag[phase].asString(phase_tagset)));
+                    if (lex.expected_tag != tag_type::getNullTag()) {
+                        if (!lex.isConsideredTag(lex.expected_tag))
+                            throw Exception(boost::str(
+                                    boost::format("expected_tag not in considered_tags "
+                                        "(lex: %1%, pos: %2%, expected_tag: %3%)") %
+                                        lex.getUtf8Orth() % i %
+                                        lex.expected_tag.asString(phase_tagset)));
+                        if (phase_tagset->getPartOfSpeech(
+                                    lex.expected_tag.getPos())->getName() == "ign")
+                            throw Exception(boost::str(
+                                    boost::format("expected_tag is ign "
+                                        "(lex: %1%, pos: %2%)") %
+                                        lex.getUtf8Orth() % i));
+                    }
                 }
 
                 BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
-                    if (!r.isApplicable(tstore, text, i)) {
+                    if (DBG && !r.isApplicable(tstore, text, i)) {
                         #pragma omp critical
                         {
                             wcerr << endl << "*** Inconsistency detected" << endl;
@@ -502,8 +594,8 @@ public:
                         }
                     }
 
-                    if (!buckets_map[hash_value(r) % num_buckets])
-                        continue;
+                    /*if (!buckets_map[hash_value(r) % num_buckets])
+                        continue;*/
 
                     const Tag& chosen_tag = lex.chosen_tag[phase];
                     score_type delta = scoreDelta(chosen_tag,
@@ -521,19 +613,20 @@ public:
         finishProgress();
     }
 
-    void updateScores(int round) {
+    void updateScores(int round, int threshold, int vicinity_radius) {
+        int vsize = in_vicinity.size();
+        int i = INDEX_OFFSET;
         int n = text.size() - INDEX_OFFSET;
-        #pragma omp parallel default(shared)
-        {
-            typedef std::pair<Rule<Lexeme>, score_type> score_changes_type;
-            vector<score_changes_type> score_adds, score_subs;
 
-            #pragma omp for
-            for (int i = INDEX_OFFSET; i < n; ++i) {
+        //#pragma omp for
+        for (int j = 0; j < vsize; j++) {
+            i = std::max(i, in_vicinity[j] - vicinity_radius);
+            int z = std::min(n - 1, in_vicinity[j] + vicinity_radius);
+            for (; i<=z; i++) {
                 Lexeme& lex1 = text[i];
                 Lexeme& lex2 = next_text[i];
 
-                if (lex2.vicinity != round) continue;
+                //if (lex2.vicinity != round) continue;
 
                 const Tag& expected_tag = lex1.expected_tag;
                 const Tag& chosen_tag1 = lex1.chosen_tag[phase];
@@ -546,8 +639,16 @@ public:
                 BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
                     score_type s = scoreDelta(chosen_tag1,
                             r.changedTag(tstore, text, i), expected_tag);
-                    if (s != 0)
-                        score_subs.push_back(make_pair(r, s));
+                    if (s == 0) continue;
+                    std::pair<score_type, score_type>& rscore = scores[r];
+                    if (s > 0)
+                        rscore.first -= s;
+                    else
+                        rscore.second += s;
+                    if (ruleScore(rscore) >= threshold)
+                        good_scores[r] = rscore;
+                    else
+                        good_scores.erase(r);
                 }
 
                 // For each predicate which matches now, we add the scores.
@@ -556,17 +657,36 @@ public:
                 BOOST_FOREACH(const Rule<Lexeme>& r, rules) {
                     score_type s = scoreDelta(chosen_tag2,
                             r.changedTag(tstore, next_text, i), expected_tag);
-                    if (s != 0)
-                        score_adds.push_back(make_pair(r, s));
+                    if (s == 0) continue;
+                    std::pair<score_type, score_type>& rscore = scores[r];
+                    if (s > 0)
+                        rscore.first += s;
+                    else
+                        rscore.second -= s;
+                    if (ruleScore(rscore) >= threshold)
+                        good_scores[r] = rscore;
+                    else
+                        good_scores.erase(r);
                 }
-
-                if (score_adds.size() + score_subs.size() > 10000)
-                    applyScoreChanges(score_adds, score_subs);
             }
-
-            applyScoreChanges(score_adds, score_subs);
         }
-        mpi_world.barrier();
+    }
+
+    void initializeGoodScores(int threshold) {
+        if (mpi_world.rank() == 0)
+            wcerr << "Gathering rules with score >= threshold ...  ";
+
+        good_scores.clear();
+        BOOST_FOREACH(const typename scores_map_type::value_type& j, this->scores) {
+            if (ruleScore(j.second) >= threshold)
+                good_scores[j.first] = j.second;
+        }
+
+        size_t total_good_rules;
+        mpi::reduce(mpi_world, good_scores.size(), total_good_rules,
+                std::plus<size_t>(), 0);
+        if (mpi_world.rank() == 0)
+            wcerr << total_good_rules << " rules" << endl;
     }
 
     void process(int threshold) {
@@ -576,30 +696,31 @@ public:
         if (scores.size() == 0) return;
 
         for (int round = 1; ; round++) {
-            score_type f;
-            Rule<Lexeme> b = this->findBestRule(&f);
+            score_type f, good, bad;
+            Rule<Lexeme> b = this->findBestRule(&f, &good, &bad);
 
             if (f < threshold || cancelled) break;
 
             if (mpi_world.rank() == 0) {
                 wcerr << boost::wformat(
-                        L"(%d) CHOSEN RULE (good=%.1lf, bad=%.1lf, candidates=%d): %s") %
+                        L"(%d) CHOSEN RULE (good=%.1lf, bad=%.1lf, candidates=%d, good_candidates=%d): %s") %
                                 round %
-                                double(scores[b].first) %
-                                double(scores[b].second) %
+                                double(good) %
+                                double(bad) %
                                 int(scores.size()) %
+                                int(good_scores.size()) %
                                 b.asString(tstore).c_str() << endl;
             }
 
-            if (scores.count(b) > 0) {
+            if (mpi_world.rank() == 0 && DBG) {
                 std::pair<score_type, score_type> good_scores = countScores(b);
-                if (good_scores != make_pair(scores[b].first, scores[b].second)) {
+                if (good_scores != make_pair(good, bad)) {
                     wcerr << boost::wformat(L"\n*** WRONG SCORES ***"
                             "\n good is %.1lf, should be %.1lf"
                             "\n bad is %.1lf, should be %.1lf\n\n") %
-                            double(scores[b].first) %
+                            double(good) %
                             double(good_scores.first) %
-                            double(scores[b].second) %
+                            double(bad) %
                             double(good_scores.second);
                 }
             }
@@ -607,7 +728,8 @@ public:
             int errors = 0;
             double P, R, F, avg_score;
             applyRule(phase, b, text, next_text, INDEX_OFFSET,
-                    text.size() - INDEX_OFFSET, round, VICINITY);
+                    text.size() - INDEX_OFFSET,
+                    2 * (good + bad));
 
             if ((round % 10) == 1 && mpi_world.rank() == 0) {
                 calculatePhaseStats(phase_tagset, phase, next_text, &P, &R, &F,
@@ -619,23 +741,22 @@ public:
 
             generated_rules.push_back(b);
 
-            updateScores(round);
+            updateScores(round, threshold, VICINITY);
             std::swap(text, next_text);
         }
     }
 
-    Rule<Lexeme> findBestRule(score_type* max) {
-        typedef std::pair<score_type, Rule<Lexeme> > max_type;
+    Rule<Lexeme> findBestRule(score_type* max, score_type* good, score_type* bad) {
+        // [score, [rule, [good, bad]]]
+        typedef std::pair<score_type,
+                    std::pair<Rule<Lexeme>, std::pair<score_type, score_type> > >
+                        max_type;
 
         max_type gmax = std::make_pair(
                 scores.begin()->second.first - scores.begin()->second.second,
-                scores.begin()->first);
+                std::make_pair(scores.begin()->first, scores.begin()->second));
 
-        if (DBG) {
-            wcerr << "Rules: " << endl;
-        }
-
-        int n = scores.bucket_count();
+        int n = good_scores.bucket_count();
 
         #pragma omp parallel default(shared)
         {
@@ -643,20 +764,12 @@ public:
 
             #pragma omp for
             for (int i = 0; i < n; i++) {
-                typename scores_map_type::const_local_iterator end = scores.end(i);
-                for (typename scores_map_type::const_local_iterator j = scores.begin(i);
+                typename scores_map_type::const_local_iterator end = good_scores.end(i);
+                for (typename scores_map_type::const_local_iterator j = good_scores.begin(i);
                         j != end; j++) {
-                    if (DBG) {
-                        wcerr << "\t" << ascii_to_wstring(j->first.asString(tstore))
-                            << " (good: " << j->second.first
-                            << ", bad: " << j->second.second << ")" << endl;
-                        assert(countScores(j->first)
-                                == std::make_pair(j->second.first, j->second.second));
-                    }
-
                     max_type val = std::make_pair(
                             j->second.first - j->second.second,
-                            j->first);
+                            std::make_pair(j->first, j->second));
                     if (val > max) {
                         max = val;
                     }
@@ -672,12 +785,15 @@ public:
         mpi::broadcast(mpi_world, gmax, 0);
 
         *max = gmax.first;
-        return gmax.second;
+        *good = gmax.second.second.first;
+        *bad = gmax.second.second.second;
+        return gmax.second.first;
     }
 
     void addPhase(const Tagset* tagset, TemplatesStore<Lexeme>* tstore) {
         phase_tagsets.push_back(tagset);
         phase_tstores.push_back(tstore);
+        this->full_tagset = tagset;
     }
 
     void distributePTemplates() {
@@ -702,12 +818,15 @@ public:
         assert(this->tstore == rules_generator->getTStore());
 
         generated_rules.clear();
+        in_vicinity.clear();
+
         cancelled = false;
 
         try {
             distributePTemplates();
             generateInitialTags(phase, text);
             generateInitialScores();
+            initializeGoodScores(threshold);
             next_text = text;
             process(threshold);
 
@@ -781,20 +900,23 @@ public:
         return text;
     }
 
-    int getPhase() const {
-        return phase;
+    int numPhases() const {
+        return phase_tstores.size();
     }
 
     void setAutoselectedTags(vector<Lexeme>& text) {
+        int p = numPhases() - 1;
         BOOST_FOREACH(Lexeme& lex, text)
-            lex.setAutoselectedTag(lex.chosen_tag[phase]);
+            lex.setAutoselectedTag(lex.chosen_tag[p]);
     }
 
     void tagText(vector<Lexeme>& text_to_tag) {
         vector<Lexeme> our_text_to_tag;
         addSentinels(text_to_tag, our_text_to_tag);
 
-        for (int i = 0; i <= phase; i++) {
+        scorer.reset(new Scorer(phase_tagsets[numPhases() - 1]));
+
+        for (int i = 0; i < numPhases(); i++) {
             generateInitialTags(i, our_text_to_tag);
             applyAllRules(our_text_to_tag, i);
         }
@@ -814,12 +936,13 @@ public:
         BOOST_FOREACH(Rule<Lexeme>& rule, phase_generated_rules[phase]) {
             int errors;
             applyRule(phase, rule, text, next_text, INDEX_OFFSET,
-                    text.size() - INDEX_OFFSET);
-            calculatePhaseStats(phase_tagset, phase, next_text, &prec, &recall,
+                    text.size() - INDEX_OFFSET, 0, false);
+            calculatePhaseStats(phase_tagsets[phase], phase, next_text, &prec, &recall,
                     &f_measure, &errors, &avg_score, INDEX_OFFSET, text.size() -
                     INDEX_OFFSET);
             wcerr << boost::wformat(L"%d. Applied rule: %s (P: %lf, R: %lf, F: %lf, "
-                    "score: %lf, errors: %d)\n") % phase % ascii_to_wstring(rule.asString(tstore)) %
+                    "score: %lf, errors: %d)\n") % phase %
+                    ascii_to_wstring(rule.asString(phase_tstores[phase])) %
                     prec % recall % f_measure % avg_score % errors;
 
             if (errors > last_errors) {

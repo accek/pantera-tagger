@@ -5,6 +5,8 @@
  *      Author: accek
  */
 
+#include <boost/program_options/detail/convert.hpp>
+#include <boost/program_options/detail/utf8_codecvt_facet.hpp>
 #include <string>
 #include <algorithm>
 #include <nlpcommon/util.h>
@@ -29,6 +31,16 @@ wstring ascii_to_wstring(const string& wstring) {
     res.resize(wstring.length());
     std::copy(wstring.begin(), wstring.end(), res.begin());
     return res;
+}
+
+wstring utf8_to_wstring(const string& s) {
+    boost::program_options::detail::utf8_codecvt_facet utf8_facet;
+    return boost::from_8_bit(s, utf8_facet);
+}
+
+string wstring_to_utf8(const wstring& s) {
+    boost::program_options::detail::utf8_codecvt_facet utf8_facet;
+    return boost::to_8_bit(s, utf8_facet);
 }
 
 }

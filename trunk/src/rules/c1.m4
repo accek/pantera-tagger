@@ -18,12 +18,12 @@ m4_include(`predicate.m4')
     (text[index + offset].chosen_tag[Phase].getValue(cat_idx))
 
 #define C(cat_num) \
-    (p.params.categories[cat_num] == -1 ? "pos" : \
+    (p.params.categories[cat_num] == (uint8_t)-1 ? "pos" : \
      TAGSET->getCategory(p.params.categories[cat_num])->getName().c_str())
 #define P(p_num) \
      TAGSET->getPartOfSpeech(p.params.pos[p_num])->getName().c_str()
 #define V(cat_num, v_num) \
-    (p.params.categories[cat_num] == -1 ? \
+    (p.params.categories[cat_num] == (uint8_t)-1 ? \
      P(v_num) :\
      TAGSET->getCategory(p.params.categories[cat_num])->getValue( \
         p.params.values[v_num]).c_str())
@@ -146,7 +146,7 @@ PTEMPLATE_BEGIN(`Nearby'$1`CatPredicateTemplate', $1,
                 return false;
         }
         int c = p.params.categories[0];
-        if (c == -1) {
+        if (c == (uint8_t)-1) {
             return (PTEMPLATE_FOR_EACH_OFFSET(`(!ISNULL(Offset) && p.params.pos[1] == POSNUM(Offset)
                 && (!MatchNearbyOrth || (match_prefix(ORTH(Offset), p.params.chars, PrefixLen)
                                       && match_suffix(ORTH(Offset), p.params.chars, SuffixLen)))
@@ -211,7 +211,7 @@ PTEMPLATE_BEGIN(`NearbyExact'$1`CatPredicateTemplate', $1, `, bool AlwaysPos = f
         if (p.params.pos[0] != POSNUM(0))
             return false;
         int c = p.params.categories[0];
-        if (c == -1) {
+        if (c == (uint8_t)-1) {
             return (PTEMPLATE_FOR_EACH_OFFSET(`(!ISNULL(Offset) && p.params.pos[O] == POSNUM(Offset))', &&));
         } else {
             return (PTEMPLATE_FOR_EACH_OFFSET(`(!ISNULL(Offset) && p.params.values[O] == VALUE(Offset, c) && (!AlwaysPos || p.params.pos[O] == POSNUM(Offset)))', &&))

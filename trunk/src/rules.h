@@ -58,7 +58,7 @@ public:
         union {
             typename Lexeme::tag_type tags[4];
             struct {
-                int8_t categories[4];
+                uint8_t categories[4];
                 uint8_t values[4];
                 uint8_t pos[4];
             };
@@ -154,7 +154,7 @@ public:
     int tpl_id;
     struct {
         typename Lexeme::tag_type tag;
-        int8_t category;
+        uint8_t category;
         uint8_t value;
         uint8_t pos;
     } params;

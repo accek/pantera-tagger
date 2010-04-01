@@ -33,8 +33,11 @@ class Tagset;
 // string.
 string find_prefix(string& haystack, char needle);
 
-// Convert an ascii-only string to wstring.
+// String - wstring conversion
 wstring ascii_to_wstring(const string& wstring);
+wstring utf8_to_wstring(const string& s);
+string wstring_to_utf8(const wstring& s);
+
 
 // Output a difference between actual and expected tags on one token
 // in a human-readable way.

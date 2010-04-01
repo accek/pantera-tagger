@@ -1,6 +1,7 @@
 template<class Lexeme, int Phase>
 void make_p1_rules(const vector<const Tagset*>& tagsets,
         vector<PredicateTemplate<Lexeme>*>& templates) {
+    templates.push_back(new MatchTagPredicateTemplate<Lexeme, Phase>(tagsets));
     templates.push_back(new NearbyTagPredicateTemplate<Lexeme, Phase, -1>(tagsets));
     templates.push_back(new NearbyTagPredicateTemplate<Lexeme, Phase, -2>(tagsets));
     templates.push_back(new Nearby2TagsPredicateTemplate<Lexeme, Phase, -1, -2>(tagsets));
@@ -57,6 +58,14 @@ void make_p1_rules(const vector<const Tagset*>& tagsets,
     templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 2, false, false, 0, 2>(tagsets));
     templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, 1, 2, false, false, 0, 2>(tagsets));
     templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, 1, 2, 3, false, false, 0, 2>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -1, false, false, 0, 3>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -2, false, false, 0, 3>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, -1, -2, false, false, 0, 3>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, -1, -2, -3, false, false, 0, 3>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 1, false, false, 0, 3>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 2, false, false, 0, 3>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, 1, 2, false, false, 0, 3>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, 1, 2, 3, false, false, 0, 3>(tagsets));
     //
     templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -1, false, true, 0, 1>(tagsets));
     templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -2, false, true, 0, 1>(tagsets));
@@ -74,6 +83,14 @@ void make_p1_rules(const vector<const Tagset*>& tagsets,
     templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 2, false, true, 0, 2>(tagsets));
     templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, 1, 2, false, true, 0, 2>(tagsets));
     templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, 1, 2, 3, false, true, 0, 2>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -1, false, true, 0, 3>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, -2, false, true, 0, 3>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, -1, -2, false, true, 0, 3>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, -1, -2, -3, false, true, 0, 3>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 1, false, true, 0, 3>(tagsets));
+    templates.push_back(new Nearby1CatPredicateTemplate<Lexeme, Phase, 2, false, true, 0, 3>(tagsets));
+    templates.push_back(new Nearby2CatPredicateTemplate<Lexeme, Phase, 1, 2, false, true, 0, 3>(tagsets));
+    templates.push_back(new Nearby3CatPredicateTemplate<Lexeme, Phase, 1, 2, 3, false, true, 0, 3>(tagsets));
 }
 
 template<class Lexeme, int Phase>

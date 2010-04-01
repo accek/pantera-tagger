@@ -10,6 +10,8 @@
 
 #include <boost/foreach.hpp>
 #include <boost/mpi.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
@@ -38,16 +40,29 @@ namespace mpi = boost::mpi;
 typedef BTagger::BrillLexeme<Tag> MyLexeme;
 
 class MySingleScorer : public CAScorer<MyLexeme::tag_type>{
+    private:
+        vector<const Category*> important_cats;
     public:
         MySingleScorer(const Tagset* tagset) :
-            CAScorer<MyLexeme::tag_type>(tagset) { }
+                CAScorer<MyLexeme::tag_type>(tagset) {
+            important_cats.push_back(tagset->getCategory("case", false));
+            important_cats.push_back(tagset->getCategory("gender", false));
+        }
 
         score_type getPosRelativeWeight() {
-            return 0.3;
+            return 0.5;
+        }
+
+        score_type getCategoryRelativeWeight(const PartOfSpeech* pos,
+                const Category* category) {
+            if (std::find(important_cats.begin(), important_cats.end(),
+                        category) != important_cats.end())
+                return 1.0;
+            return 0.5;
         }
 
         score_type getNonExactMatchFactor() {
-            return 0.3;
+            return 0.5;
         }
 };
 
@@ -126,6 +141,16 @@ void analyzeErrors(wostream& stream, const Tagset* tagset,
     }
 }
 
+bool ends_with(const string& fullString, const string& ending)
+{
+    if (fullString.length() > ending.length()) {
+        return (0 == fullString.compare(fullString.length() - ending.length(),
+            ending.length(), ending));
+    } else {
+        return false;
+    }
+}
+
 int main(int argc, char** argv) {
     // This is needed for correct wcin/wcout behaviour.
     setlocale(LC_CTYPE, "");
@@ -143,47 +168,23 @@ int main(int argc, char** argv) {
     }
 #endif
 
+    vector<MyLexeme> text;
+    const Tagset* tagset;
+    const Tagset* tagset2;
+    const Tagset* tagset3;
+
     SpejdTagsetLoader tagset_loader;
     ifstream config_stream("tagset.cfg");
-    const Tagset* tagset = tagset_loader.loadTagset(config_stream);
-
-    wcout << "Loaded " << tagset->getCategories().size() << " categories." << endl;
-    wcout << "Loaded " << tagset->getPartsOfSpeech().size() << " parts of speech." << endl;
-
-    vector<MyLexeme> text;
-    if (world.rank() == 0) {
-        wcerr << endl << "Lexing ...";
-        ifstream data_stream(argv[1]);
-        IpiPanLexer<MyLexeme> lexer(data_stream);
-        lexer.setProgressHandler(lexing_progress, 1000);
-        lexer.parseStreamToVector(text, &tagset);
-        wcerr << "\rLexing ...  done.       " << endl;
-
-        for (int i=0; i < 20; i++) {
-            MyLexeme& lex = text[i];
-            wcout << "  " << lex.getOrth()
-                << " " << lex.getAllowedTags()[0].asWString(tagset) << endl;
-        }
-
-        // Check if golden \subset allowed
-        BOOST_FOREACH(MyLexeme& lex, text)
-            BOOST_FOREACH(const Tag& tag, lex.getGoldenTags())
-                assert(lex.isAllowedTag(tag));
-
-    //    wcout << "Looking for constant categories ..." << endl;
-    //    BOOST_FOREACH(const Category* cat, findConstantCategories(tagset, text))
-    //        wcout << "  " << cat->getName() << endl;
-
-    }
-    mpi::broadcast(world, text, 0);
-
-    BTagger::BrillEngine<MyLexeme, MyScorer> engine;
-    engine.init(text, tagset);
-
+    tagset = tagset_loader.loadTagset(config_stream);
     ifstream config_stream2("tagset2.cfg");
-    Tagset* tagset2 = tagset_loader.loadTagset(config_stream2);
+    tagset2 = tagset_loader.loadTagset(config_stream2);
     ifstream config_stream3("tagset3.cfg");
-    Tagset* tagset3 = tagset_loader.loadTagset(config_stream3);
+    tagset3 = tagset_loader.loadTagset(config_stream3);
+
+    if (world.rank() == 0) {
+        wcout << "Loaded " << tagset->getCategories().size() << " categories." << endl;
+        wcout << "Loaded " << tagset->getPartsOfSpeech().size() << " parts of speech." << endl;
+    }
 
     vector<const Tagset*> tagsets;
     tagsets.push_back(tagset2);
@@ -193,24 +194,77 @@ int main(int argc, char** argv) {
     tagsets.push_back(tagset);
     BTagger::RulesGenerator<MyLexeme>* g3 = BTagger::Rules::make_p2_rules_generator<MyLexeme, 2>(tagsets);
 
+    BTagger::BrillEngine<MyLexeme, MyScorer> engine;
+    engine.addPhase(tagset2, g1->getTStore());
+    engine.addPhase(tagset3, g2->getTStore());
+    engine.addPhase(tagset, g3->getTStore());
+
+    string input_filename(argv[1]);
+    bool loaded_engine = false;
+    if (world.rank() == 0) {
+        ifstream data_stream(input_filename.c_str(), ios::in | ios::binary);
+        if (ends_with(input_filename, ".btengine")) {
+            wcerr << endl << "Loading engine ..." << endl;
+            boost::archive::binary_iarchive engine_archive(data_stream);
+            engine_archive >> engine;
+            loaded_engine = true;
+        } else {
+            wcerr << endl << "Lexing ...";
+            IpiPanLexer<MyLexeme> lexer(data_stream);
+            lexer.setProgressHandler(lexing_progress, 1000);
+            lexer.parseStreamToVector(text, &tagset);
+            wcerr << "\rLexing ...  done.       " << endl;
+
+            for (int i=0; i < 20; i++) {
+                MyLexeme& lex = text[i];
+                wcout << "  " << lex.getOrth()
+                    << " " << lex.getAllowedTags()[0].asWString(tagset) << endl;
+            }
+
+            // Check if golden \subset allowed
+            BOOST_FOREACH(MyLexeme& lex, text)
+                BOOST_FOREACH(const Tag& tag, lex.getGoldenTags())
+                    assert(lex.isAllowedTag(tag));
+
+        //    wcout << "Looking for constant categories ..." << endl;
+        //    BOOST_FOREACH(const Category* cat, findConstantCategories(tagset, text))
+        //        wcout << "  " << cat->getName() << endl;
+
+            engine.setText(text);
+        }
+
+        wcerr << "Sending data to all worker processes ..." << endl;
+    }
+
+    mpi::broadcast(world, engine, 0);
+
+
     int threshold = 50;
     if (argc >= 4) {
         threshold = atoi(argv[3]);
     }
 
-    engine.addPhase(tagset2, g1->getTStore());
-    engine.addPhase(tagset3, g2->getTStore());
-    engine.addPhase(tagset, g3->getTStore());
-
-    engine.runPhase(0, g1, threshold);
-    engine.runPhase(1, g2, threshold);
-    engine.runPhase(2, g3, threshold);
+    if (!engine.isTrained()) {
+        engine.runPhase(0, g1, threshold);
+        engine.runPhase(1, g2, threshold);
+        engine.runPhase(2, g3, threshold);
+    }
 
     if (world.rank() == 0) {
+        /*
         for (int i=0; i < 20; i++) {
             const MyLexeme& lex = engine.getText()[i];
             wcout << "  " << lex.getOrth() << " "
                 << lex.chosen_tag[2].asWString(tagset) << endl;
+        }
+        */
+
+        if (!loaded_engine) {
+            ofstream engine_stream((input_filename + ".btengine").c_str(),
+                    ios::out | ios::binary);
+            wcerr << endl << "Saving engine to " << ascii_to_wstring(input_filename + ".btengine") << " ..." << endl;
+            boost::archive::binary_oarchive engine_archive(engine_stream);
+            engine_archive << engine;
         }
 
         string rewrite_filename = argv[1];
@@ -230,7 +284,13 @@ int main(int argc, char** argv) {
         }
 
         wofstream errors_report((rewrite_filename + ".errors.txt").c_str());
-        errors_report.imbue(std::locale());
+        std::locale errors_locale;
+        try {
+            errors_locale = std::locale("");
+            if (errors_locale.name() == "*")
+                errors_locale = std::locale("pl_PL.UTF-8");
+        } catch (...) { }
+        errors_report.imbue(errors_locale);
         analyzeErrors(errors_report, tagset, text);
         errors_report.close();
 
@@ -239,7 +299,7 @@ int main(int argc, char** argv) {
         ofstream rewrite_out((rewrite_filename + ".disamb").c_str());
         BTagger::IpiPanRewriter<MyLexeme> rewriter;
         rewriter.setProgressHandler(rewriting_progress, 1000);
-        rewriter.rewriteStream(engine.getPhase(), tagset, text,
+        rewriter.rewriteStream(engine.numPhases() - 1, tagset, text,
                 rewrite_in, rewrite_out);
         wcerr << "\rRewriting ...  done.       " << endl;
     }

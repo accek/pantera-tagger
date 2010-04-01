@@ -69,7 +69,7 @@ private:
     void load(Archive& ar, const unsigned int version) {
         string locale_name;
         ar >> locale_name;
-        _locale = std::locale(locale_name);
+        _locale = std::locale(locale_name.c_str());
 
         vector<const Category*> categories;
         ar >> categories;
@@ -94,17 +94,27 @@ public:
         return _categoriesByIndex;
     }
 
-    const Category* getCategory(unsigned int index) const {
-        if (index < 0 || index >= _categoriesByIndex.size())
-            throw CategoryNotFoundException::ById(index);
+    const Category* getCategory(unsigned int index,
+            bool use_exc = true) const {
+        if (index < 0 || index >= _categoriesByIndex.size()) {
+            if (use_exc)
+                throw CategoryNotFoundException::ById(index);
+            else
+                return NULL;
+        }
         return _categoriesByIndex[index];
     }
 
-    const Category* getCategory(const string& name) const {
+    const Category* getCategory(const string& name,
+            bool use_exc = true) const {
         unordered_map<string, const Category*>::const_iterator i =
                 _categoriesByName.find(name);
-        if (i == _categoriesByName.end())
-            throw CategoryNotFoundException::ByName(name);
+        if (i == _categoriesByName.end()) {
+            if (use_exc)
+                throw CategoryNotFoundException::ByName(name);
+            else
+                return NULL;
+        }
         return i->second;
     }
 
