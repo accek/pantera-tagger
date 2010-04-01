@@ -1,3 +1,30 @@
+template<class Lexeme, int Phase>
+class MatchTagPredicateTemplate : public PredicateTemplate<Lexeme>
+{
+public:
+MatchTagPredicateTemplate(const vector<const Tagset*> tagsets) : PredicateTemplate<Lexeme>(tagsets) { }
+
+void findMatchingPredicates(vector<Predicate<Lexeme> >& v,
+                                                      vector<Lexeme>& text,
+                                                      int index) {
+
+    Predicate<Lexeme> p = Predicate<Lexeme>(this);
+    p.params.tags[0] = text[index].chosen_tag[Phase];
+    v.push_back(p);
+
+}
+bool predicateMatches(const Predicate<Lexeme>& p,
+            vector<Lexeme>& text, int index) {
+    return p.params.tags[0] == text[index].chosen_tag[Phase];
+}
+string predicateAsString(const Predicate<Lexeme>& p) {
+    char str[STR_SIZE];
+    sprintf(str, "T[0] = %s", T(tags[0]));
+    return string(str);
+}
+};
+
+
 template<class Lexeme, int Phase, int Offset>
 class NearbyTagPredicateTemplate : public PredicateTemplate<Lexeme>
 {

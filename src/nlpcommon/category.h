@@ -11,6 +11,10 @@
 #include <boost/unordered_map.hpp>
 #include <string>
 #include <vector>
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
+
 #include <nlpcommon/exception.h>
 #include <nlpcommon/util.h>
 
@@ -40,6 +44,14 @@ private:
     string _name;
     vector<string> _valuesByIndex;
     unordered_map<string, unsigned int> _indexesByValue;
+
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+        ar & _name;
+        ar & _valuesByIndex;
+        ar & _indexesByValue;
+    }
 
     void init() {
         addValue("[none]");

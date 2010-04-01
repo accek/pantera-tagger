@@ -8,8 +8,6 @@
 #ifndef LEXEME_H_
 #define LEXEME_H_
 
-#include <boost/program_options/detail/convert.hpp>
-#include <boost/program_options/detail/utf8_codecvt_facet.hpp>
 #include <boost/foreach.hpp>
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/string.hpp>
@@ -99,13 +97,11 @@ public:
     }
 
     string getUtf8Orth() const {
-        boost::program_options::detail::utf8_codecvt_facet utf8_facet;
-        return boost::to_8_bit(_orth, utf8_facet);
+        return wstring_to_utf8(_orth);
     }
 
     void setUtf8Orth(const string& orth) {
-        boost::program_options::detail::utf8_codecvt_facet utf8_facet;
-        setOrth(boost::from_8_bit(orth, utf8_facet));
+        setOrth(utf8_to_wstring(orth));
     }
 
     void setOrth(const wstring& orth) {

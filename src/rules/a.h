@@ -90,7 +90,7 @@ public:
         if (!tstore->getPTemplate(p.tpl_id)->usesCategory0())
             return;
         int c = p.params.categories[0];
-        if (c == -1)
+        if (c == (uint8_t)-1)
             return;
 
         Action<Lexeme> act(this);

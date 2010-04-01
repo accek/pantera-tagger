@@ -6,6 +6,7 @@
 #include <boost/cstdint.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/serialization/access.hpp>
+#include <boost/serialization/string.hpp>
 #include <string>
 #include <sstream>
 #include <iostream>

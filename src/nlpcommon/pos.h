@@ -13,6 +13,10 @@
 #include <map>
 #include <cassert>
 #include <algorithm>
+#include <boost/serialization/access.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/vector.hpp>
+
 #include <nlpcommon/util.h>
 
 
@@ -27,6 +31,14 @@ private:
     string _name;
     vector<const Category*> _categories;
     vector<bool> _requiredCategoryFlags;
+
+    friend class boost::serialization::access;
+    template <class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+        ar & _name;
+        ar & _categories;
+        ar & _requiredCategoryFlags;
+    }
 
 public:
     PartOfSpeech(const string& name) : _name(name) { }
