@@ -151,23 +151,7 @@ bool ends_with(const string& fullString, const string& ending)
     }
 }
 
-int main(int argc, char** argv) {
-    // This is needed for correct wcin/wcout behaviour.
-    setlocale(LC_CTYPE, "");
-
-    mpi::environment env(argc, argv);
-    mpi::communicator world;
-
-#if HAVE_OPENMP
-    wcerr << "OpenMP parallelism enabled (processors: " <<
-        omp_get_num_procs() << ", dynamic thread allocation: "
-        << omp_get_dynamic() << ")" << endl;
-
-    if (!omp_get_dynamic() && getenv("OMP_NUM_THREADS") == NULL) {
-        omp_set_num_threads(min(omp_get_num_procs(), 8));
-    }
-#endif
-
+int real_main(mpi::communicator& world, int argc, char** argv) {
     vector<MyLexeme> text;
     const Tagset* tagset;
     const Tagset* tagset2;
@@ -303,4 +287,33 @@ int main(int argc, char** argv) {
                 rewrite_in, rewrite_out);
         wcerr << "\rRewriting ...  done.       " << endl;
     }
+}
+
+int main(int argc, char** argv) {
+	// This is needed for correct wcin/wcout behaviour.
+	setlocale(LC_CTYPE, "");
+
+	mpi::environment env(argc, argv);
+	mpi::communicator world;
+
+#if HAVE_OPENMP
+	wcerr << "OpenMP parallelism enabled (processors: " <<
+		omp_get_num_procs() << ", dynamic thread allocation: "
+		<< omp_get_dynamic() << ")" << endl;
+
+	if (!omp_get_dynamic() && getenv("OMP_NUM_THREADS") == NULL) {
+		omp_set_num_threads(min(omp_get_num_procs(), 8));
+	}
+#endif
+
+	try {
+		return real_main(world, argc, argv);
+	} catch (std::exception const& e) {
+        wcerr << "***FATAL***: Caught " << typeid(e).name() << " with message:" << endl;
+        wcerr << e.what() << endl;
+		throw;
+	} catch (...) {
+        wcerr << "***FATAL***: Caught unknown exception." << endl;
+		throw;
+	}
 }

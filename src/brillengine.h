@@ -152,42 +152,29 @@ private:
     }
 
     static void calculatePhaseStats(const Tagset* tagset, int phase,
-            vector<Lexeme>& text, double* prec,
-            double* recall, double* f_measure, int* errors,
+            vector<Lexeme>& text, double* accuracy, int* errors,
             double* avg_score,
             int start_index = 0,
             int end_index = std::numeric_limits<int>::max()) {
         start_index = std::min(start_index, (int)text.size());
         end_index = std::min(end_index, (int)text.size());
 
-        int tp = 0, tn = 0, fp = 0, fn = 0;
         int e = 0;
         score_type ss = score_type();
         Scorer scorer(tagset);
 
         #pragma omp parallel for \
             default(shared) \
-            reduction(+: tp, tn, fp, fn, e, ss)
+            reduction(+: e, ss)
         for (int i = start_index; i < end_index; ++i) {
             const Lexeme& lex = text[i];
             ss += scorer.score(lex.chosen_tag[phase], lex.expected_tag);
-            if (lex.chosen_tag[phase] == lex.expected_tag) {
-                tp++;
-                tn += lex.considered_tags.size() - 1;
-            } else {
-                fp++;
-                fn++;
-                tn += lex.considered_tags.size() - 2;
+            if (lex.chosen_tag[phase] != lex.expected_tag)
                 e++;
-            }
         }
 
-        if (prec)
-            *prec = tp / double(tp + fp);
-        if (recall)
-            *recall = tp / double(tp + fn);
-        if (prec && recall && f_measure)
-            *f_measure = 2 * *prec * *recall / (*prec + *recall);
+		if (accuracy)
+			*accuracy = 1.0 - e/double(end_index - start_index);
         if (avg_score)
             *avg_score = double(ss) / double(scorer.maxScore())
                 / (end_index - start_index);
@@ -195,10 +182,25 @@ private:
             *errors = e;
     }
 
+	vector<int> mapToPos(const vector<tag_type>& tags) {
+		vector<int> pos;
+		BOOST_FOREACH(const tag_type& tag, tags)
+			pos.push_back(tag.getPos());
+		std::sort(pos.begin(), pos.end());
+		pos.resize(std::unique(pos.begin(), pos.end()) - pos.begin());
+		return pos;
+	}
+
     void calculateTaggingStats(vector<Lexeme>& text,
             double* prec,
-            double* recall, double* f_measure, int* errors,
+            double* recall,
+			double* f_measure,
+			double* strong_correctness,
             double* avg_score,
+            double* prec_pos = NULL,
+            double* recall_pos = NULL,
+			double* f_measure_pos = NULL,
+			double* strong_correctness_pos = NULL,
             int start_index = 0,
             int end_index = std::numeric_limits<int>::max()) {
         start_index = std::min(start_index, (int)text.size());
@@ -206,7 +208,9 @@ private:
 
         int phase = numPhases() - 1;
         int tp = 0, tn = 0, fp = 0, fn = 0;
-        int e = 0;
+        int sc = 0; /* strongly correct */
+        int tppos = 0, tnpos = 0, fppos = 0, fnpos = 0;
+        int scpos = 0;
         score_type ss = score_type();
 
         for (int i = start_index; i < end_index; ++i) {
@@ -218,11 +222,31 @@ private:
                 tp++;
                 fn += cs - 1;
                 tn += as - cs;
+				if (cs == 1)
+					sc++;
             } else {
                 fp++;
                 fn += cs;
                 tn += as - cs - 1;
-                e++;
+            }
+
+			vector<int> golden_pos = mapToPos(lex.getGoldenTags());
+			vector<int> allowed_pos = mapToPos(lex.getAllowedTags());
+			bool good_pos = std::find(golden_pos.begin(), golden_pos.end(),
+					lex.chosen_tag[phase].getPos()) != golden_pos.end();
+            int cspos = golden_pos.size();
+            int aspos = allowed_pos.size();
+
+            if (good_pos) {
+                tppos++;
+                fnpos += cspos - 1;
+                tnpos += aspos - cspos;
+				if (cspos == 1)
+					scpos++;
+            } else {
+                fppos++;
+                fnpos += cspos;
+                tnpos += aspos - cspos - 1;
             }
         }
 
@@ -232,11 +256,21 @@ private:
             *recall = tp / double(tp + fn);
         if (prec && recall && f_measure)
             *f_measure = 2 * *prec * *recall / (*prec + *recall);
+		if (strong_correctness)
+			*strong_correctness = sc / double(tp + fp);
+
         if (avg_score)
             *avg_score = double(ss) / double(scorer->maxScore())
                 / (end_index - start_index);
-        if (errors)
-            *errors = e;
+
+        if (prec_pos)
+            *prec_pos = tppos / double(tppos + fppos);
+        if (recall_pos)
+            *recall_pos = tppos / double(tppos + fnpos);
+        if (prec_pos && recall_pos && f_measure_pos)
+            *f_measure_pos = 2 * *prec_pos * *recall_pos / (*prec_pos + *recall_pos);
+		if (strong_correctness_pos)
+			*strong_correctness_pos = scpos / double(tppos + fppos);
     }
 
     tag_type findBestInitialTag(int phase, Lexeme& lexeme,
@@ -734,18 +768,18 @@ public:
                 }
             }
 
-            int errors = 0;
-            double P, R, F, avg_score;
             applyRule(phase, b, text, next_text, INDEX_OFFSET,
                     text.size() - INDEX_OFFSET,
                     2 * (good + bad));
 
             if ((round % 10) == 1 && mpi_world.rank() == 0) {
-                calculatePhaseStats(phase_tagset, phase, next_text, &P, &R, &F,
+				int errors = 0;
+				double accuracy, avg_score;
+                calculatePhaseStats(phase_tagset, phase, next_text, &accuracy,
                         &errors, &avg_score,
                         INDEX_OFFSET, text.size() - INDEX_OFFSET);
-                wcerr << boost::wformat(L"Applied. P=%lf R=%lf F=%lf avgScore=%lf errors: %d\n")
-                        % P % R % F % avg_score % errors;
+                wcerr << boost::wformat(L"Applied. accuracy=%lf avgScore=%lf errors=%d\n")
+                        % accuracy % avg_score % errors;
             }
 
             generated_rules.push_back(b);
@@ -756,12 +790,14 @@ public:
     }
 
     score_type calculateRulePriority(score_type good, score_type bad) {
-        //return (good + 1)/(bad + 1);
 		return good - bad;
     }
 
     Rule<Lexeme> findBestRule(score_type threshold, bool* found, score_type* good, score_type* bad) {
-        // [score, [rule, [good, bad]]]
+		// The rule with highest priority (as calculated by calculateRulePriority) is chosen,
+		// among the rules having good - bad >= threshold.
+
+        // [priority, [rule, [good, bad]]]
         typedef std::pair<score_type,
                     std::pair<Rule<Lexeme>, std::pair<score_type, score_type> > >
                         max_type;
@@ -853,13 +889,19 @@ public:
     }
 
     void reportTaggingStats(vector<Lexeme>& tagged_text) {
-        double prec = 0, recall = 0, f_measure = 0;
+        double prec, recall, f_measure, strong_correctness,
+			   avg_score, prec_pos, recall_pos, f_measure_pos,
+			   strong_correctness_pos;
 
         calculateTaggingStats(tagged_text, &prec, &recall, &f_measure,
-                NULL, NULL, INDEX_OFFSET, tagged_text.size() - INDEX_OFFSET);
+				&strong_correctness, &avg_score, &prec_pos, &recall_pos,
+				&f_measure_pos, &strong_correctness_pos,
+                INDEX_OFFSET, tagged_text.size() - INDEX_OFFSET);
 
-        wcerr << boost::wformat(L"Stats -- P: %lf, R: %lf, F: %lf\n")
-                % prec % recall % f_measure;
+        wcerr << boost::wformat(L"Stats -- P %lf  R %lf  F %lf  SC %lf  AScore %lf\n")
+                % prec % recall % f_measure % strong_correctness % avg_score;
+        wcerr << boost::wformat(L"POSstats -- P %lf  R %lf  F %lf  SC %lf\n")
+                % prec_pos % recall_pos % f_measure_pos % strong_correctness_pos;
     }
 
     static score_type goodScore(score_type s) {
@@ -944,27 +986,29 @@ public:
 
     void applyAllRules(vector<Lexeme>& text, int phase) {
         vector<Lexeme> next_text = text;
-        double prec = 0, recall = 0, f_measure = 0, avg_score = 0;
-        int last_errors = text.size();
+		int rule_num = 0;
+		int num_rules = phase_generated_rules[phase].size();
         BOOST_FOREACH(Rule<Lexeme>& rule, phase_generated_rules[phase]) {
-            int errors;
+			rule_num++;
+
             applyRule(phase, rule, text, next_text, INDEX_OFFSET,
                     text.size() - INDEX_OFFSET, 0, false);
-            calculatePhaseStats(phase_tagsets[phase], phase, next_text, &prec, &recall,
-                    &f_measure, &errors, &avg_score, INDEX_OFFSET, text.size() -
-                    INDEX_OFFSET);
-            wcerr << boost::wformat(L"%d. Applied rule: %s (P: %lf, R: %lf, F: %lf, "
-                    "score: %lf, errors: %d)\n") % phase %
-                    ascii_to_wstring(rule.asString(phase_tstores[phase])) %
-                    prec % recall % f_measure % avg_score % errors;
+            wcerr << boost::wformat(L"Phase %d. Rule %d/%d applied: %s\n") %
+					phase % rule_num % num_rules %
+                    ascii_to_wstring(rule.asString(phase_tstores[phase]));
 
-            if (errors > last_errors) {
-                wcerr << boost::wformat(L"    Bad rule :(  errors was %d, now %d\n")
-                        % last_errors % errors;
-            }
+			if (rule_num % 10 == 0) {
+				double accuracy, avg_score;
+				int errors;
+				calculatePhaseStats(phase_tagsets[phase], phase, next_text, &accuracy,
+						&errors, &avg_score, INDEX_OFFSET, text.size() -
+						INDEX_OFFSET);
+				wcerr << boost::wformat(L"Current stats -- accuracy: %lf, "
+						"avg_score: %lf, errors: %d)\n") %
+						accuracy % avg_score % errors;
+			}
 
             swap(text, next_text);
-            last_errors = errors;
         }
     }
 
