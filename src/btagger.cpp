@@ -215,7 +215,7 @@ int main(int argc, char** argv) {
             lexer.parseStreamToVector(text, &tagset);
             wcerr << "\rLexing ...  done.       " << endl;
 
-            for (int i=0; i < 20; i++) {
+            for (int i=0; i < std::min<int>(text.size(), 20); i++) {
                 MyLexeme& lex = text[i];
                 wcout << "  " << lex.getOrth()
                     << " " << lex.getAllowedTags()[0].asWString(tagset) << endl;
