@@ -66,8 +66,6 @@ private:
     const Tagset* full_tagset;
     vector<Lexeme> text;
     vector<Lexeme> next_text;
-    int phase;
-    const Tagset* phase_tagset;
     RulesGenerator<Lexeme>* rules_generator;
     TemplatesStore<Lexeme>* tstore;
     scores_map_type scores;
@@ -241,7 +239,7 @@ private:
             *errors = e;
     }
 
-    tag_type findBestInitialTag(Lexeme& lexeme,
+    tag_type findBestInitialTag(int phase, Lexeme& lexeme,
             const Tagset* new_tagset, const Tagset* previous_tagset,
              const tag_type& previous_tag = tag_type::getNullTag())
     {
@@ -406,7 +404,7 @@ public:
             tag_type previous_tag = phase == 0 ? tag_type::getNullTag()
                     : lexeme.chosen_tag[phase - 1];
             lexeme.chosen_tag[phase] =
-                    findBestInitialTag(lexeme, tagset, previous_tagset,
+                    findBestInitialTag(phase, lexeme, tagset, previous_tagset,
                             previous_tag);
             lexeme.considered_tags = calculateConsideredTags(lexeme, tagset,
                     previous_tagset, previous_tag);
@@ -475,8 +473,10 @@ public:
         score_subs.clear();
     }
 
-    void generateInitialScores()
+    void generateInitialScores(int phase)
     {
+        const Tagset* phase_tagset = phase_tagsets[phase];
+
         scores.clear();
 
         int n = text.size() - INDEX_OFFSET;
@@ -554,6 +554,13 @@ public:
                 vector<Rule<Lexeme> > rules;
                 rules_generator->generateUniqueRules(text, i, rules);
 
+                /*wcerr << "GEN: " << lex.getOrth() << ' ' <<
+                    rules.size() << " rules; chosen: " <<
+                    lex.chosen_tag[phase].asWString(phase_tagset) <<
+                    ", expected: " <<
+                    lex.expected_tag.asWString(phase_tagset) <<
+                    endl;*/
+
                 if (DBG && mpi_world.rank() == 0) {
                     if (lex.considered_tags.empty())
                         throw Exception(boost::str(
@@ -613,7 +620,7 @@ public:
         finishProgress();
     }
 
-    void updateScores(int round, int threshold, int vicinity_radius) {
+    void updateScores(int phase, int round, int threshold, int vicinity_radius) {
         int vsize = in_vicinity.size();
         int i = INDEX_OFFSET;
         int n = text.size() - INDEX_OFFSET;
@@ -689,17 +696,19 @@ public:
             wcerr << total_good_rules << " rules" << endl;
     }
 
-    void process(int threshold) {
+    void process(int phase, int threshold) {
+        const Tagset* phase_tagset = phase_tagsets[phase];
 
         // TODO: Wlepic napis, skad pochodzi ten algorytm.
 
         if (scores.size() == 0) return;
 
         for (int round = 1; ; round++) {
-            score_type f, good, bad;
-            Rule<Lexeme> b = this->findBestRule(&f, &good, &bad);
+            score_type good, bad;
+            bool found;
+            Rule<Lexeme> b = this->findBestRule(threshold, &found, &good, &bad);
 
-            if (f < threshold || cancelled) break;
+            if (!found || cancelled) break;
 
             if (mpi_world.rank() == 0) {
                 wcerr << boost::wformat(
@@ -713,7 +722,7 @@ public:
             }
 
             if (mpi_world.rank() == 0 && DBG) {
-                std::pair<score_type, score_type> good_scores = countScores(b);
+                std::pair<score_type, score_type> good_scores = countScores(phase, b);
                 if (good_scores != make_pair(good, bad)) {
                     wcerr << boost::wformat(L"\n*** WRONG SCORES ***"
                             "\n good is %.1lf, should be %.1lf"
@@ -741,20 +750,24 @@ public:
 
             generated_rules.push_back(b);
 
-            updateScores(round, threshold, VICINITY);
+            updateScores(phase, round, threshold, VICINITY);
             std::swap(text, next_text);
         }
     }
 
-    Rule<Lexeme> findBestRule(score_type* max, score_type* good, score_type* bad) {
+    score_type calculateRulePriority(score_type good, score_type bad) {
+        //return (good + 1)/(bad + 1);
+		return good - bad;
+    }
+
+    Rule<Lexeme> findBestRule(score_type threshold, bool* found, score_type* good, score_type* bad) {
         // [score, [rule, [good, bad]]]
         typedef std::pair<score_type,
                     std::pair<Rule<Lexeme>, std::pair<score_type, score_type> > >
                         max_type;
 
-        max_type gmax = std::make_pair(
-                scores.begin()->second.first - scores.begin()->second.second,
-                std::make_pair(scores.begin()->first, scores.begin()->second));
+        max_type gmax = std::make_pair(0, std::make_pair(
+                    Rule<Lexeme>(), std::make_pair(0, 0)));
 
         int n = good_scores.bucket_count();
 
@@ -767,8 +780,10 @@ public:
                 typename scores_map_type::const_local_iterator end = good_scores.end(i);
                 for (typename scores_map_type::const_local_iterator j = good_scores.begin(i);
                         j != end; j++) {
+                    score_type quality = j->second.first - j->second.second;
+                    if (quality < threshold) continue;
                     max_type val = std::make_pair(
-                            j->second.first - j->second.second,
+                            calculateRulePriority(j->second.first, j->second.second),
                             std::make_pair(j->first, j->second));
                     if (val > max) {
                         max = val;
@@ -784,7 +799,7 @@ public:
         mpi::reduce(mpi_world, gmax, gmax, mpi::maximum<max_type>(), 0);
         mpi::broadcast(mpi_world, gmax, 0);
 
-        *max = gmax.first;
+        *found = (gmax.first > 0);
         *good = gmax.second.second.first;
         *bad = gmax.second.second.second;
         return gmax.second.first;
@@ -809,12 +824,10 @@ public:
             int threshold) {
         int original_phase = phase;
 
-        this->phase = phase;
         this->rules_generator = rules_generator;
-        this->phase_tagset = phase_tagsets[phase];
         this->tstore = phase_tstores[phase];
 
-        scorer.reset(new Scorer(phase_tagset));
+        scorer.reset(new Scorer(phase_tagsets[phase]));
         assert(this->tstore == rules_generator->getTStore());
 
         generated_rules.clear();
@@ -825,10 +838,10 @@ public:
         try {
             distributePTemplates();
             generateInitialTags(phase, text);
-            generateInitialScores();
+            generateInitialScores(phase);
             initializeGoodScores(threshold);
             next_text = text;
-            process(threshold);
+            process(phase, threshold);
 
             if (!cancelled)
                 phase_generated_rules.push_back(generated_rules);
@@ -857,7 +870,7 @@ public:
         return s < 0 ? -s : score_type();
     }
 
-    std::pair<score_type, score_type> countScores(const Rule<Lexeme>& b) {
+    std::pair<score_type, score_type> countScores(int phase, const Rule<Lexeme>& b) {
         score_type countGood = score_type();
         score_type countBad = score_type();
 
