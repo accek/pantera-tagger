@@ -48,11 +48,11 @@ AC_ARG_WITH([tcmalloc],
     AS_HELP_STRING([--without-tcmalloc], [Ignore presence of tcmalloc and disable it]))
 
 AS_IF([test "x$with_tcmalloc" != "xno"],
-      [AC_CHECK_LIB([tcmalloc], [tc_malloc], [have_tcmalloc=yes], [have_tcmalloc=no])],
+      [AC_SEARCH_LIBS([tc_malloc], [tcmalloc tcmalloc_minimal], [have_tcmalloc=yes], [have_tcmalloc=no])],
       [have_tcmalloc=no])
 
 AS_IF([test "x$have_tcmalloc" = "xyes"],
-      [LDFLAGS="$LDFLAGS -ltcmalloc"],
+      [LDFLAGS="$LDFLAGS"],
       [AS_IF([test "x$with_tcmalloc" = "xyes"],
              [AC_MSG_ERROR([tcmalloc requested but not found])
       ])
