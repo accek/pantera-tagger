@@ -13,7 +13,7 @@ if [ -z "$SUFFIX" ]; then
     exit 1
 fi
 
-THRS="6"
+THRS="2"
 
 export OMP_NUM_THREADS=1
 PROCESSES=6
