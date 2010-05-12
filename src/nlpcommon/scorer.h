@@ -147,6 +147,28 @@ public:
     }
 };
 
+template <class Tag = Tag>
+class BinaryPoSScorer
+{
+public:
+    typedef int score_type;
+    typedef Tag tag_type;
+
+    BinaryPoSScorer(const Tagset* tagset) { }
+
+    score_type maxScore() {
+        return 1;
+    }
+
+    bool isLessThanEpsilon(score_type value) {
+        return value == 0;
+    }
+
+    score_type score(const tag_type& assigned, const tag_type& golden) {
+        return assigned.getPos() == golden.getPos();
+    }
+};
+
 template <class SingleScorer = BinaryScorer<> >
 class BestScoreMultiGoldenScorer
 {

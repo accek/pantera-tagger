@@ -5,84 +5,79 @@
  *      Author: accek
  */
 
-#ifndef CORPUSWRITER_H_
-#define CORPUSWRITER_H_
+#ifndef IPIPANWRITER_H_
+#define IPIPANWRITER_H_
 
 #include <vector>
+#include <utility>
+#include <string>
 #include <boost/foreach.hpp>
-#include <google/protobuf/io/zero_copy_stream.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <google/protobuf/io/gzip_stream.h>
-#include <google/protobuf/io/coded_stream.h>
 
 #include <nlpcommon/writer.h>
-#include <nlpcommon/corpustagsetloader.h>
+#include <nlpcommon/util.h>
 
 namespace NLPCommon {
 
-using namespace google::protobuf::io;
+using std::wstring;
 
 template<class Lexeme = DefaultLexeme>
-class CorpusWriter : public Writer<Lexeme>
+class IpiPanWriter : public Writer<Lexeme>
 {
 private:
-    CorpusProto::Token lexeme2ProtoToken(const Lexeme& lex,
-            const Tagset* tagset)
+	void writeLexeme(const Lexeme& lex, const Tagset* tagset)
     {
-        CorpusProto::Token proto_token;
         switch (lex.getType()) {
             case Lexeme::SEGMENT:
-                stream <<
+                this->stream <<
                     "<tok>\n"
-                    "<orth>" << lex.getOrth() << "</orth>\n";
+                    "<orth>" << lex.getUtf8Orth() << "</orth>\n";
 
                 typedef typename Lexeme::tag_type tag_type;
-                BOOST_FOREACH(const tag_type& tag, lex.getAllowedTags()) {
-                    CorpusProto::Interpretation* interp =
-                        proto_token.add_interp();
-                    interp->set_tag(tag.asString(tagset));
+				typedef std::pair<tag_type, wstring> tag_base_type;
+                BOOST_FOREACH(const tag_base_type& tb, lex.getTagBases()) {
+					const tag_type& tag = tb.first;
+					const wstring& base = tb.second;
+
+					this->stream << "<lex";
                     if (lex.isGoldenTag(tag))
-                        interp->set_is_golden(true);
-                    if (lex.isAutoselectedTag(tag))
-                        interp->set_is_autoselected(true);
+						this->stream << " disamb=\"1\"";
+                    if (!lex.isAutoselectedTag(tag))
+						this->stream << " disamb_sh=\"0\"";
+					this->stream << "><base>" << wstring_to_utf8(base)
+						<< "</base><ctag>" << tag.asString(tagset)
+						<< "</ctag></lex>\n";
                 }
                 break;
 
             case Lexeme::NO_SPACE:
-                proto_token.set_type(CorpusProto::Token::NO_SPACE);
+				this->stream << "<ns/>\n";
                 break;
 
-            case Lexeme::START_OF_SENTENCE:
-                stream << "<chunk type=\"s\">\n";
+            case Lexeme::START_OF_CHUNK:
+                this->stream << "<chunk type=\"" << lex.getUtf8Orth() << "\">\n";
                 break;
 
-            case Lexeme::START_OF_PARAGRAPH:
-                stream << "<chunk type=\"p\">\n";
-                break;
-
-            case Lexeme::END_OF_SENTENCE:
-            case Lexeme::END_OF_PARAGRAPH:
-                stream << "</chunk>\n";
+            case Lexeme::END_OF_CHUNK:
+				this->stream << "</chunk>\n";
                 break;
         }
-
-        return proto_token;
     }
 
 public:
-    CorpusWriter(std::ostream& stream) : Writer<Lexeme>(stream) { }
+    IpiPanWriter(std::ostream& stream) : Writer<Lexeme>(stream) { }
 
     virtual void writeToStream(WriterDataSource<Lexeme>& data_source) {
-        stream <<
+        this->stream <<
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             "<!DOCTYPE cesAna SYSTEM \"xcesAnaIPI.dtd\">\n"
             "<cesAna version=\"1.0\" type=\"lex disamb\">\n"
             "<chunkList>\n";
 
+		const Tagset* tagset = data_source.getTagset();
         while (!data_source.eof())
-            writeLexeme(data_source.nextLexeme());
+            writeLexeme(data_source.nextLexeme(), tagset);
 
-        stream <<
+        this->stream <<
             "</chunkList>\n"
             "</cesAna>\n";
     }
@@ -90,4 +85,4 @@ public:
 
 } // namespace NLPCommon
 
-#endif /* CORPUSWRITER_H_ */
+#endif /* IPIPANWRITER_H_ */
