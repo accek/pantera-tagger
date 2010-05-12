@@ -1,0 +1,623 @@
+//to --- prep subst
+//ospr!
+delete(not(
+           equal(flex[0],{subst})
+       )) # 10 :-
+   and(
+      //in(orth[0],{"to","To"}),
+      equal(flex[0],{adj,conj,pred,qub,subst}),
+      equal(flex[-1],{prep}),
+      inter(cas[-1],cas[0]),
+      not(
+        in(orth[-1],{"Niby","niby"}),
+        agrpp(0,1,{sg,n,cas},3)
+      ),
+      not(
+         and(
+            equal(flex[1],{ppron3}),
+            inter(cas[1],{gen}),
+            agrpp(0,2,{sg,n,cas},3)
+         )
+      )
+   )
+
+
+// wyrażenie "przede wszystkim": wszystkim/subst:inst:n ("przede" załatwi reguła 190)
+delete(not(
+		and(
+			equal(flex[0],{subst}),
+			equal(cas[0],{inst}),
+			equal(gnd[0],{n})
+		)
+	)) # 40 :-
+	and(
+		equal(orth[0],{"wszystkim"}),
+		in(orth[-1],{"przede","Przede"})
+	)
+
+// ze wszech: ze/gen (wszech/gen załatwi reguła 190)
+delete(not(equal(cas[0],{gen}))) # 41 :-
+	and(
+		in(orth[0],{"ze","Ze","ZE"}),
+		in(orth[1],{"wszech","WSZECH"})
+	)
+
+// w stanie: w/loc
+delete(not(equal(cas[0],{loc}))) # 42 :-
+	and(
+		in(orth[0],{"W","w"}),
+		in(orth[1],{"stanie","STANIE"})
+	)
+
+
+//gen po num
+//spr!
+delete(not(
+         equal(cas[0],{gen})
+       )) # 70 :-
+     and(
+         in(flex[0],{adj,ger,subst}),
+         inter(cas[0],{gen}),
+         in(orth[-1],{"dużo","mało","mnóstwo","parę","niewiele","wiele"})
+     )
+
+delete(not(
+	equal(flex[0],{qub})
+	)) # 96 :-
+	and(
+		in(orth[0],{"z","Z","ze","Ze"}),
+		or(
+			in(orth[1],{"dala","daleka","bliska","godzinę"}),
+			and(
+			// z dziesięć lat --- słowo dziesięć może być liczebnikiem i nie może mieć nic z {gen,inst}
+				inter(flex[1],{num}),
+				not(inter(cas[1],{gen,inst}))
+			)
+		)
+	)
+
+
+//dla z
+//spr!
+delete(not(
+	equal(flex[0],{prep})
+	)) # 97 :-
+   and(
+        in(orth[0],{"z","Z","ze","Ze"}),
+        or(
+           inter(cas[1],{gen,inst}),
+           isbig(orth[1]),
+           hasnum(orth[0])
+        )
+      )
+
+//spr!
+delete(not(
+           equal(flex[0],{prep})
+          )) # 98 :-
+   and(
+       in(orth[0],{"z","Z","ze","Ze"}),
+       in(orth[1], {"tak", "Tak"})
+   )
+
+
+// do niedawna, od niedawna
+// w Morfeuszu brakuje dawna/qub, ale zostawiam tu, bo może kiedyś będzie... (reguła nie wytnie ostatniego leksemu i tak)
+delete(not(equal(flex[0],{qub}))) # 99 :-
+	and(
+		in(orth[0],{"niedawna","dawna"}),
+		in({prep},flex[-1])
+	)
+
+
+//przypadek po prep --- podstawowa
+//spr!
+delete(
+	not(
+		equal(cas[0],{none}),
+		equal(cas[0],{gen}),
+		in(cas[0],cas[-1])
+	)) # 100 :-
+	and(
+		equal(flex[-1],{prep}),
+		not(
+			and(
+				not(
+					isbig(orth[-1])
+				),
+				isbig(orth[0])
+			),
+			in(orth[-1],{"niby","Niby"}),
+			inter(flex[0],{ppron3,num}),
+			in(orth[0],{"tysiąc","tego","niedawna"}),
+			and(
+				in(orth[-1],{"po","Po"}),
+				equal(cas[0],{dat})
+			),
+			// dla Morfeusza "o" jest zawsze przyimkiem
+			and(
+				in(orth[-1],{"o","O"}),
+				in(orth[0],{"rany", "RANY"})
+			),
+			equal(flex[0],{prep}),
+			// 
+			and(
+				in(orth[-1],{"mimo","Mimo","pomimo","Pomimo"}),
+				equal(orth[0],{"to"})
+			)
+		),
+		in(cas[0],{nom,gen,acc,dat,loc,inst,voc})
+	)
+
+//przypadek zaimka po prep
+//ospr!
+delete(not(
+           equal(cas[0],{none}),
+           in(cas[0],cas[-1])
+           )) # 101 :-
+        and(
+            equal(flex[-1],{prep}),
+            equal(flex[0],{ppron3}),
+            not(
+                inter(flex[1],{adj,ger,ign,num,numcol,pact,ppas,subst,xxs,xxx}),
+                and(
+                    inter(flex[1],{adv,qub}),
+                    inter(flex[2],{none,adj,ger,ign,num,numcol,pact,ppas,subst,xxs,xxx})
+                )
+            )
+        )
+
+//zapis słowny roku
+//ospr!
+delete(not(
+           equal(cas[0],{none}),
+	   equal(cas[0],{nom})
+	   )) # 103 :-
+            and(
+	        equal(orth[-1],{"w"}),
+	        equal(orth[0],{"tysiąc"}),
+		equal(flex[1],{num})
+	    )
+
+
+//przypadek po prep
+//ospr!
+delete(not(
+           equal(cas[0],{gen}),
+           in(cas[0],cas[-1])
+          )) # 105 :-
+   and(
+       equal(flex[0],{subst}),
+       not(
+           equal(orth[0],{"tysiąc"}),
+           and(
+             equal(flex[-1],{prep}),
+             isbig(orth[0]),
+             not(
+                 isbig(orth[-1])
+             )
+           )
+       ),
+       llook(-1,begin,$Prep,equal(flex[$Prep],{prep})),
+       not( 
+           inter(base[$Prep],{"niby"})
+       ),
+       only($+1Prep,-1,$A,and(
+                              equal(flex[$A],{adj}),
+                              not(
+                                  inter(base[$A],{"który","jakiś","jaki"})
+                              ) 
+                          ))
+   )
+
+
+//liczba po liczebniku
+//ospr!
+delete(equal(nmb[0],{sg})) # 130 :-
+    and(
+        and(
+            equal(flex[-1],{num}),
+            not(
+               inter(base[-1],{"oba","półtora","wiele"})
+            )
+        ),
+        and(
+            in(flex[0],{subst}),
+            not(
+             inter(base[0],{"jeden","procent","deka","gram","kilo","para","wolta"})
+              ),
+            agrpp(0,-1,{nmb,gnd,cas},3)
+         )
+    )
+    //adj "jeden", "trzydziesty" --- porządkowe
+
+
+//dwa finy
+//ospr!
+delete(equal(flex[0],{fin})) # 140 :-
+   and(
+       inter(flex[0],{fin}),
+       equal(flex[-1],{fin}),
+       not(
+           and(
+               in(orth[-1],{"jest","znaczy"}),
+               equal(orth[-2],{"to"})
+           ),
+           and(
+             equal(orth[-1],{"wydaje"}),
+             equal(orth[0],{"może"})
+           )
+       )
+   )
+
+//ospr!
+delete(equal(flex[0],{fin})) # 141 :-
+   and(
+       inter(flex[0],{fin}),
+       equal(flex[-1],{qub}),
+       equal(flex[-2],{fin})
+   )
+
+//ospr!
+delete(equal(flex[0],{fin})) # 142 :-
+   and(
+       inter(flex[0],{fin}),
+       equal(flex[-1],{qub}),
+       equal(flex[-2],{qub}),
+       equal(flex[-3],{fin})
+   )
+
+
+//ospr!
+delete(equal(flex[0],{fin})) # 150 :-
+   and(
+       inter(flex[0],{fin}),
+       equal(flex[1],{fin})
+   )
+
+
+//ospr!
+delete(equal(flex[0],{fin})) # 151 :-
+   and(
+       inter(flex[0],{fin}),
+       equal(flex[1],{qub}),
+       equal(flex[2],{fin})
+   )
+
+//ospr!
+delete(equal(flex[0],{fin})) # 152 :-
+   and(
+       inter(flex[0],{fin}),
+       equal(flex[1],{qub}),
+       equal(flex[2],{qub}),
+       equal(flex[3],{fin})
+   )
+
+//reguła od Mojmira --- brak fin,praet po prep
+//wyjątek: na chybił trafił
+//spr!
+delete(in(flex[0],{fin,praet})) # 160 :-
+   and(
+       equal(flex[-1],{prep}),
+       not(
+        in(orth[-1],{"Niby","niby"})
+       ),
+       inter(flex[0],{fin,praet})
+   )
+
+
+
+//dopasowanie adj po prep
+//ospr!
+delete(not(
+            agrpp(0,1,{nmb,gnd,cas},3)
+	    )) # 170 :-
+        and(
+	    equal(flex[-1],{prep}),
+	    equal(flex[0],{adj}),
+	    not(
+	        inter(base[0],{"który"}),
+		and(
+                  equal(orth[-1],{"po"}),
+		  in(orth[0],{"pierwsze","drugie","trzecie","czwarte","piąte"})
+		),
+		and(
+		 inter(base[0],{"niektóry","inny"}),
+		 inter(nmb[0],{pl})
+		)
+	    ),
+	    or(
+               equal(flex[1],{adj}),
+               and(
+                 equal(flex[1],{subst}),
+                 in(cas[1],{nom,acc,dat,loc,inst,voc}),
+                 not(
+                  in(base[1],{"tysiąc","milion","miliard"})
+                 )
+               )
+              ),
+           agrpp(0,1,{nmb,gnd,cas},3)
+	)
+       //może nie działać dla Adj jako elipsy NP np. dla obecnych
+
+//wyrażenie
+//ospr!
+delete(
+	not(
+		and(
+			equal(flex[0],{adj}),
+			equal(nmb[0],{sg}),
+			equal(cas[0],{acc}),
+			equal(gnd[0],{n})
+		)
+	)) # 175 :-
+	and(
+		equal(orth[-1],{"po"}),
+		in(orth[0],{"pierwsze","drugie","trzecie","czwarte","piąte"})
+	)
+
+//wyrażenie
+//po polsku
+//ospr!
+delete(not(
+           equal(cas[0],{loc})
+       )) # 180 :-
+       and(
+         equal(orth[0],{"po"}),
+         equal(flex[1],{adjp})
+       )
+
+// prawie -- jako kublik
+delete(not(
+		equal(flex[0],{qub})
+	)) # 181 :-
+	and(
+		in(orth[0],{"prawie","Prawie","PRAWIE"}),
+		not(
+			and(
+				in({prep},flex[-1]),
+				inter(cas[-1],cas[0])
+			)
+		)
+	)
+
+
+//przypadek przyimka
+//spr!
+delete(not(
+           in(cas[0],cas[1])
+      )) # 190 :-
+       and(
+          equal(flex[0],{prep}),
+          in(flex[1],{adj,ppas,pact,subst,depr,ger,num,ppron12,ppron3,numcol}),
+          not(
+            and(
+                inter(cas[1],{gen}),
+                not(
+                   equal(cas[2],{none})
+                )
+            ),
+            and(
+               in(orth[0],{"Po","po"}),
+               equal(cas[1],{dat})
+            ),
+            and(
+              in(orth[-1],{"Z","z"}),
+              equal(orth[0],{"nad"})  //gen
+            ),
+            and(
+              in(orth[-1],{"Od","od"}),
+              equal(orth[0],{"przed"})  //gen
+            ),
+            and(
+               in(orth[0],{"Ze","ze","Pomiędzy","pomiędzy"}),
+               inter(flex[1],{num})
+            ),
+            and(
+              in(base[1],{"tysiąc","milion","miliard"}),
+              inter(cas[1],{nom})
+            ),
+            and(
+               not(
+                   isbig(orth[0])
+               ),
+               isbig(orth[1])
+            )
+          )
+       )
+
+//cas po jako
+//ospr!
+delete(not(
+           in(cas[0],{gen,acc,nom}),
+           equal(cas[0],{none})
+      )) # 200 :-
+       and(
+          inter(cas[0],{acc}),
+          not(
+             inter(flex[0],{prep})
+          ),
+          equal(orth[-1],{"jako"})
+       )
+
+//nmb,gnd dla które --- dopasowanie wstecz
+//ospr!
+delete(not(
+           agrpp(-2,0,{nmb,gnd},2)
+      )) # 210 :-
+       and(
+          inter(base[0],{"który"}),
+          equal(orth[-1],{","}),
+          not(
+              equal(cas[-2],{none}),
+              inter(cas[-2],{gen})
+          ),
+          agrpp(-2,0,{nmb,gnd},2)
+       )
+
+       //źle rozpoznaje NP PP, który --- gdzie który odnosi się do NP
+
+//nmb,gnd - przed który
+//ospr!
+delete(not(
+           agrpp(2,0,{nmb,gnd},2)
+      )) # 250 :-
+       and(
+          inter(base[2],{"który"}),
+          equal(orth[1],{","}),
+          not(
+              equal(cas[0],{none}),
+              inter(cas[0],{gen}),
+              and(
+                  not(
+                       agrpp(2,0,{nmb,gnd},2)
+                  ),
+                  inter( gnd[0],gnd[1])
+              )
+          ),
+          agrpp(2,0,{nmb,gnd},2)
+       )
+
+       //nie działa, gdy przed "," jest PP
+       //należałoby dodać not(agrpp(2,3,{nmb,gnd,cas},3)
+
+
+//nmb,gnd,cas --- dla adj pomiędzy subst a który
+//ospr!
+delete(not(
+           agrpp(-1,0,{nmb,gnd,cas},3)
+      )) # 270 :-
+       and(
+          in(flex[-1],{subst,ger}),
+          in(flex[0],{adj,pact,ppas}),
+          equal(orth[1],{","}),
+          inter(base[2],{"który"}),
+           not(
+               inter(base[0],{"ten"})
+           ),
+          agrpp(-1,0,{nmb,gnd,cas},3)
+        )
+  
+//dopasowanie gnd dla adj na początku zdania
+//spr!
+delete(not(
+           in(gnd[0],gnd[1])
+       )) # 280 :-
+   and(
+       equal(flex[-1],{none}),
+       equal(flex[0],{adj}),
+       in(flex[1],{subst,ger}),
+       agrpp(0,1,{nmb,gnd,cas},3)
+   )
+   
+
+
+//brak m1.nom po num.rec
+//spr!
+delete(and(
+         equal(gnd[0],{m1}),
+         equal(cas[0],{nom})
+       )) # 300 :-
+     and(
+         inter(acm[-1],{rec}),
+         inter(gnd[0],{m1}),
+         not(
+            inter(flex[0],{num}),
+            in(orth[0],{"jeden"})
+         )
+      )
+
+//eliminacja obok:prep
+//Adam P.
+//spr!
+delete(equal(flex[0],{prep})) # 320 :-
+	and(
+		equal(orth[0],{"obok"}),
+		equal(flex[1],{interp}),
+		in(orth[1],{",","."})
+	)
+
+
+//eliminacja prep prep
+//ospr!
+delete(equal(flex[0],{prep})) # 330 :-
+   and(
+       equal(flex[-1],{prep}),
+       not(
+         equal(flex[0],{prep})
+       ),
+       inter(flex[0],{prep}),
+       not(
+         in(orth[-1],{"Niby","niby"}),
+         and(
+           in(orth[-1],{"Na","na"}),
+           equal(orth[1],{"dzień"})
+         ),
+         and(
+           equal(orth[0],{"ponad"}),
+           in(orth[-1],{"O","o","Przez","przez","Na","na"})
+         ),
+         and(
+           in(orth[0],{"z"}),
+           in(orth[-1],{"Przed","przed"})
+         ),
+         and(
+           in(orth[0],{"przed"}),
+           in(orth[-1],{"Od","od"})
+         )
+       )
+   )
+
+//nmb,gnd,cas --- adj przed subst
+//ospr!
+delete(not(
+           agrpp(0,1,{nmb,gnd,cas},3)
+       )) # 340 :-
+   and(
+       equal(flex[0],{adj}),
+       in(flex[1],{subst,ger}),
+       agrpp(0,1,{nmb,gnd,cas},3),
+       not(
+         //in(orth[0],{"to","To"}),
+         in(base[0],{"jeden","czyj","nasz","swój","twój","mój","godny","niegodny"}),
+         and(
+             inter(base[0],{"który","jaki"}),
+             or(
+                equal(flex[-1],{interp}),
+                equal(flex[-2],{interp})
+             )
+         ),
+         inter(flex[-1],{prep,ign}),
+         and(
+             equal(orth[-1],{"-"}),
+             inter(flex[-2],{adja})
+         ),
+         agrpp(-1,0,{nmb,gnd,cas},3)
+       )
+   )
+
+// szukamy dłuższego uzgodnienia, lecz unikamy dopełniacza rodzaju męskiego, bo to wysoce niejednoznaczne
+// delete(not(
+// 		agrpp(0,1,{nmb,gnd,cas},3)
+// 	)) # 341 :-
+// 	and(
+// 		equal(flex[0],{adj}),
+// 		or(
+// 			in(gnd[1],{n,f}),
+// 			not(in({gen},cas[1]))
+// 		),
+// 		or(
+// 			in(gnd[0],{n,f}),
+// 			not(in({gen},cas[0]))
+// 		),
+// 		rlook(1,5,$Subst,in(flex[$Subst],{ger,subst})),
+// 		only(0,$-1Subst,$A,not(inter(flex[$A],{praet,subst}))),
+// 		agr(0,$Subst,{nmb,gnd,cas},3),
+// 		not(
+// 			in(base[0],{"który","jeden","czyj","nasz","swój","twój","mój"}),
+// 			inter(flex[-1],{prep,ign}),
+// 			inter(flex[-2],{adja})
+// 		)
+// 	)
+
+

@@ -1,0 +1,94 @@
+TaKIPI --- tager dla języka polskiego, wersja linuksowa 1.8
+Autorzy: Maciej Piasecki, Grzegorz Godlewski, Adam Radziszewski, Bartosz Broda i Adam Wardyński
+Paczkę i instrukcję przygotował Adam Radziszewski, adam.radziszewski@pwr.wroc.pl
+
+Do przetworzenia tekstu niepoddanego analizie morfologicznej konieczna jest instalacja analizatora morfologicznego zgodnego ze standardem Morfeusza.
+Morfeusz jest analizatorem morfologicznym autorstwa Marcina Wolińskiego, NIE JEST wolnym oprogramowaniem!
+http://nlp.ipipan.waw.pl/~wolinski/morfeusz/morfeusz.html
+
+Pod 32-bitowym Debianem (i Ubuntu) paczkę debianową z Morfeuszem można zainstalować w poniższy sposób:
+wget http://nlp.ipipan.waw.pl/~wolinski/morfeusz/morfeusz_20080205_i386.deb
+sudo dpkg -i morfeusz_20080205_i386.deb
+
+
+Do kompilacji wymagany jest pakiet CMake w wersji 2.6 (pakiet debianowy cmake, jeśli na repozytrium jest dostępna tylko wersja 2.4, należy ściągnąć źródła z cmake.org i zainstalować z nich).
+Oprócz tego wymagane są następujące biblioteki:
+Boost (smart pointers, regex) -- pakiety debianowe libboost-dev i libboost-regex-dev
+ANTLR wraz z nagłówkami (testowane na wersji 2.7; w wersji 3 ponoć zmieniło się wiele) -- pakiet debianowy libantlr-dev
+iconv (prawdopodobnie jest zainstalowany na większości linuksów)
+ICU (w wersji 34.1 lub późniejszej, prawdopodobnie zainstalowane) -- pakiet libicu-dev
+
+Program może zawierać wiele błędów oraz niedociągnięć. Prosimy o ich zgłaszanie (oraz wszelkich innych uwag).
+
+
+I	Instalacja
+
+Począwszy od wersji 1.6 kompilacja projektu jest zarządzana przez CMake.
+
+1. Wymienione biblioteki muszą być zainstalowane i dostępne wraz z nagłówkami.
+2. Wejdź do katalogu Linux/bin w rozpakowanej paczce.
+3. wykonaj polecenie:
+cmake -i ..
+
+Na pytanie czy chcesz zobaczyć zaawansowane opcje odpowiedz No (wystarczy potwierdzić enterem podpowiedź).
+Na pytanie o BUILD_TYPE wpisz Release.
+
+Następnie CMake spyta o INSTALL_PREFIX. Jeśli nie jesteś pewien, czy Twoja dystrybucja Linuksa domyślnie szuka bibliotek w /usr/local/lib, to wprowadź prefiks /usr. Jeśli jesteś pewien, pozostaw /usr/local (w przypadku Debiana i Ubuntu należy wpisać /usr).
+
+Jeśli pojawią się jakieś błędy, prawdopodobnie wiążą się one z brakiem którejś z wymaganych bibliotek. Jeśli wszystko pójdzie prawidłowo, można przejść do kompilacji. Wykonaj polecenie:
+
+make
+
+Gdy wszystko się skompiluje, upewnij się że masz prawa administratora i wykonaj polecenie:
+
+make install
+
+Tager zostanie zainstalowany w katalogu $PREFIX/bin (/usr/bin) -- plik uruchamialny o nazwie takipi.
+
+Jeśli pojawiły się problemy podczas uruchamiania cmake, może pomóc usunięcie CACHE (plik CMakeCache.txt) przed kolejną próbą -- są tam zapamiętywane ustawienia podane przez użytkownika (prefiks, BUILD_TYPE itp.). Np. jeśli CMake zapamięta, że dostępna jest tylko jego starsza wersja (2.4), pozostaje w trybie zgodności -- po zainstalowaniu nowszego (2.6) bez usunięcia CACHE dalej pozostanie w trybie zgodności, przez co instalacja się nie powiedzie.
+
+II	Korzystanie z tagera
+
+Najprostszy sposób użycia tagera:
+takipi -it TXT -i in.txt -o out.xml
+
+Powoduje przetagowanie tekstowego pliku in.txt i wyplucie wyjścia jako out.xml.
+Standardowo pliki wejściowe traktowane są jako zakodowane w UTF8. Tager może też obsłużyć kodowanie CP-1250 (Windows-1250) oraz ISO-8859-2 (Latin-2); w tym celu należy użyć przełącznika -CP1250 lub -ISO8859_2.
+Uwaga: wyjściowy plik XML zawsze jest kodowany w UTF8
+
+W razie tagowania większej liczby plików warto przygotować plik zawierający po kolei ścieżki do tagowanych plików (każda ścieżka w nowej linii) i uruchomić tager z listą korzystając z przełącznika -is. Skróci to istotnie czas działania, ponieważ dane tagera zostaną załadowane raz przed przetworzeniem wszystkich plików i dopiero po wszystkim zwolnione.
+
+Np.
+
+./takipi -it TXT -is filelist.txt -ISO8859_2
+
+Dla każdego pliku PLIK z listy tager wygeneruje pliki PLIK.tag będące w rzeczywistości plikami XML.
+
+Przełącznik -it określa typ wejściowego pliku. Dostępne opcje:
+	TXT -- czysty tekst,
+	XML (domyślne) -- pliki typu pre_morph.xml lub inny XML, tager przetworzy tekst między tagami XML-owymi (PCDATA) pozostawiając tagi niezmienone na wyjściu,
+	CORPUS -- plik XML w standardzie XCES, zawierający tekst poddany analizie morfologicznej; w tym wypadku tager dodaje znaczniki ujednoznaczniające (disamb="1").
+
+Więcej szczegółów po uruchomieniu tagera bez przełączników (choć większość pozostałych przełączników dotyczy uczenia bądź testowania tagera i nie ma znaczenia w przypadku normalnego użytkowania).
+
+Uwaga: standardowo tager generuje również nowe znaczniki: tnum (literał liczbowy), tdate (data), ttime (godzina) turi (adres URL) i tsym (niezidentyfikowany ciąg liter, liczb, symboli). W celu osiągnięcia zgodności ze standardem KIPI można uruchomić tager z przełącznikiem -old. Spowoduje to wyłączenie nowych klas fleksyjnych (np. literały liczbowe będą oznaczone jako ign -- zgodnie z Morfeuszem).
+
+Rozwiązywanie problemów. Jeśli tager wypluwa wszystkie słowa oznaczone jako twf, oznacza to, że nie udało się zlokalizować katalogu z danymi. Można wtedy uruchomić:
+takipi -datainfo
+Spowoduje to wyświetlenie informacji o tym, gdzie tager szuka swoich danych. W katalogu wyświetlonym jako "dane tagera" powinien być m.in. plik general.rul, natomiast w katalogu "dane projektu Corpus" powinien być m.in. plik ETS.bin.
+
+2. Użycie API tagera. Wciąż brakuje rzetelnej dokumentacji. Głównym elementem API jest plik TaKIPI/TaKIPI/TaKIPI/takipi_dll_api.h (ta przerażająca struktura katalogów wynika po części ze zwyczajów VisualStudio). Istotne parametry można ustawić z poziomu kodu przez:
+
++ API:
+	SetInputEncoding -- ustawia wartość Corpus::CConfig::inputEncoding tj. kodowania plików wejściowych (standardowo UTF8)
+	SetDataDir -- katalog z danymi tagera (choć po prawidłowej instalacji raczej nie ma potrzeby tego zmieniać)
+
++ Corpus::CConfig (domyślne wartości w Corpus/Corpus/Config.cpp)
+	np. Corpus::CConfig::inputEncoding -- domyślne kodowanie tekstu wejściowego, można też zmienić z API tagera
+	np. Corpus::CConfig::guesserUsage -- guessAll (standardowo -- odgaduje wszystko, czego nie rozpozna Morfeusz) lub guessNone
+
++ oraz ewentualnie TaKIPI::CConfig (domyślne wartości w TaKIPI/TaKIPI/TaKIPI/Config.cpp)
+
+Należy wywołać TaggerStart, potem korzystać z Tag, otrzymaną pamięć (char *) zwalniać przez FreeTaggerMemory, a na końcu wywołać TaggerEnd.
+
+W kodach źródłowych panuje wciąż pewne zamieszanie z kodowaniem znaków: część plików kodowana jest w CP1250, reszta w UTF8. Nowe moduły (Tokenisation, ExtSentencer) pisane są z komentarzami po angielsku, by uniknąć tego problemu (niektórzy preferują język polski bez znaków diakrytycznych, my staramy się uniknąć takiego okaleczenia).

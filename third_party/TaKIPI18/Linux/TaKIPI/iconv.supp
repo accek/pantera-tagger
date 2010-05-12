@@ -1,0 +1,17 @@
+{
+   iconv open 1
+   Memcheck:Addr4
+   obj:/lib/ld-2.7.so
+   obj:/lib/ld-2.7.so
+   obj:/lib/ld-2.7.so
+   obj:/lib/tls/i686/cmov/libc-2.7.so
+   obj:/lib/ld-2.7.so
+   fun:__libc_dlopen_mode
+   obj:/lib/tls/i686/cmov/libc-2.7.so
+   obj:/lib/tls/i686/cmov/libc-2.7.so
+   obj:/lib/tls/i686/cmov/libc-2.7.so
+   obj:/lib/tls/i686/cmov/libc-2.7.so
+   obj:/lib/tls/i686/cmov/libc-2.7.so
+   fun:iconv_open
+}
+

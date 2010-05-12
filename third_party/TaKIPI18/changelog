@@ -1,0 +1,22 @@
+Istotniejsze zmiany wprowadzone w kolejnych wersjach tagera.
+
+@ 1.8
+Naprawienie błędu związanego z XML entity references. Odgadywaczowi zdarzało się psuć takowe ciągi (np.&apos;), przez co generowany był nieprawidłowy XML.
+Dodanie przełącznika -force one, powodującego wymuszenie maks. jednego tagu na słowo (jeśli nie można podjąć sensownej decyzji, tag jest losowany).
+
+@ 1.7
+Załatanie błędu związanego z niejednoznacznościami segmentacji. Teraz na wyjście trafia tylko jeden wariant segmentacji (dotyczy np. słów: winnym, miałem, gdzieś, piekłem).
+Rozbudowa JOSKIPI o nowe operatory: słabe uzgodnienie (wagr) i filtr uzgodnienia (agrflt).
+Krótki opis języka JOSKIPI (jest w JOSKIPI/doc).
+Rozszerzenie wzorców tagera.
+Przeuczenie, nowe dane (uwzględniające poprawki w oznakowaniu korpusu wzorcowego).
+
+@ 1.6
+Przejście na system kompilacji CMake.
+Nowy parser do wyrażeń języka JOSKIPI (oparty o ANTLR) -- efektywniejszy i mniej zawodny.
+Poprawki w odgadywaczu: poprzednia wersja w rzadkich przypadkach wycinała lemat do zera.
+
+@ 1.5
+Zmiany w odgadywaczu: uogólnienie mechanizmu prefiksów nacechowanych morfologicznie (dotychczas był tylko "nie-"); obsługa prefiksu "naj-".
+Poprawka w tokenizatorze: nietypowe puste znaki unikodowe powodowały przerwanie działania.
+Poprawka w słowniku unigramowym: heurystyka znajduje wpis o najbliższej liczbie leksemów (Morfeusz działa po części kontekstowo i niektóre tokeny dostają mniejszą liczbę analiz w pewnych kontekstach; warto wykorzystać tę informację przy ustalaniu prawdopodobnieństw).

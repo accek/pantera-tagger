@@ -1,0 +1,12 @@
+#!/bin/bash
+treedir=$1/Trees
+
+echo "Running C4.5 (with default pruning confidence level)"
+
+for file in $treedir/*.names
+do
+	pref=${file%\.names}
+	./c4.5 -f $pref > $pref.txt
+done
+
+echo Done

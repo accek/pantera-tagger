@@ -1,0 +1,9 @@
+Tokenizator -- warstwy
+
+InputLayer: dzieli na podstawie znaków pustych uniw. i znaków pustych CP
+PreSplitLayer: dzieli na podstawie ALW-SEP
+SplitLayer: dzieli na podstawie BEG-SEP i END-SEP
+ClassifyLayer*: klasyfikacja + wyr.reg.
+CombineLayer: Scalamy skróty wieloczłonowe w całość (np. skrót "m.in." musi być złączony w jeden token)
+
+* -- nie występuje w trybie zgodności (tj. gdy parametr noNewTags ustawiony na true w konstruktorze)
