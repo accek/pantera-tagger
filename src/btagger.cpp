@@ -27,6 +27,8 @@
 #include <nlpcommon/ipipanlexer.h>
 #include <nlpcommon/cascorer.h>
 #include <nlpcommon/finderrors.h>
+#include <nlpcommon/lexemesfilter.h>
+#include <nlpcommon/ipipanwriter.h>
 
 #include "rules/impl.h"
 #include "brilllexeme.h"
@@ -39,12 +41,12 @@ namespace mpi = boost::mpi;
 
 typedef BTagger::BrillLexeme<Tag> MyLexeme;
 
-class MySingleScorer : public CAScorer<MyLexeme::tag_type>{
+class MySingleScorer : public CAScorer<false, MyLexeme::tag_type>{
     private:
         vector<const Category*> important_cats;
     public:
         MySingleScorer(const Tagset* tagset) :
-                CAScorer<MyLexeme::tag_type>(tagset) {
+                CAScorer<false, MyLexeme::tag_type>(tagset) {
             important_cats.push_back(tagset->getCategory("case", false));
             important_cats.push_back(tagset->getCategory("gender", false));
         }
@@ -120,25 +122,18 @@ template<class Lexeme>
 void analyzeErrors(wostream& stream, const Tagset* tagset,
         const vector<Lexeme>& text) {
     wcerr << endl << "Analyzing errors ..." << endl;
-    TaggingErrorsCollector<MyLexeme> errors_collector(tagset);
+    TaggingErrorsCollector<Lexeme> errors_collector(tagset);
     errors_collector.addTaggingErrors(text);
 
-    const vector<TaggingErrorsCollector<MyLexeme>::error_type>& errors =
+    const vector<typename TaggingErrorsCollector<Lexeme>::error_type>& errors =
         errors_collector.getErrors();
     wcerr << "found " << errors.size() << " errors." << endl;
 
-    const vector<TaggingErrorsCollector<MyLexeme>::group_type>& groups =
+    const vector<typename TaggingErrorsCollector<Lexeme>::group_type>& groups =
         errors_collector.getGroups();
     wcerr << "found " << groups.size() << " groups." << endl;
 
-    for (int i = 0; i < groups.size(); i++) {
-        stream << "=== ERROR GROUP " << i << " ===" << endl;
-        stream << "  " << groups[i].second.size() << ' ' << groups[i].first
-            << endl;
-        for (int j = 0; j < groups[i].second.size(); j++)
-            stream << groups[i].second[j] << endl;
-        stream << endl;
-    }
+    errors_collector.printErrors(stream);
 }
 
 bool ends_with(const string& fullString, const string& ending)
@@ -183,6 +178,8 @@ int real_main(mpi::communicator& world, int argc, char** argv) {
     engine.addPhase(tagset3, g2->getTStore());
     engine.addPhase(tagset, g3->getTStore());
 
+    LexemesFilter<MyLexeme> segments_filter(MyLexeme::SEGMENT);
+
     string input_filename(argv[1]);
     bool loaded_engine = false;
     if (world.rank() == 0) {
@@ -198,6 +195,7 @@ int real_main(mpi::communicator& world, int argc, char** argv) {
             lexer.setProgressHandler(lexing_progress, 1000);
             lexer.parseStreamToVector(text, &tagset);
             wcerr << "\rLexing ...  done.       " << endl;
+            text = segments_filter.filterText(text);
 
             for (int i=0; i < std::min<int>(text.size(), 20); i++) {
                 MyLexeme& lex = text[i];
@@ -260,6 +258,8 @@ int real_main(mpi::communicator& world, int argc, char** argv) {
             lexer.setProgressHandler(lexing_progress, 1000);
             lexer.parseStreamToVector(text, &tagset);
             wcerr << "\rLexing ...  done.       " << endl;
+
+            text = segments_filter.filterText(text);
             engine.tagText(text);
 
             rewrite_filename = argv[2];
@@ -279,41 +279,40 @@ int real_main(mpi::communicator& world, int argc, char** argv) {
         errors_report.close();
 
         wcerr << endl << "Rewriting ...";
-        ifstream rewrite_in(rewrite_filename.c_str());
+        text = segments_filter.unfilterText(text);
         ofstream rewrite_out((rewrite_filename + ".disamb").c_str());
-        BTagger::IpiPanRewriter<MyLexeme> rewriter;
-        rewriter.setProgressHandler(rewriting_progress, 1000);
-        rewriter.rewriteStream(engine.numPhases() - 1, tagset, text,
-                rewrite_in, rewrite_out);
+        IpiPanWriter<MyLexeme> writer(rewrite_out);
+        writer.setProgressHandler(rewriting_progress, 1000);
+        writer.writeVectorToStream(tagset, text);
         wcerr << "\rRewriting ...  done.       " << endl;
     }
 }
 
 int main(int argc, char** argv) {
-	// This is needed for correct wcin/wcout behaviour.
-	setlocale(LC_CTYPE, "");
+    // This is needed for correct wcin/wcout behaviour.
+    setlocale(LC_CTYPE, "");
 
-	mpi::environment env(argc, argv);
-	mpi::communicator world;
+    mpi::environment env(argc, argv);
+    mpi::communicator world;
 
 #if HAVE_OPENMP
-	wcerr << "OpenMP parallelism enabled (processors: " <<
-		omp_get_num_procs() << ", dynamic thread allocation: "
-		<< omp_get_dynamic() << ")" << endl;
+    wcerr << "OpenMP parallelism enabled (processors: " <<
+        omp_get_num_procs() << ", dynamic thread allocation: "
+        << omp_get_dynamic() << ")" << endl;
 
-	if (!omp_get_dynamic() && getenv("OMP_NUM_THREADS") == NULL) {
-		omp_set_num_threads(min(omp_get_num_procs(), 8));
-	}
+    if (!omp_get_dynamic() && getenv("OMP_NUM_THREADS") == NULL) {
+        omp_set_num_threads(min(omp_get_num_procs(), 8));
+    }
 #endif
 
-	try {
-		return real_main(world, argc, argv);
-	} catch (std::exception const& e) {
+    try {
+        return real_main(world, argc, argv);
+    } catch (std::exception const& e) {
         wcerr << "***FATAL***: Caught " << typeid(e).name() << " with message:" << endl;
         wcerr << e.what() << endl;
-		throw;
-	} catch (...) {
+        throw;
+    } catch (...) {
         wcerr << "***FATAL***: Caught unknown exception." << endl;
-		throw;
-	}
+        throw;
+    }
 }

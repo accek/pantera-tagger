@@ -172,7 +172,7 @@ private:
 
 public:
     Action() :
-        tpl_id(NULL) {
+        tpl_id(-1) {
         std::memset(&params, 0xff, sizeof(params));
     }
 

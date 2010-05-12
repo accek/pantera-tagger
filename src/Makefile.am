@@ -11,17 +11,47 @@ SUFFIXES = .m4 .m4h
 .m4.m4h:
 	m4 -I rules/m4 -P $< > $@
 
+Boost_LIBRARY_DIRS = $(abspath $(patsubst -L%,%,$(filter -L%,@BOOST_LDFLAGS@)))
+Icu_LIBRARY_DIRS = $(abspath $(patsubst -L%,%,$(filter -L%,@ICU_LIBS@)))
+Icu_INCLUDE_DIRS = $(abspath $(patsubst -I%,%,$(filter -I%,@ICU_CFLAGS@)))
+Morfeusz_LIBRARY_DIRS = $(abspath $(patsubst -L%,%,$(filter -L%,@MORFEUSZ_LIBS@)))
+
+../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so:
+	( cd ../third_party/TaKIPI18/Linux/bin && \
+	cmake \
+		-DCMAKE_BUILD_TYPE=None \
+		-DBOOST_LIBRARYDIR="$(Boost_LIBRARY_DIRS)" \
+		-DMORFEUSZ_LIBRARY="$(Morfeusz_LIBRARY_DIRS)" \
+		-DICU_LIBRARY="$(Icu_LIBRARY_DIRS)/libicuuc.so" \
+		-DICU_I18N_LIBRARY="$(Icu_LIBRARY_DIRS)/libicui18n.so" \
+		-DICU_INCLUDE_DIR="$(Icu_INCLUDE_DIRS)" \
+		-DCMAKE_CXX_FLAGS="$(CXXFLAGS)" \
+		-DCMAKE_C_FLAGS="$(CFLAGS)" \
+		-DCMAKE_SHARED_LINKER_FLAGS="$(LDFLAGS)" \
+		.. )
+	+make -C ../third_party/TaKIPI18/Linux/bin corpus
+
+#clean-local:
+#	+make -C ../third_party/TaKIPI18/Linux/bin clean
+
 BUILT_SOURCES = rules/c1.m4h
 
-bin_PROGRAMS = btagger xces2dat dat2dat
+bin_PROGRAMS = btagger xces2dat dat2dat eval
 
 btagger_SOURCES = btagger.cpp \
 	rules/a.h rules/c1.m4h rules/p1.h rules/p2.h \
 	rules/impl.h rules/make.h brillengine.h \
 	brillexeme.h unigram.h rules.h
 btagger_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_REGEX_LIB@ \
-				  @BOOST_PROGRAM_OPTIONS_LIB@ @BOOST_MPI_LIB@
-btagger_LDADD = nlpcommon/libnlpcommon.la
+				  @BOOST_PROGRAM_OPTIONS_LIB@ @BOOST_MPI_LIB@ \
+				  @ICU_LIBS@ -liconv
+btagger_LDADD = nlpcommon/libnlpcommon.la \
+				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
+
+eval_SOURCES = eval.cpp
+eval_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_REGEX_LIB@ \
+			   @BOOST_PROGRAM_OPTIONS_LIB@
+eval_LDADD = nlpcommon/libnlpcommon.la
 
 xces2dat_SOURCES = xces2dat.cpp
 xces2dat_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@
