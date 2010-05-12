@@ -8,14 +8,14 @@
 #ifndef IPIPANLEXER_H_
 #define IPIPANLEXER_H_
 
-#include <boost/program_options/detail/convert.hpp>
-#include <boost/program_options/detail/utf8_codecvt_facet.hpp>
 #include <boost/regex.hpp>
-#include <boost/format.hpp>
 #include <string>
 #include <iostream>
 #include <locale>
+#include <stack>
+
 #include <nlpcommon/lexer.h>
+#include <nlpcommon/util.h>
 
 namespace NLPCommon {
 
@@ -27,29 +27,46 @@ class IpiPanLexer : public Lexer<Lexeme>
 private:
     LexerCollector<Lexeme>* collector;
     Lexeme current_lex;
-    boost::program_options::detail::utf8_codecvt_facet utf8_facet;
+	bool consider_disamb_sh;
+	std::stack<string> chunks_to_close;
 
     inline void newLexeme(typename Lexeme::Type lexeme_type) {
         current_lex = Lexeme(lexeme_type);
     }
 
     void handleChunkStart(const string& type) {
+		Lexeme lex(Lexeme::START_OF_CHUNK);
+		lex.setOrth(ascii_to_wstring(type));
+        collector->collectLexeme(lex);
+		chunks_to_close.push(type);
     }
 
+	void handleChunkEnd() {
+		Lexeme lex(Lexeme::END_OF_CHUNK);
+		lex.setOrth(ascii_to_wstring(chunks_to_close.top()));
+        collector->collectLexeme(lex);
+		chunks_to_close.pop();
+	}
+
     void handleNoSpace() {
+		collector->collectLexeme(Lexeme(Lexeme::NO_SPACE));
     }
 
     void handleOrth(const string& orth) {
         newLexeme(Lexeme::SEGMENT);
-        current_lex.setOrth(boost::from_8_bit(orth, utf8_facet));
+        current_lex.setOrth(utf8_to_wstring(orth));
     }
 
-    void handleCtag(const string& ctag, bool disamb) {
+    void handleCtag(const string& base, const string& ctag,
+			bool disamb, bool disamb_sh) {
         typename Lexeme::tag_type tag =
                 Lexeme::tag_type::parseString(collector->getTagset(), ctag);
+		current_lex.addTagBase(tag, utf8_to_wstring(base));
         current_lex.addAllowedTag(tag);
         if (disamb)
             current_lex.addGoldenTag(tag);
+		if (consider_disamb_sh && !disamb_sh)
+			current_lex.addAutoselectedTag(tag);
     }
 
     void handleEndOfTok() {
@@ -58,25 +75,33 @@ private:
     }
 
 public:
-    IpiPanLexer(std::istream& stream)
-            : Lexer<Lexeme>(stream) { }
+    IpiPanLexer(std::istream& stream, bool consider_disamb_sh = false)
+            : Lexer<Lexeme>(stream), consider_disamb_sh(consider_disamb_sh) { }
 
     virtual void parseStream(LexerCollector<Lexeme>& collector)
     {
         this->collector = &collector;
 
         boost::regex parsing_regex = boost::regex(
+				"(<ns\\s*>)|"
+				"(?:<chunk[^>]*\\<type=[\"']?([a-zA-Z]*)[\"']?)|"
+				"(</chunk\\>)|"
                 "(?:<tok>\\s*<orth>\\s*(.*?)\\s*</orth>)|"
-                "(?:<lex\\>([^>]*\\<disamb=[\"']?1[\"']?)?[^>]*>\\s*"
-                "<base>\\s*(?:.*?)\\s*</base>\\s*<ctag>\\s*(.*?)\\s*</ctag>"
+                "(?:<lex\\>([^>]*\\<disamb=[\"']?1[\"']?)?([^>]*\\<disamb_sh=[\"']?0[\"']?)?[^>]*>\\s*"
+                "<base>\\s*(.*?)\\s*</base>\\s*<ctag>\\s*(.*?)\\s*</ctag>"
                 "\\s*</lex>)|"
                 "(</tok>)");
 
         enum {
-            MATCH_ORTH = 1,
-            MATCH_DISAMB = 2,
-            MATCH_CTAG = 3,
-            MATCH_ETOK = 4
+			MATCH_NS = 1,
+			MATCH_CHUNK_START = 2,
+			MATCH_CHUNK_END = 3,
+            MATCH_ORTH = 4,
+            MATCH_DISAMB = 5,
+            MATCH_DISAMB_SH = 6,
+			MATCH_BASE = 7,
+            MATCH_CTAG = 8,
+            MATCH_ETOK = 9
         };
 
         // This code is heavily based on example from Boost.Regex
@@ -106,12 +131,25 @@ public:
                 if ((*i)[MATCH_ORTH].matched) {
                     handleOrth(i->str(MATCH_ORTH));
                 } else if ((*i)[MATCH_CTAG].matched) {
-                    handleCtag(i->str(MATCH_CTAG), (*i)[MATCH_DISAMB].matched);
+					handleCtag(i->str(MATCH_BASE),
+							i->str(MATCH_CTAG),
+							(*i)[MATCH_DISAMB].matched,
+							(*i)[MATCH_DISAMB_SH].matched);
                 } else if ((*i)[MATCH_ETOK].matched) {
                     handleEndOfTok();
-                }
+                } else if ((*i)[MATCH_NS].matched) {
+					handleNoSpace();
+				} else if ((*i)[MATCH_CHUNK_START].matched) {
+					handleChunkStart(i->str(MATCH_CHUNK_START));
+				} else if ((*i)[MATCH_CHUNK_END].matched) {
+					handleChunkEnd();
+				}
             }
         }
+
+		// Finally close all remaining chunks.
+		while (!chunks_to_close.empty())
+			handleChunkEnd();
     }
 };
 

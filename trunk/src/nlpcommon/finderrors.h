@@ -288,6 +288,19 @@ public:
         }
     }
 
+	void printErrors(std::wostream& stream) {
+		const vector<TaggingErrorsCollector<Lexeme>::group_type>& groups =
+			this->getGroups();
+		for (int i = 0; i < groups.size(); i++) {
+			stream << "=== ERROR GROUP " << i << " ===" << std::endl;
+			stream << "  " << groups[i].second.size() << ' ' << groups[i].first
+				<< std::endl;
+			for (int j = 0; j < groups[i].second.size(); j++)
+				stream << groups[i].second[j] << std::endl;
+			stream << std::endl;
+		}
+	}
+
 };
 
 

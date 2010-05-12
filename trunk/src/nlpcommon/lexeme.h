@@ -31,10 +31,8 @@ public:
     enum Type {
         SEGMENT = 0x01,
         NO_SPACE = 0x02,
-        START_OF_SENTENCE = 0x04,
-        END_OF_SENTENCE = 0x08,
-        START_OF_PARAGRAPH = 0x0a,
-        END_OF_PARAGRAPH = 0x10
+        START_OF_CHUNK = 0x04,
+        END_OF_CHUNK = 0x08,
     };
 
 private:
@@ -42,6 +40,7 @@ private:
     vector<Tag> _allowed_tags;
     vector<Tag> _golden_tags;
     vector<Tag> _autoselected_tags;
+	vector<std::pair<Tag, wstring> > _tag_bases;
     Type _type;
 
     friend class boost::serialization::access;
@@ -114,6 +113,10 @@ public:
             _allowed_tags.push_back(tag);
     }
 
+	void setAllowedTags(const vector<Tag>& tags) {
+		_allowed_tags = tags;
+	}
+
     bool isAllowedTag(const Tag& tag) const {
         return std::find(_allowed_tags.begin(), _allowed_tags.end(), tag)
                 != _allowed_tags.end();
@@ -135,6 +138,10 @@ public:
             _golden_tags.push_back(tag);
     }
 
+	void setGoldenTags(const vector<Tag>& tags) {
+		_golden_tags = tags;
+	}
+
     bool isGoldenTag(const Tag& tag) const {
         return std::find(_golden_tags.begin(), _golden_tags.end(), tag)
                 != _golden_tags.end();
@@ -150,6 +157,10 @@ public:
     const vector<Tag>& getGoldenTags() const {
         return _golden_tags;
     }
+
+	void setAutoselectedTags(const vector<Tag>& tags) {
+		_autoselected_tags = tags;
+	}
 
     void addAutoselectedTag(const Tag& tag) {
         if (!isAutoselectedTag(tag))
@@ -176,6 +187,14 @@ public:
         _autoselected_tags.clear();
         _autoselected_tags.push_back(tag);
     }
+
+	const vector<std::pair<Tag, wstring> >& getTagBases() const {
+	   return _tag_bases;
+	}
+
+	void addTagBase(const Tag& tag, const wstring& base) {
+		_tag_bases.push_back(std::make_pair(tag, base));
+	}
 
     void writeToStreamWithTags(std::wostream& stream, const Tagset* tagset) const {
         stream << std::setw(ORTH_DISPLAY_WIDTH) << getOrth();
