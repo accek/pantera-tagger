@@ -1,0 +1,49 @@
+TODO:
+
+- Wprowadzić obsługę unikodu (ICU)
+- Przebudować obsługę encji XML-owych
+  - w Corpus::Morfeusz jest powielany dziwny kod do kodowania encji
+  - encje kodowane są już w obrębie pól ORTH i BASE
+    - powinny być kodowane na poziomie operacji we/wy, w tokenach czysty tekst (przynajmniej moim zdaniem -- A.R.)
+  - w nowym tokenizatorze są dwie drogi: przez morfeusza albo klasyfikacja od razu jako interp lub któraś z nowych klas
+    - łatwo o błąd -- któryś znak może pozostać niezakodowany jako encja
+    - straszny burdel
+  - korzystać z Corpus::Tokenisation::XmlUtils (entities.h) -- tam są funkcje do (de)kodowania encji
+
+
+- W wielu miejscach brakuje komentarzy
+  - A.R.: w nowym kodzie pisałem komentarze po angielsku; nie lubię polskiego bez ogonków, a ogonki powodują zamieszanie przy przenoszeniu (w VS jest domyślne kodowanie cp1250)
+
+
+- CToken const int DisambCount() const -> powinien zwracac none / one / multi -> zwraca jedynie none lub one
+  - po poprawnieniu tego, trzeba tez dodac mozliwosc pobrania n-tego dissamba
+
+- Uzywac stl'a jedynie tworzonego na stercie (C4251)
+  - czy nie ma innego wyjścia? to koszmarnie niewygodne (A.R.)
+
+- Implementacja serializacji CCorpus.
+
+- W parserze zamienic wszystkie odwołania UTF przez znaki do liczb
+  - przejście na ICU rozwiąże ten problem; kiedyś można by wreszcie wyrzucić w diabły ten parser
+
+- Sprawdzic 2 ostrzezenia (narazie wykomentowane):
+	Token.cpp: In member function �const CToken& CToken::operator=(const CToken&)�:
+	Token.cpp:158: warning: statement has no effect
+	Token.cpp: In copy constructor �CToken::CToken(const CToken&)�:
+	Token.cpp:175: warning: statement has no effect
+
+- Sprawdzic specyfikacje rzucanych wyjatkow
+
+- TextDocument: CTransducer* TextDocument::transduktor = CTransducer::ParseFromFile("Grammar.txt");
+
+- STATIC const std::string CTag::GetAttribString(int index): usunac tworzenie obiektow ( i w innych miejsacech w Tag.cpp)
+
+
+
+
+Stare uwagi, które już są raczej nieistotne (dotyczą Corpus::Readers)
+- CReader zawiera publizcne pola
+- Sprawdzic Transducer (zamieniono nodes z mapy na wskaznik na mape)
+- implementacja serializacji transducer'a
+- porawić obsługę znaków w transduktorze (char -> CChar? )
+- if(!transducer->PerformStep(c[0])) // zle

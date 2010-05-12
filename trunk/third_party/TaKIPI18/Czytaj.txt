@@ -1,0 +1,17 @@
+Tager TaKIPI
+Wersja 1.8
+
+(c) Instytut Informatyki Stosowanej Politechniki Wrocławskiej i Instytut Podstaw Informatyki PAN
+Autorzy kodów: Grzegorz Godlewski, Adam Radziszewski, Maciej Piasecki, Bartosz Broda, Adam Wardyński
+
+Kod na licencji GPL.
+
+
+Paczka zawiera wersję linuksową i windowsową, dokładniejszy opis instalacji i użycia znajduje się w plikach README.
+Wersja linuksowa jest polecana -- została dokładniej przetestowana.
+
+Kontakt:
+plwordnet@pwr.wroc.pl
+
+http://plwordnet.pwr.wroc.pl/g419/tagger/
+

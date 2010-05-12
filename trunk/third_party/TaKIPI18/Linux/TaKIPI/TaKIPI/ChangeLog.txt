@@ -1,0 +1,15 @@
+
+
+Przenosznie kodu:
+- w CRTTTagger::Disambiguate dodano NormalizeProbabilities(sentence); przed pierwszym odcieciem
+- w CRTTTagger zamienono kolekcje STL na wskazniki na kolekcje STL
+- w CRTTTagger -> sentenceTrees i sentencePatterns zosta³y wykomentowane (bo nigdzie nie zosta³y uzyte)
+- CNegRuleDecisionTreeNode zamieniono mape na wskaznik
+- CLogisticModel zamieniono mape na wskaznik
+- CLMTreeNode zamieniono mape na wskaznik
+- CRuleClassifier zamieniono wektor na wskaznik
+- CClassifierRule zamieniono wektor na wskaznik... wymagalo to dodania konstruktora kopiujacego i operator= i ciala destruktora
+- CDecisionTreeNode zmieniono mape (edges) na wskaznik, dodano jego usuniecie w destruktorze
+- CBagClassifier zamieniono wektory na wskazniki na wektory, dodano usuwanie wzorocow w destruktorze,
+- CUDictionary::Deserialize -> zamienieniono na sztwno wpisna sciezke (Dictionary.txt) na zmienna w CConfig
+- dodano przestrzenie nazw

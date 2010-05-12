@@ -1,0 +1,11 @@
+Note: those separators use charcodes of cp1250
+
+
+BEGINSEPARATORS
+( [ { < - ' " #91 #93 #82 #84 #ab #8b 
+
+ENDSEPARATORS
+) ] } > - ' " #92 #94 #bb #9b ? ! . , ; :
+
+ALWAYSSEPARATORS
+#96 #97 #85

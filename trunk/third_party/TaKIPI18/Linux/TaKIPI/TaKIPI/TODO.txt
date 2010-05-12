@@ -1,0 +1,9 @@
+- napisać instrukcję czy chociaż README
+- pozostały jeszcze rzeczy, które trzeba wyciągnąć do CConfig (oznaczone TODO)
+-  w  CPermutationGenerator::SetSentence jest jakis wykomentowany kod
+- #ifdef OCR w DecisionTreeNode
+
+- obsługa unikodu, zamienić std::string na UnicodeString (ICU)
+  - to głównie kwestia libcorpus
+
+- CTeacher używa wciąż starego readera i starego sentencera

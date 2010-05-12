@@ -1,0 +1,27 @@
+#!/bin/bash
+trainfile=$1
+testfile=$2
+foldnum=$3
+datadir=/usr/lib/takipi
+
+rm -f $datadir/Trees/*
+takipi -gendict $trainfile
+takipi -L0 -t $trainfile
+
+./runc4.5 $datadir
+
+takipi -koder
+takipi -L0 -ti $testfile -to TEST$foldnum.1.txt 
+takipi -L1 -t $trainfile 
+
+./runc4.5 $datadir
+
+takipi -koder
+takipi -L1 -ti $testfile -to TEST$foldnum.2.txt 
+takipi -L2 -t $trainfile 
+
+./runc4.5 $datadir
+
+takipi -koder
+takipi -L2 -ti $testfile -to TEST$foldnum.3.txt 
+
