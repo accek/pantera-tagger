@@ -33,7 +33,6 @@
 #include "rules/impl.h"
 #include "brilllexeme.h"
 #include "brillengine.h"
-#include "ipipanrewriter.h"
 
 using namespace std;
 using namespace NLPCommon;

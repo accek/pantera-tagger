@@ -1,4 +1,5 @@
-AM_CXXFLAGS = @BOOST_CPPFLAGS@ @OPENMP_CXXFLAGS@
+AM_CXXFLAGS = @BOOST_CPPFLAGS@ @OPENMP_CXXFLAGS@ \
+	-I../third_party/TaKIPI18/Linux/Corpus
 
 if HAVE_PROTOBUF
 AM_CXXFLAGS += @PROTOBUF_CFLAGS@
@@ -36,7 +37,7 @@ Morfeusz_LIBRARY_DIRS = $(abspath $(patsubst -L%,%,$(filter -L%,@MORFEUSZ_LIBS@)
 
 BUILT_SOURCES = rules/c1.m4h
 
-bin_PROGRAMS = btagger xces2dat dat2dat eval
+bin_PROGRAMS = btagger xces2dat xces2txt dat2dat eval txt2xces
 
 btagger_SOURCES = btagger.cpp \
 	rules/a.h rules/c1.m4h rules/p1.h rules/p2.h \
@@ -54,8 +55,21 @@ eval_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_REGEX_LIB@ \
 eval_LDADD = nlpcommon/libnlpcommon.la
 
 xces2dat_SOURCES = xces2dat.cpp
-xces2dat_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@
+xces2dat_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
+				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@
 xces2dat_LDADD = nlpcommon/libnlpcommon.la
+
+xces2txt_SOURCES = xces2txt.cpp
+xces2txt_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
+				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@
+xces2txt_LDADD = nlpcommon/libnlpcommon.la
+
+txt2xces_SOURCES = txt2xces.cpp
+txt2xces_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
+				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ \
+				   @MORFEUSZ_LIBS@ -liconv
+txt2xces_LDADD = nlpcommon/libnlpcommon.la \
+				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
 
 dat2dat_SOURCES = dat2dat.cpp
 dat2dat_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@
