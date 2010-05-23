@@ -83,7 +83,7 @@ public:
         this->collector = &collector;
 
         boost::regex parsing_regex = boost::regex(
-				"(<ns\\s*>)|"
+				"(<ns\\>)|"
 				"(?:<chunk[^>]*\\<type=[\"']?([a-zA-Z]*)[\"']?)|"
 				"(</chunk\\>)|"
                 "(?:<tok>\\s*<orth>\\s*(.*?)\\s*</orth>)|"

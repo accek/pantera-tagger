@@ -1,4 +1,4 @@
-AM_CXXFLAGS = @BOOST_CPPFLAGS@ -I..
+AM_CXXFLAGS = @BOOST_CPPFLAGS@
 
 CLEANFILES = 
 
@@ -15,7 +15,7 @@ libnlpcommoninclude_HEADERS = \
 	exception.h ipipanlexer.h lexer.h progress.h tag.h util.h writer.h \
 	tagset.h category.h pos.h scorer.h cascorer.h finderrors.h \
 	datwriter.h datlexer.h stats.h poliqarp-weights.h category-weights.h \
-	stats.h lexemesfilter.h
+	stats.h lexemesfilter.h plaintextwriter.h plaintextlexer.h morfeusz.h
 
 if HAVE_PROTOBUF
 

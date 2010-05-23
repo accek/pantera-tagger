@@ -57,13 +57,13 @@ public:
 			if (((int)lex.getType() & this->_type_mask) != 0) {
 				const Lexeme& tlex = text[i++];
 				if (lex.getType() != tlex.getType()) {
-					throw new LexemesFilterException(boost::str(
+					throw LexemesFilterException(boost::str(
 								boost::format("Lexeme type mismatch at "
 									"position %1% while unfiltering text.")
 								% i));
 				}
 				if (lex.getOrth() != tlex.getOrth()) {
-					throw new LexemesFilterException(boost::str(
+					throw LexemesFilterException(boost::str(
 								boost::format("Lexeme orth mismatch at "
 									"position %1% while unfiltering text.")
 								% i));

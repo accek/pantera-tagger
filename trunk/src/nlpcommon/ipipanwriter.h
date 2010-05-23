@@ -74,8 +74,10 @@ public:
             "<chunkList>\n";
 
 		const Tagset* tagset = data_source.getTagset();
-        while (!data_source.eof())
+        while (!data_source.eof()) {
             writeLexeme(data_source.nextLexeme(), tagset);
+            this->advanceProgress();
+        }
 
         this->stream <<
             "</chunkList>\n"
