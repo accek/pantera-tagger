@@ -215,6 +215,12 @@ public:
                     string forms = GuessForm(interp.forma);
                     //std::cerr << "Odg:" << forms << std::endl;
                     parseOdgadywaczResponse(forms, current_lex);
+
+                    // Add "ign".
+                    tag_type tag = tag_type::parseString(tagset, string("ign"));
+                    current_lex.addAllowedTag(tag);
+                    current_lex.addTagBase(tag, utf8_to_wstring(interp.forma));
+
                     interps = morfeusz_analyse(
                             const_cast<char*>(lex.getUtf8Orth().c_str()));
                 } else {
