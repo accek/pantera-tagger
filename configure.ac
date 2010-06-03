@@ -44,6 +44,40 @@ if test "x$eclipse" = "xyes"; then
 	esac
 fi
 
+AX_BOOST_BASE([1.40.0])
+AX_BOOST_REGEX
+AX_BOOST_PROGRAM_OPTIONS
+AX_BOOST_SERIALIZATION
+AX_BOOST_MPI
+
+PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 2.0],
+                  [have_protobuf=yes], [have_protobuf=no])
+if test "x$have_protobuf" = "xyes"; then
+    AC_CHECK_PROG(ax_cv_protoc, protoc, yes, no)
+    if test "x$ax_cv_protoc" = "xyes"; then
+        AC_SUBST(PROTOBUF_CFLAGS)
+        AC_SUBST(PROTOBUF_LIBS)
+        AC_DEFINE(HAVE_PROTOBUF, 1, [Google Protocol Buffers available])
+    else
+        have_protobuf=no
+    fi
+fi
+AM_CONDITIONAL(HAVE_PROTOBUF, test "x$have_protobuf" = "xyes")
+
+AC_ARG_WITH([openmp],
+    AS_HELP_STRING([--without-openmp], [Do not use OpenMP parallelism]))
+
+AS_IF([test "x$with_openmp" = "xno"], [], [AX_OPENMP])
+AC_SUBST(OPENMP_CXXFLAGS)
+
+AX_MORFEUSZ
+AC_SUBST(MORFEUSZ_LIBS)
+AC_SUBST(MORFEUSZ_CFLAGS)
+
+AX_ICU
+AC_SUBST(ICU_LIBS)
+AC_SUBST(ICU_CFLAGS)
+
 AC_ARG_WITH([tcmalloc],
     AS_HELP_STRING([--without-tcmalloc], [Ignore presence of tcmalloc and disable it]))
 
@@ -71,32 +105,6 @@ AS_IF([test "x$have_profiler" = "xyes"],
              [AC_MSG_ERROR([profiler requested but not found])
       ])
 ])
-
-AX_BOOST_BASE([1.40.0])
-AX_BOOST_REGEX
-AX_BOOST_PROGRAM_OPTIONS
-AX_BOOST_SERIALIZATION
-AX_BOOST_MPI
-
-PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 2.0],
-                  [have_protobuf=yes], [have_protobuf=no])
-if test "x$have_protobuf" = "xyes"; then
-    AC_CHECK_PROG(ax_cv_protoc, protoc, yes, no)
-    if test "x$ax_cv_protoc" = "xyes"; then
-        AC_SUBST(PROTOBUF_CFLAGS)
-        AC_SUBST(PROTOBUF_LIBS)
-        AC_DEFINE(HAVE_PROTOBUF, 1, [Google Protocol Buffers available])
-    else
-        have_protobuf=no
-    fi
-fi
-AM_CONDITIONAL(HAVE_PROTOBUF, test "x$have_protobuf" = "xyes")
-
-AC_ARG_WITH([openmp],
-    AS_HELP_STRING([--without-openmp], [Do not use OpenMP parallelism]))
-
-AS_IF([test "x$with_openmp" = "xno"], [], [AX_OPENMP])
-AC_SUBST(OPENMP_CXXFLAGS)
 
 AC_CONFIG_FILES(Makefile src/Makefile src/nlpcommon/Makefile)
 AC_OUTPUT
