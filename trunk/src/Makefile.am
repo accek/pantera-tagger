@@ -35,6 +35,10 @@ Morfeusz_LIBRARY_DIRS = $(abspath $(patsubst -L%,%,$(filter -L%,@MORFEUSZ_LIBS@)
 #clean-local:
 #	+make -C ../third_party/TaKIPI18/Linux/bin clean
 
+LIBCORPUS_LINK_FLAGS = -L../third_party/TaKIPI18/Linux/bin/Corpus \
+					   -Wl,-rpath -Wl,$(abspath ../third_party/TaKIPI18/Linux/bin/Corpus) \
+					   -lcorpus
+
 BUILT_SOURCES = rules/c1.m4h
 
 bin_PROGRAMS = btagger xces2dat xces2txt dat2dat eval txt2xces
@@ -45,9 +49,8 @@ btagger_SOURCES = btagger.cpp \
 	brillexeme.h unigram.h rules.h
 btagger_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_REGEX_LIB@ \
 				  @BOOST_PROGRAM_OPTIONS_LIB@ @BOOST_MPI_LIB@ \
-				  @ICU_LIBS@ -liconv
-btagger_LDADD = nlpcommon/libnlpcommon.la \
-				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
+				  @ICU_LIBS@ -liconv $(LIBCORPUS_LINK_FLAGS)
+btagger_LDADD = nlpcommon/libnlpcommon.la
 
 eval_SOURCES = eval.cpp
 eval_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_REGEX_LIB@ \
@@ -67,9 +70,8 @@ xces2txt_LDADD = nlpcommon/libnlpcommon.la
 txt2xces_SOURCES = txt2xces.cpp
 txt2xces_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
 				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ \
-				   @MORFEUSZ_LIBS@ -liconv
-txt2xces_LDADD = nlpcommon/libnlpcommon.la \
-				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
+				   @MORFEUSZ_LIBS@ -liconv $(LIBCORPUS_LINK_FLAGS)
+txt2xces_LDADD = nlpcommon/libnlpcommon.la
 
 dat2dat_SOURCES = dat2dat.cpp
 dat2dat_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@
