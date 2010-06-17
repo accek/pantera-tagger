@@ -1,0 +1,7 @@
+net.sourceforge.segment
+net.sourceforge.segment.srx
+net.sourceforge.segment.srx.io
+net.sourceforge.segment.srx.io.bind
+net.sourceforge.segment.srx.legacy
+net.sourceforge.segment.ui.console
+net.sourceforge.segment.util
