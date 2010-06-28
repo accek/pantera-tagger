@@ -12,6 +12,7 @@
 #include <boost/serialization/access.hpp>
 #include <boost/serialization/string.hpp>
 #include <boost/serialization/vector.hpp>
+#include <boost/shared_ptr.hpp>
 #include <string>
 #include <vector>
 #include <ostream>
@@ -23,6 +24,13 @@ namespace NLPCommon {
 
 using std::wstring;
 using std::vector;
+
+class LexerData {
+protected:
+    LexerData() { }
+public:
+    virtual ~LexerData() { }
+};
 
 template<class Tag>
 class Lexeme
@@ -46,6 +54,7 @@ private:
     vector<Tag> _autoselected_tags;
 	vector<std::pair<Tag, wstring> > _tag_bases;
     Type _type;
+    boost::shared_ptr<LexerData> _lexer_data;
 
     friend class boost::serialization::access;
 
@@ -206,9 +215,30 @@ public:
                 getAutoselectedTags(), getGoldenTags());
         stream << std::endl;
     }
+
+    LexerData* getLexerData() const {
+        return _lexer_data.get();
+    }
+
+    void setLexerData(LexerData* data) {
+        _lexer_data.reset(data);
+    }
 };
 
 typedef Lexeme<Tag> DefaultLexeme;
+
+class StringLexerData : public LexerData {
+protected:
+    string _str;
+
+public:
+    StringLexerData(const string& str)
+        : LexerData(), _str(str)
+    {
+    }
+
+    const string& getString() const { return _str; }
+};
 
 } // namespace NLPCommon
 

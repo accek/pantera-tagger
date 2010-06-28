@@ -157,6 +157,38 @@ public:
         return stream.str();
     }
 
+    const string asStringCtag(const Tagset* tagset) const {
+        Final* fthis = (Final*)this;
+
+        if (*fthis == Final::getNullTag())
+            return "[null]";
+
+        const PartOfSpeech* pos = tagset->getPartOfSpeech(fthis->getPos());
+        return pos->getName();
+    }
+
+    const string asStringMsd(const Tagset* tagset) const {
+        Final* fthis = (Final*)this;
+
+        if (*fthis == Final::getNullTag())
+            return "";
+
+        std::ostringstream stream;
+        const PartOfSpeech* pos = tagset->getPartOfSpeech(fthis->getPos());
+        vector<const Category*> cats = pos->getCategories();
+        unsigned int n = cats.size();
+        for (unsigned int i = 0; i < n; i++) {
+            const Category* cat = cats[i];
+            unsigned int value = fthis->getValue(tagset->getCategoryIndex(cat));
+            if (value == 0 && !pos->isRequiredCategory(i))
+                continue;
+            if (i > 0)
+                stream << ':';
+            stream << cat->getValue(value);
+        }
+        return stream.str();
+    }
+
     const wstring asWString(const Tagset* tagset) const {
         return ascii_to_wstring(this->asString(tagset));
     }
