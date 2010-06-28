@@ -40,6 +40,8 @@ int main(int argc, char** argv) {
     lexer.parseStreamToVector(text, &tagset);
     cerr << "\rLexing ...  done.       " << endl;
 
+    cerr << "Read " << text.size() << " tokens." << endl;
+
     ofstream out_stream(argv[2]);
     PlainTextWriter<DefaultLexeme> writer(out_stream, 75);
     writer.setProgressHandler(writing_progress, 1000);

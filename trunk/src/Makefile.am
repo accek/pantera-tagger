@@ -1,5 +1,6 @@
 AM_CXXFLAGS = @BOOST_CPPFLAGS@ @OPENMP_CXXFLAGS@ \
-	-I../third_party/TaKIPI18/Linux/Corpus
+	-I../third_party/TaKIPI18/Linux/Corpus \
+	-DSEGMENT_EXECUTABLE=\"${abs_top_srcdir}/third_party/segment/segment_batch\"
 
 if HAVE_PROTOBUF
 AM_CXXFLAGS += @PROTOBUF_CFLAGS@
@@ -36,12 +37,13 @@ Morfeusz_LIBRARY_DIRS = $(abspath $(patsubst -L%,%,$(filter -L%,@MORFEUSZ_LIBS@)
 #	+make -C ../third_party/TaKIPI18/Linux/bin clean
 
 LIBCORPUS_LINK_FLAGS = -L../third_party/TaKIPI18/Linux/bin/Corpus \
-					   -Wl,-rpath -Wl,$(abspath ../third_party/TaKIPI18/Linux/bin/Corpus) \
+					   -Wl,-rpath -Wl,${abs_top_srcdir}/third_party/TaKIPI18/Linux/bin/Corpus \
 					   -lcorpus
 
 BUILT_SOURCES = rules/c1.m4h
 
-bin_PROGRAMS = btagger xces2dat xces2txt dat2dat eval txt2xces
+bin_PROGRAMS = btagger xces2dat xces2txt dat2dat eval txt2xces \
+			   nkjp2xces nkjptag
 
 btagger_SOURCES = btagger.cpp \
 	rules/a.h rules/c1.m4h rules/p1.h rules/p2.h \
@@ -72,6 +74,18 @@ txt2xces_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
 				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ \
 				   @MORFEUSZ_LIBS@ -liconv $(LIBCORPUS_LINK_FLAGS)
 txt2xces_LDADD = nlpcommon/libnlpcommon.la
+
+nkjp2xces_SOURCES = nkjp2xces.cpp
+nkjp2xces_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
+				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ \
+				   @MORFEUSZ_LIBS@ -liconv $(LIBCORPUS_LINK_FLAGS)
+nkjp2xces_LDADD = nlpcommon/libnlpcommon.la
+
+nkjptag_SOURCES = nkjptag.cpp
+nkjptag_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
+				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ \
+				   @MORFEUSZ_LIBS@ -liconv $(LIBCORPUS_LINK_FLAGS)
+nkjptag_LDADD = nlpcommon/libnlpcommon.la
 
 dat2dat_SOURCES = dat2dat.cpp
 dat2dat_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@

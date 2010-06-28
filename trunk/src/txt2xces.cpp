@@ -15,6 +15,7 @@
 #include <nlpcommon/plaintextlexer.h>
 #include <nlpcommon/spejdtagsetloader.h>
 #include <nlpcommon/morfeusz.h>
+#include <nlpcommon/libsegmentsentencer.h>
 
 using namespace std;
 using namespace NLPCommon;
@@ -40,6 +41,11 @@ int main(int argc, char** argv) {
     lexer.setProgressHandler(lexing_progress, 1000);
     lexer.parseStreamToVector(text, &tagset);
     cerr << "\rLexing ...  done.       " << endl;
+
+    cerr << "Running sentencer ... ";
+    LibSegmentSentencer<DefaultLexeme> sentencer;
+    text = sentencer.addSentenceDelimiters(text);
+    cerr << "done." << endl;
 
     cerr << "Running morphological analyzer ... ";
     MorfeuszAnalyzer<DefaultLexeme> morfeusz(tagset);
