@@ -31,8 +31,12 @@ public:
     enum Type {
         SEGMENT = 0x01,
         NO_SPACE = 0x02,
-        START_OF_CHUNK = 0x04,
-        END_OF_CHUNK = 0x08,
+        START_OF_SENTENCE = 0x04,
+        START_OF_PARAGRAPH = 0x08,
+        START_OF_FILE = 0x10,
+        END_OF_FILE = 0x20,
+        END_OF_PARAGRAPH = 0x40,
+        END_OF_SENTENCE = 0x80,
     };
 
 private:

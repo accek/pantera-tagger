@@ -30,8 +30,7 @@ private:
 
     void handleOrth(const string& orth, bool preceded_by_space) {
         if (new_paragraph) {
-            Lexeme lex(Lexeme::START_OF_CHUNK);
-            lex.setOrth(wstring(L"p"));
+            Lexeme lex(Lexeme::START_OF_PARAGRAPH);
             collector->collectLexeme(lex);
         }
 
@@ -51,8 +50,7 @@ private:
     }
 
     void endParagraph() {
-        Lexeme lex(Lexeme::END_OF_CHUNK);
-        lex.setOrth(wstring(L"p"));
+        Lexeme lex(Lexeme::END_OF_PARAGRAPH);
         collector->collectLexeme(lex);
     }
 

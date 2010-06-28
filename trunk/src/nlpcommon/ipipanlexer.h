@@ -28,22 +28,32 @@ private:
     LexerCollector<Lexeme>* collector;
     Lexeme current_lex;
 	bool consider_disamb_sh;
-	std::stack<string> chunks_to_close;
+	std::stack<typename Lexeme::Type> chunks_to_close;
 
     inline void newLexeme(typename Lexeme::Type lexeme_type) {
         current_lex = Lexeme(lexeme_type);
     }
 
     void handleChunkStart(const string& type) {
-		Lexeme lex(Lexeme::START_OF_CHUNK);
-		lex.setOrth(ascii_to_wstring(type));
+        typename Lexeme::Type openType, closeType;
+        if (type == "p") {
+            openType = Lexeme::START_OF_PARAGRAPH;
+            closeType = Lexeme::END_OF_PARAGRAPH;
+        } else if (type == "s") {
+            openType = Lexeme::START_OF_SENTENCE;
+            closeType = Lexeme::END_OF_SENTENCE;
+        } else {
+            // Ignore unknown chunks. Better to ignore than to report error probably.
+            return;
+        }
+
+		Lexeme lex(openType);
         collector->collectLexeme(lex);
-		chunks_to_close.push(type);
+		chunks_to_close.push(closeType);
     }
 
 	void handleChunkEnd() {
-		Lexeme lex(Lexeme::END_OF_CHUNK);
-		lex.setOrth(ascii_to_wstring(chunks_to_close.top()));
+		Lexeme lex(chunks_to_close.top());
         collector->collectLexeme(lex);
 		chunks_to_close.pop();
 	}

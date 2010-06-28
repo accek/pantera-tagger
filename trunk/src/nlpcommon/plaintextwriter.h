@@ -54,13 +54,10 @@ private:
                 no_space = true;
                 break;
 
-            case Lexeme::START_OF_CHUNK:
-                if (lex.getUtf8Orth() == "p") {
-                    // Start of paragraph.
-                    this->stream << std::endl << std::endl;
-                    no_space = true;
-                    current_pos = 0;
-                }
+            case Lexeme::START_OF_PARAGRAPH:
+                this->stream << std::endl << std::endl;
+                no_space = true;
+                current_pos = 0;
                 break;
         }
     }
