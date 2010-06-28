@@ -47,17 +47,23 @@ private:
 						<< "</base><ctag>" << tag.asString(tagset)
 						<< "</ctag></lex>\n";
                 }
+                this->stream << "</tok>\n";
                 break;
 
             case Lexeme::NO_SPACE:
 				this->stream << "<ns/>\n";
                 break;
 
-            case Lexeme::START_OF_CHUNK:
-                this->stream << "<chunk type=\"" << lex.getUtf8Orth() << "\">\n";
+            case Lexeme::START_OF_PARAGRAPH:
+                this->stream << "<chunk type=\"p\">\n";
                 break;
 
-            case Lexeme::END_OF_CHUNK:
+            case Lexeme::START_OF_SENTENCE:
+                this->stream << "<chunk type=\"s\">\n";
+                break;
+
+            case Lexeme::END_OF_SENTENCE:
+            case Lexeme::END_OF_PARAGRAPH:
 				this->stream << "</chunk>\n";
                 break;
         }
