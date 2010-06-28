@@ -211,7 +211,10 @@ public:
                 //    interp.p % interp.k % interp.forma % interp.haslo % interp.interp;
 
                 if (interp.interp == NULL) {
+                    wstring forma = utf8_to_wstring(interp.forma);
+
                     SetCorpusEncoding(GUESSER_UTF8);
+                    //std::cerr << "To odg: " << interp.forma << std::endl;
                     string forms = GuessForm(interp.forma);
                     //std::cerr << "Odg:" << forms << std::endl;
                     parseOdgadywaczResponse(forms, current_lex);
@@ -219,7 +222,7 @@ public:
                     // Add "ign".
                     tag_type tag = tag_type::parseString(tagset, string("ign"));
                     current_lex.addAllowedTag(tag);
-                    current_lex.addTagBase(tag, utf8_to_wstring(interp.forma));
+                    current_lex.addTagBase(tag, forma);
 
                     interps = morfeusz_analyse(
                             const_cast<char*>(lex.getUtf8Orth().c_str()));
