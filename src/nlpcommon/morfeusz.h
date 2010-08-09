@@ -62,8 +62,6 @@ protected:
                 category_offset++;
             }
 
-            //std::cerr << "adding " << tag.asString(tagset) << " " <<
-            //    wstring_to_utf8(base) << std::endl;
             lex.addTagBase(tag, base);
             lex.addAllowedTag(tag);
             return;
@@ -73,12 +71,6 @@ protected:
         int cindex = tagset->getCategoryIndex(cat);
         string_split_iterator new_part = part;
         ++new_part;
-        /*
-        std::cerr << "parsing " << boost::copy_range<string>(*part) <<
-            " with category " << cat->getName() << " offset is "
-            << category_offset << " new part eof " << new_part.eof() << ' ' <<
-            part.eof() << std::endl;
-        */
 
         if (part->front() == '_') {
             int num_values = cat->getValues().size();
@@ -127,6 +119,7 @@ public:
     }
 
 	void parseOdgadywaczResponse(const string& forms, Lexeme& lex) {
+        bool got_form = false;
         for (string_split_iterator segment_it =
                 boost::make_split_iterator(forms, boost::token_finder(
                         boost::is_any_of("\n")));
@@ -136,7 +129,20 @@ public:
 
             string_split_iterator interp_it = boost::make_split_iterator(
                     *segment_it, boost::token_finder(boost::is_any_of("\t")));
-            lex.setUtf8Orth(boost::copy_range<string>(*interp_it));
+            wstring odg_orth = utf8_to_wstring(boost::copy_range<string>(*interp_it));
+            if (got_form) {
+                std::cerr << "Odgadywacz generated unexpected segment '" <<
+                    wstring_to_utf8(odg_orth) << "', ignoring." << std::endl;
+                continue;
+            } else {
+                got_form = true;
+            }
+
+            if (odg_orth != lex.getOrth()) {
+                std::cerr << "Odgadywacz generated form '" <<
+                    wstring_to_utf8(odg_orth) << "', but expected '" <<
+                    lex.getUtf8Orth() << "'" << std::endl;
+            }
             
             for (++interp_it; interp_it != string_split_iterator(); ++interp_it)
             {
@@ -165,6 +171,10 @@ public:
             morfeusz_set_option(MORFOPT_ENCODING, MORFEUSZ_UTF_8);
             InterpMorf* interps = morfeusz_analyse(
                     const_cast<char*>(lex.getUtf8Orth().c_str()));
+            //std::cerr << "To morf: " << lex.getUtf8Orth().c_str() << std::endl;
+            
+            // TODO: Check first if there is ambiguity. If so, disable interpretations to
+            //       skip.
 
             Lexeme current_lex;
             int segm = -1;
@@ -174,13 +184,6 @@ public:
                     break;
                 if (interp.p + 1 != interp.k || interp.p < segm
                         || interp.p > segm + 1) {
-					/*throw MorfeuszAnalyzerException(boost::str(
-								boost::format("Ambiguous interpretation "
-                                    "returned by Morfeusz for word '%1%' "
-                                    "(edge %2% -> %3%, expected %4% -> %5%, "
-                                    "forma='%6%')")
-                                % lex.getUtf8Orth() % interp.p % interp.k
-                                % i % (i + 1) % interp.forma));*/
                     std::cerr << 
 								boost::format("Ambiguous interpretation "
                                     "returned by Morfeusz for word '%1%' "
@@ -200,6 +203,7 @@ public:
                 if (interp.p > segm) {
                     if (segm != -1) {
                         ret.push_back(current_lex);
+                        //std::cerr << "Morf: " << current_lex.getUtf8Orth() << std::endl;
                         ret.push_back(Lexeme(Lexeme::NO_SPACE));
                     }
                     current_lex = Lexeme(Lexeme::SEGMENT);
@@ -211,19 +215,29 @@ public:
                 //    interp.p % interp.k % interp.forma % interp.haslo % interp.interp;
 
                 if (interp.interp == NULL) {
-                    wstring forma = utf8_to_wstring(interp.forma);
+                    string forma_copy(interp.forma);
+                    wstring forma = utf8_to_wstring(forma_copy);
 
                     SetCorpusEncoding(GUESSER_UTF8);
-                    //std::cerr << "To odg: " << interp.forma << std::endl;
-                    string forms = GuessForm(interp.forma);
-                    //std::cerr << "Odg:" << forms << std::endl;
-                    parseOdgadywaczResponse(forms, current_lex);
+
+                    try {
+                        //std::cerr << "To odg: " << interp.forma << ' ' << lex.getUtf8Orth() << std::endl;
+                        string forms = GuessForm(forma_copy.c_str());
+                        //std::cerr << "Odg:" << forms << " LEX: " << lex.getUtf8Orth() << std::endl;
+                        parseOdgadywaczResponse(forms, current_lex);
+                    } catch (std::exception e) {
+                        std::cerr << 
+                                    boost::format("Odgadywacz failed for word "
+                                        "'%1%'. Error was: %2%.")
+                                    % interp.forma % e.what() << std::endl;
+                    }
 
                     // Add "ign".
                     tag_type tag = tag_type::parseString(tagset, string("ign"));
                     current_lex.addAllowedTag(tag);
                     current_lex.addTagBase(tag, forma);
 
+                    morfeusz_set_option(MORFOPT_ENCODING, MORFEUSZ_UTF_8);
                     interps = morfeusz_analyse(
                             const_cast<char*>(lex.getUtf8Orth().c_str()));
                 } else {
@@ -233,8 +247,10 @@ public:
                                 interp.forma : interp.haslo), current_lex);
                 }
             }
-            if (segm >= 0)
+            if (segm >= 0) {
                 ret.push_back(current_lex);
+                //std::cerr << "Morf: " << current_lex.getUtf8Orth() << std::endl;
+            }
 		}
 
         return ret;

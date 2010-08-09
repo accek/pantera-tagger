@@ -52,10 +52,6 @@ int main(int argc, char** argv) {
     text = morfeusz.analyzeText(text);
     cerr << "done." << endl;
 
-    cerr << "Assigning segment IDs ... ";
-    lexer.alignText(text);
-    cerr << "done." << endl;
-
     ofstream out_stream(argv[2]);
     IpiPanWriter<DefaultLexeme> writer(out_stream);
     writer.setProgressHandler(writing_progress, 1000);
