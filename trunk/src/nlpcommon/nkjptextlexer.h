@@ -9,10 +9,13 @@
 #define NKJPTEXTLEXER_H_
 
 #include <boost/regex.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/bind.hpp>
 #include <string>
 #include <iostream>
 #include <locale>
 #include <stack>
+#include <algorithm>
 
 #include <nlpcommon/lexer.h>
 #include <nlpcommon/util.h>
@@ -47,7 +50,6 @@ private:
     }
 
     void handleNewParagraph(const string& id) {
-        std::cerr << id << std::endl;
         Lexeme lex(Lexeme::START_OF_PARAGRAPH);
         lex.setLexerData(new NKJPParagraphData(id));
         collector->collectLexeme(lex);
@@ -59,6 +61,27 @@ private:
         Lexeme lex(Lexeme::END_OF_PARAGRAPH);
         collector->collectLexeme(lex);
         inside_paragraph = false;
+    }
+
+    static bool is_space(wchar_t c) {
+        // This should be just
+        //   return boost::algorithm::is_space()(c)
+        // but it looks like that not all implementations work correctly
+        // for come unicode codes.
+        if (boost::algorithm::is_space()(c))
+            return true;
+        if (c == L'\x00a0'
+                || (c >= L'\x2000' && c <= L'\x200b')
+                || c == L'\x202f'
+                || c == L'\x205f'
+                || c == L'\x3000'
+                || c == L'\xfeff')
+            return true;
+        return false;
+    }
+
+    static bool is_not_space(wchar_t c) {
+        return !is_space(c);
     }
 
 public:
@@ -178,8 +201,17 @@ public:
                         std::cerr << std::endl;
                         */
 
-                        size_t pos = block.find(needle, block_cursor);
-                        if (pos != string::npos) {
+                        const wstring::iterator i = std::find_if(block.begin() + block_cursor,
+                                block.end(), is_not_space);
+                        if (i != block.end()) {
+                            size_t pos = i - block.begin();
+                            const wstring& block_substr = block.substr(pos, needle.size());
+                            if (block_substr != needle) {
+                                throw Exception(boost::str(
+                                            boost::format("Unexpetced '%2%' "
+                                                "looking for '%1%'")
+                                            % wstring_to_utf8(needle) % wstring_to_utf8(block_substr)));
+                            }
                             segment_num++;
                             string segm_id = boost::str(
                                     boost::format("%1%.%2%-seg")
@@ -188,7 +220,7 @@ public:
                             size_t end = start + needle.length();
                             lex.setLexerData(new NKJPSegmentData(segm_id,
                                         start, end));
-                            block_cursor = pos + 1;
+                            block_cursor = pos + needle.length();
                             break;
                         }
 
