@@ -1,1 +1,1 @@
-SUBDIRS = segment
+SUBDIRS = segment morfeusz

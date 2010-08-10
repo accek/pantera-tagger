@@ -9,7 +9,6 @@ endif
 SUBDIRS = nlpcommon
 
 SUFFIXES = .m4 .m4h
-
 .m4.m4h:
 	m4 -I rules/m4 -P $< > $@
 
@@ -37,8 +36,10 @@ Morfeusz_LIBRARY_DIRS = $(abspath $(patsubst -L%,%,$(filter -L%,@MORFEUSZ_LIBS@)
 clean-local:
 	+make -C ../third_party/TaKIPI18/Linux/bin clean
 
-install-local:
-	+make -C ../third_party/TaKIPI18/Linux/bin install
+install-exec-local: ../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
+	$(INSTALL_PROGRAM) -D ../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so $(pkglibdir)/libcorpus.so
+
+GLOBAL_LINK_FLAGS = -Wl,-rpath -Wl,$(pkglibdir)
 
 LIBCORPUS_LINK_FLAGS = -L../third_party/TaKIPI18/Linux/bin/Corpus \
 					   -Wl,-rpath -Wl,${abs_top_srcdir}/third_party/TaKIPI18/Linux/bin/Corpus \
@@ -46,8 +47,10 @@ LIBCORPUS_LINK_FLAGS = -L../third_party/TaKIPI18/Linux/bin/Corpus \
 
 BUILT_SOURCES = rules/c1.m4h
 
-bin_PROGRAMS = btagger xces2dat xces2txt dat2dat eval txt2xces \
-			   nkjp2xces nkjptag
+#bin_PROGRAMS = btagger xces2dat xces2txt dat2dat eval txt2xces \
+#			   nkjp2xces nkjptag
+
+bin_PROGRAMS = nkjptag
 
 btagger_SOURCES = btagger.cpp \
 	rules/a.h rules/c1.m4h rules/p1.h rules/p2.h \
@@ -89,7 +92,8 @@ nkjptag_SOURCES = nkjptag.cpp
 nkjptag_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
 				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ \
 				   @BOOST_SYSTEM_LIB@ @BOOST_FILESYSTEM_LIB@ \
-				   @MORFEUSZ_LIBS@ -liconv $(LIBCORPUS_LINK_FLAGS)
+				   @MORFEUSZ_LIBS@ -liconv $(LIBCORPUS_LINK_FLAGS) \
+				   $(GLOBAL_LINK_FLAGS)
 nkjptag_LDADD = nlpcommon/libnlpcommon.la \
 				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
 
