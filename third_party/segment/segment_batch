@@ -1,13 +1,5 @@
 #!/bin/bash
 
 SCRIPT_DIR=`dirname $0`
-PROJECT_HOME="`echo $SCRIPT_DIR/segment-*`"
-JARS=$PROJECT_HOME/lib/*
-
 cd "$SCRIPT_DIR"
-if [ ! -f "SegmentInterface.class" ]; then
-    # Compile if not yet compiled.
-    javac -cp "$CLASSPATH:$JARS" SegmentInterface.java
-fi
-
-exec java -cp "$CLASSPATH:$JARS" SegmentInterface $*
+exec java -cp "$CLASSPATH:*" SegmentInterface $*
