@@ -140,11 +140,16 @@ public:
         return _posByIndex[index];
     }
 
-    const PartOfSpeech* getPartOfSpeech(const string& name) const {
+    const PartOfSpeech* getPartOfSpeech(const string& name,
+            bool use_exc = true) const {
         unordered_map<string, const PartOfSpeech*>::const_iterator i =
                 _posByName.find(name);
-        if (i == _posByName.end())
-            throw PartOfSpeechNotFoundException::ByName(name);
+        if (i == _posByName.end()) {
+            if (use_exc)
+                throw PartOfSpeechNotFoundException::ByName(name);
+            else
+                return NULL;
+        }
         return i->second;
     }
 
@@ -173,6 +178,10 @@ public:
     }
 
 };
+
+vector<const Tagset*> load_tagsets(const string& name);
+const Tagset* load_tagset(const string& name);
+const po::options_description& tagset_options();
 
 } // namespace NLPCommon
 

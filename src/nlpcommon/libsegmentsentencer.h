@@ -17,9 +17,10 @@
 #include <nlpcommon/exception.h>
 
 #include <nlpcommon/_pstream.h>
+#include <nlpcommon/util.h>
 
-#ifndef SEGMENT_EXECUTABLE
-#error SEGMENT_EXECUTABLE should be defined automatically by build system
+#ifndef SEGMENT_PATH
+#error SEGMENT_PATH should be defined automatically by build system
 #endif
 
 namespace NLPCommon {
@@ -33,22 +34,20 @@ private:
     pstream ps;
 
 public:
-    LibSegmentSentencer(const string& segment_cmdline = SEGMENT_EXECUTABLE) 
+    LibSegmentSentencer()
         : Sentencer<Lexeme>(),
-          ps(segment_cmdline,
+          ps(find_with_path(SEGMENT_PATH, "segment_batch").file_string(),
              pstreams::pstdin|pstreams::pstdout|pstreams::pstderr)
     {
         if (!ps.is_open()) {
-            throw Exception("Cannot execute 'segment_batch' excutable ("
-                    SEGMENT_EXECUTABLE ")");
+            throw Exception("Cannot execute 'segment_batch' excutable "
+                    "with path '" SEGMENT_PATH "')");
         }
     }
 
     virtual ~LibSegmentSentencer() { }
 
     vector<Lexeme> addSentenceDelimiters(const vector<Lexeme>& text) {
-
-        int start_of_para;
         int len = text.size();
         vector<Lexeme> out;
 

@@ -1,5 +1,5 @@
 ACLOCAL_AMFLAGS = -I aclocal
-SUBDIRS=src
+SUBDIRS = src tagsets third_party
 
 EXTRA_DIST = config.rpath
 

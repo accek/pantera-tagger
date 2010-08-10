@@ -9,6 +9,8 @@
 #define UTIL_H_
 
 #include <boost/foreach.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/program_options.hpp>
 #include <string>
 #include <vector>
 #include <ostream>
@@ -23,6 +25,8 @@ namespace NLPCommon {
 using std::string;
 using std::wstring;
 using std::vector;
+namespace fs = boost::filesystem;
+namespace po = boost::program_options;
 
 class Tagset;
 
@@ -70,6 +74,12 @@ bool greater_first(const Pair& a, const Pair& b) {
     return std::greater<typename Pair::first_type>()(a.first, b.first);
 }
 
+// Utility path functions.
+
+fs::path find_with_path(const string& path, const string& filename);
+
 } // namespace NLPCommon
+
+extern boost::program_options::variables_map options;
 
 #endif /* COMMON_H_ */

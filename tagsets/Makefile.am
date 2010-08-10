@@ -1,0 +1,1 @@
+SUBDIRS = ipipan nkjp

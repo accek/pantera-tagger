@@ -80,7 +80,7 @@ namespace Corpus
 		}
 		
 	private:
-		static std::string directory;
+		static std::string directories;
 		
 		// dla Guessera: drzewo, slownik, wyjscie z testow
 		static std::string endingTreePath;

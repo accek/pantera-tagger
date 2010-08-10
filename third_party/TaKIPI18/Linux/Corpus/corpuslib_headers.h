@@ -64,6 +64,7 @@
 #include <boost/regex.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/algorithm/string/replace.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <boost/lexical_cast.hpp>
 
 // ICU headers
