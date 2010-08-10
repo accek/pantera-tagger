@@ -23,6 +23,16 @@
 #include <nlpcommon/progress.h>
 #include <nlpcommon/exception.h>
 #include <nlpcommon/util.h>
+#include <nlpcommon/tagset.h>
+#include <nlpcommon/polish_tagset_convert.h>
+
+#ifndef MORFEUSZ_TAGSET
+#define MORFEUSZ_TAGSET "ipipan"
+#endif
+
+#ifndef ODGADYWACZ_TAGSET
+#define ODGADYWACZ_TAGSET "ipipan"
+#endif
 
 namespace NLPCommon {
 
@@ -44,7 +54,13 @@ public:
 protected:
     typedef boost::split_iterator<string::const_iterator> string_split_iterator;
 
-    const Tagset* tagset;
+    const Tagset* out_tagset;
+    const Tagset* morf_tagset;
+    TagsetConverter<tag_type>* morf_converter;
+    const Tagset* odg_tagset;
+    TagsetConverter<tag_type>* odg_converter;
+
+    bool use_odgadywacz;
 
     void parseMorfeuszTagSuffix(
             tag_type& tag,
@@ -57,18 +73,19 @@ protected:
             int num_cats = pos->getCategories().size();
             while (category_offset < num_cats) {
                 const Category* cat = pos->getCategories()[category_offset];
-                int cindex = tagset->getCategoryIndex(cat);
+                int cindex = morf_tagset->getCategoryIndex(cat);
                 tag.setValue(cindex, cat->getIndex("[none]"));
                 category_offset++;
             }
 
-            lex.addTagBase(tag, base);
-            lex.addAllowedTag(tag);
+            tag_type out_tag = morf_converter->convert(lex, tag);
+            lex.addTagBase(out_tag, base);
+            lex.addAllowedTag(out_tag);
             return;
         }
 
         const Category* cat = pos->getCategories()[category_offset];
-        int cindex = tagset->getCategoryIndex(cat);
+        int cindex = morf_tagset->getCategoryIndex(cat);
         string_split_iterator new_part = part;
         ++new_part;
 
@@ -93,16 +110,26 @@ protected:
     }
 
 public:
-	MorfeuszAnalyzer(const Tagset* tagset) : tagset(tagset) { }
+	MorfeuszAnalyzer(const Tagset* out_tagset)
+        : out_tagset(out_tagset),
+          morf_tagset(load_tagset(MORFEUSZ_TAGSET)),
+          morf_converter(PolishTagsetConverter<tag_type>::getSharedInstance(
+                      morf_tagset, out_tagset)),
+          odg_tagset(load_tagset(ODGADYWACZ_TAGSET)),
+          odg_converter(PolishTagsetConverter<tag_type>::getSharedInstance(
+                      odg_tagset, out_tagset)),
+          use_odgadywacz(true)
+    {
+    }
 
     void parseMorfeuszTag(const string_split_iterator& mtag, const wstring& base,
             Lexeme& lex) {
         string_split_iterator cat_it =
                 boost::make_split_iterator(*mtag, boost::token_finder(
                             boost::is_any_of(":")));
-        const PartOfSpeech* pos = tagset->getPartOfSpeech(
+        const PartOfSpeech* pos = morf_tagset->getPartOfSpeech(
                 boost::copy_range<string>(*cat_it));
-        int pos_idx = tagset->getPartOfSpeechIndex(pos);
+        int pos_idx = morf_tagset->getPartOfSpeechIndex(pos);
         tag_type tag;
         tag.setPos(pos_idx);
         parseMorfeuszTagSuffix(tag, pos, 0, ++cat_it, base, lex);
@@ -129,7 +156,8 @@ public:
 
             string_split_iterator interp_it = boost::make_split_iterator(
                     *segment_it, boost::token_finder(boost::is_any_of("\t")));
-            wstring odg_orth = utf8_to_wstring(boost::copy_range<string>(*interp_it));
+            wstring odg_orth = utf8_to_wstring(
+                    boost::copy_range<string>(*interp_it));
             if (got_form) {
                 std::cerr << "Odgadywacz generated unexpected segment '" <<
                     wstring_to_utf8(odg_orth) << "', ignoring." << std::endl;
@@ -148,10 +176,11 @@ public:
             {
                 vector<boost::iterator_range<string::const_iterator> > parts;
                 boost::split(parts, *interp_it, boost::is_any_of(" "));
-                tag_type tag = tag_type::parseString(tagset,
+                tag_type tag = tag_type::parseString(odg_tagset,
                         boost::copy_range<string>(parts[1]));
-                lex.addAllowedTag(tag);
-                lex.addTagBase(tag,
+                tag_type out_tag = odg_converter->convert(lex, tag);
+                lex.addAllowedTag(out_tag);
+                lex.addTagBase(out_tag,
                         utf8_to_wstring(boost::copy_range<string>(parts[0])));
             }
         }
@@ -220,20 +249,22 @@ public:
 
                     SetCorpusEncoding(GUESSER_UTF8);
 
-                    try {
-                        //std::cerr << "To odg: " << interp.forma << ' ' << lex.getUtf8Orth() << std::endl;
-                        string forms = GuessForm(forma_copy.c_str());
-                        //std::cerr << "Odg:" << forms << " LEX: " << lex.getUtf8Orth() << std::endl;
-                        parseOdgadywaczResponse(forms, current_lex);
-                    } catch (std::exception e) {
-                        std::cerr << 
-                                    boost::format("Odgadywacz failed for word "
-                                        "'%1%'. Error was: %2%.")
-                                    % interp.forma % e.what() << std::endl;
+                    if (use_odgadywacz) {
+                        try {
+                            //std::cerr << "To odg: " << interp.forma << ' ' << lex.getUtf8Orth() << std::endl;
+                            string forms = GuessForm(forma_copy.c_str());
+                            //std::cerr << "Odg:" << forms << " LEX: " << lex.getUtf8Orth() << std::endl;
+                            parseOdgadywaczResponse(forms, current_lex);
+                        } catch (std::exception const& e) {
+                            std::cerr << 
+                                        boost::format("Odgadywacz failed for "
+                                                "word '%1%'. Error was: %2%.")
+                                        % interp.forma % e.what() << std::endl;
+                        }
                     }
 
                     // Add "ign".
-                    tag_type tag = tag_type::parseString(tagset, string("ign"));
+                    tag_type tag = tag_type::parseString(out_tagset, string("ign"));
                     current_lex.addAllowedTag(tag);
                     current_lex.addTagBase(tag, forma);
 

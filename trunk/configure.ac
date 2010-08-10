@@ -45,6 +45,8 @@ if test "x$eclipse" = "xyes"; then
 fi
 
 AX_BOOST_BASE([1.40.0])
+AX_BOOST_SYSTEM
+AX_BOOST_FILESYSTEM
 AX_BOOST_REGEX
 AX_BOOST_PROGRAM_OPTIONS
 AX_BOOST_SERIALIZATION
@@ -106,6 +108,8 @@ AS_IF([test "x$have_profiler" = "xyes"],
       ])
 ])
 
-AC_CONFIG_FILES(Makefile src/Makefile src/nlpcommon/Makefile)
+AC_CONFIG_FILES(Makefile src/Makefile src/nlpcommon/Makefile tagsets/Makefile
+                tagsets/ipipan/Makefile tagsets/nkjp/Makefile third_party/Makefile
+                third_party/segment/Makefile)
 AC_OUTPUT
 

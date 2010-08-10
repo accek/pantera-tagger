@@ -100,7 +100,9 @@ set(tokenisation_SRC
 add_library(corpus SHARED ${main_SRC} ${maindir_SRC} ${context_SRC} ${documents_SRC} ${extsentr_SRC}
 	${guesser_SRC} ${morfeusz_SRC} ${parser_SRC} ${oldreaders_SRC} ${textutils_SRC} ${tokenisation_SRC})
 
-add_definitions(-DTEST_WITH_MAIN -DGUESSER_DATA_PATH="${CMAKE_INSTALL_PREFIX}/${destdatadir}")
+# Changed by accek: use Data/ folder from source, so that we do not need to install the software.
+add_definitions(-DTEST_WITH_MAIN -DGUESSER_DATA_PATH="${CMAKE_INSTALL_PREFIX}/${destdatadir}:${CMAKE_CURRENT_SOURCE_DIR}/Data/")
+
 add_executable(guessertest ./main.cpp)
 
 target_link_libraries(guessertest corpus morfeusz ${Boost_LIBRARIES} icuuc)

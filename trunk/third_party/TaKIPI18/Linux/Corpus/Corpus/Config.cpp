@@ -15,7 +15,7 @@ namespace Corpus
 		cf_subst | cf_depr | cf_adj | cf_adja | cf_adjp | cf_adv | cf_fin | cf_praet
 		| cf_impt | cf_imps | cf_inf | cf_pcon | cf_pant | cf_ger | cf_pact | cf_ppas;
 
-	std::string CConfig::directory = GUESSER_DATA_PATH;
+	std::string CConfig::directories = GUESSER_DATA_PATH;
 	
 	std::string CConfig::endingTreePath = "ETree.bin";
 	std::string CConfig::endingTagSetPath = "ETS.bin";
@@ -32,19 +32,30 @@ namespace Corpus
 
 	std::string CConfig::GetFullPath(std::string& filename)
 	{
-		return directory + filename;
+        std::vector<std::string> dirs;
+        boost::split(dirs, directories, boost::is_any_of(":"));
+        for (std::vector<std::string>::iterator i = dirs.begin();
+                i != dirs.end(); ++i) {
+            std::string candidate = *i + "/" + filename;
+            std::ifstream f(candidate.c_str());
+            if (f)
+                return candidate;
+        }
+
+        // If file not found, return the first directory.
+		return dirs[0] + filename;
 	}
 	
 	void CConfig::SetPathsToDirectory(const std::string &dir)
 	{
-		directory = dir;
+		directories = dir;
 		size_t len = dir.size();
 			
 		if(len > 0)
 		{
-			char last = directory[len - 1];
+			char last = directories[len - 1];
 			if(last != '/' && last != '\\')
-				directory.append("/");
+				directories.append("/");
 		}
 	}
 }

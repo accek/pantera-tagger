@@ -1,6 +1,6 @@
-AM_CXXFLAGS = @BOOST_CPPFLAGS@ @OPENMP_CXXFLAGS@ \
+AM_CXXFLAGS = @BOOST_CPPFLAGS@ @OPENMP_CXXFLAGS@ -Wall \
 	-I../third_party/TaKIPI18/Linux/Corpus \
-	-DSEGMENT_EXECUTABLE=\"${abs_top_srcdir}/third_party/segment/segment_batch\"
+	-DSEGMENT_PATH=\"$(libexecdir)/$(PACKAGE):${abs_top_srcdir}/third_party/segment\"
 
 if HAVE_PROTOBUF
 AM_CXXFLAGS += @PROTOBUF_CFLAGS@
@@ -30,11 +30,15 @@ Morfeusz_LIBRARY_DIRS = $(abspath $(patsubst -L%,%,$(filter -L%,@MORFEUSZ_LIBS@)
 		-DCMAKE_CXX_FLAGS="$(CXXFLAGS)" \
 		-DCMAKE_C_FLAGS="$(CFLAGS)" \
 		-DCMAKE_SHARED_LINKER_FLAGS="$(LDFLAGS)" \
+		-DCMAKE_INSTALL_PREFIX="$(PREFIX)" \
 		.. )
 	+make -C ../third_party/TaKIPI18/Linux/bin corpus
 
-#clean-local:
-#	+make -C ../third_party/TaKIPI18/Linux/bin clean
+clean-local:
+	+make -C ../third_party/TaKIPI18/Linux/bin clean
+
+install-local:
+	+make -C ../third_party/TaKIPI18/Linux/bin install
 
 LIBCORPUS_LINK_FLAGS = -L../third_party/TaKIPI18/Linux/bin/Corpus \
 					   -Wl,-rpath -Wl,${abs_top_srcdir}/third_party/TaKIPI18/Linux/bin/Corpus \
@@ -84,8 +88,10 @@ nkjp2xces_LDADD = nlpcommon/libnlpcommon.la
 nkjptag_SOURCES = nkjptag.cpp
 nkjptag_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
 				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ \
+				   @BOOST_SYSTEM_LIB@ @BOOST_FILESYSTEM_LIB@ \
 				   @MORFEUSZ_LIBS@ -liconv $(LIBCORPUS_LINK_FLAGS)
-nkjptag_LDADD = nlpcommon/libnlpcommon.la
+nkjptag_LDADD = nlpcommon/libnlpcommon.la \
+				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
 
 dat2dat_SOURCES = dat2dat.cpp
 dat2dat_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@

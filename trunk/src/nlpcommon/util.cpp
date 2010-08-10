@@ -7,9 +7,14 @@
 
 #include <boost/program_options/detail/convert.hpp>
 #include <boost/program_options/detail/utf8_codecvt_facet.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/format.hpp>
 #include <string>
 #include <algorithm>
+
 #include <nlpcommon/util.h>
+#include <nlpcommon/exception.h>
 
 namespace NLPCommon {
 
@@ -43,4 +48,23 @@ string wstring_to_utf8(const wstring& s) {
     return boost::to_8_bit(s, utf8_facet);
 }
 
+fs::path find_with_path(const string& path, const string& filename) {
+    if (fs::exists(filename))
+        return fs::path(filename);
+
+    vector<string> dirs;
+    boost::split(dirs, path, boost::is_any_of(":"));
+    for (vector<string>::iterator i = dirs.begin();
+            i != dirs.end(); ++i) {
+        fs::path candidate = fs::path(*i) / filename;
+        if (fs::exists(candidate))
+            return candidate;
+    }
+
+    throw Exception(boost::str(
+                boost::format("Cannot find file '%1%' at path '%2%'")
+                % filename % path));
 }
+
+}
+
