@@ -103,7 +103,10 @@ public:
                     out.push_back(lex);
                     no_space = true;
                 } else if (lex.getType() == Lexeme::SEGMENT) {
-                    if (response[response_position] == '|') {
+                    const std::string& utf8_orth = lex.getUtf8Orth();
+
+                    if (response[response_position] == '|'
+                            && utf8_orth.substr(0, 1) != "|") {
                         // New sentence starts here.
                         if (first_sentence) {
                             first_sentence = false;
@@ -117,17 +120,27 @@ public:
 
                     if (!no_space) {
                         if (response[response_position] != ' ') {
-                            throw Exception("Expected space not found in output "
-                                    "of segment_batch.");
+                            throw Exception(boost::str(boost::format(
+                                            "Expected space not found in "
+                                            "output of segment_batch. "
+                                            "(Response there: '%1%')")
+                                        % response.substr(response_position)));
                         }
                         response_position++;
                     }
-                    const std::string& utf8_orth = lex.getUtf8Orth();
+
                     if (response.substr(response_position, utf8_orth.length())
                             != utf8_orth) {
-                        throw Exception("Expected word not found in output "
-                                "of segment_batch.");
+                        std::cerr << "BAD " << utf8_orth << std::endl <<
+                                    response.substr(response_position) << std::endl;
+                        throw Exception(boost::str(boost::format(
+                                        "Expected word '%1%' not found in "
+                                        "output of segment_batch. "
+                                        "(Response there: '%2%')")
+                                    % utf8_orth
+                                    % response.substr(response_position)));
                     }
+
                     response_position += utf8_orth.length();
                     out.push_back(lex);
                     no_space = false;

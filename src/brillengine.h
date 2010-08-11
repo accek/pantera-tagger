@@ -58,11 +58,6 @@ private:
     typedef boost::unordered_map<Rule<Lexeme>,
             std::pair<score_type, score_type> > scores_map_type;
 
-    enum {
-        MSG_PROGRESS = 1,
-        MSG_DONE = 2
-    };
-
     const Tagset* full_tagset;
     vector<Lexeme> text;
     vector<Lexeme> next_text;
@@ -73,9 +68,6 @@ private:
     vector<Rule<Lexeme> > generated_rules;
     bool cancelled;
     boost::scoped_ptr<Scorer> scorer;
-    vector<float> progress;
-    int progress_done;
-    wstring progress_msg;
     vector<int> in_vicinity;
 
     vector<const Tagset*> phase_tagsets;
@@ -84,6 +76,8 @@ private:
     vector<vector<Rule<Lexeme> > > phase_generated_rules;
 
     mpi::communicator mpi_world;
+    MPIProgressController progress;
+    bool quiet;
 
     static const int DBG = 0;
     static const int VICINITY = 3;
@@ -127,7 +121,6 @@ private:
             in_vicinity.reserve(vicinity_estimate);
 
         if (mpi_world.rank() == 0) {
-            wcerr << "APP>";
             int j, z = -1;
             for (int i = start_index; i < end_index; ++i) {
                 assert(text2[i].chosen_tag[phase] == text1[i].chosen_tag[phase]);
@@ -136,7 +129,6 @@ private:
                     in_vicinity.push_back(i);
                 }
             }
-            wcerr << "<LY";
         }
         if (use_mpi) {
             mpi::broadcast(mpi_world, in_vicinity, 0);
@@ -145,8 +137,6 @@ private:
                     assert(b.isApplicable(phase_tstores[phase], text1, i));
                     text2[i].chosen_tag[phase] = b.changedTag(phase_tstores[phase], text1, i);
                 }
-            } else {
-                wcerr << ">CAST" << endl;
             }
         }
     }
@@ -333,6 +323,8 @@ private:
             dst.push_back(Lexeme::getNullLexeme());
     }
 public:
+    BrillEngine()
+        : progress(mpi_world), quiet(false) { }
 
     void setText(vector<Lexeme>& text) {
         // Add sentinel segments.
@@ -343,68 +335,6 @@ public:
         return phase_generated_rules.size() == phase_tstores.size();
     }
 
-    void initProgress(const wstring& msg) {
-        mpi_world.barrier();
-        if (mpi_world.rank() == 0) {
-            this->progress.clear();
-            this->progress.resize(mpi_world.size());
-            this->progress_done = 0;
-            this->progress_msg = msg;
-        }
-    }
-
-    void printProgress() {
-        float p = std::accumulate(progress.begin(), progress.end(), 0.0)
-            / progress.size();
-        wcerr << '\r' << this->progress_msg << boost::wformat(L"  %.2f%%") % (p*100.0);
-    }
-
-    void communicateProgress(float p) {
-        if (mpi_world.rank() == 0) {
-            boost::optional<mpi::status> status;
-            while ((status = mpi_world.iprobe(mpi::any_source, MSG_PROGRESS))) {
-                float recv_p;
-                mpi_world.recv(status.get().source(), MSG_PROGRESS, recv_p);
-                assert(progress[status.get().source()] <= recv_p);
-                progress[status.get().source()] = recv_p;
-            }
-
-            progress[0] = p;
-            printProgress();
-        } else {
-            mpi_world.isend(0, MSG_PROGRESS, p);
-        }
-    }
-
-    void finishProgress() {
-        if (mpi_world.rank() == 0) {
-            this->progress_done++;
-            progress[0] = 1.0;
-            while (this->progress_done < mpi_world.size()) {
-                mpi::status status = mpi_world.probe(mpi::any_source, mpi::any_tag);
-                if (status.tag() == MSG_PROGRESS) {
-                    float p;
-                    mpi_world.recv(status.source(), MSG_PROGRESS, p);
-                    assert(progress[status.source()] <= p);
-                    progress[status.source()] = p;
-                    printProgress();
-                } else if (status.tag() == MSG_DONE) {
-                    mpi_world.recv(status.source(), MSG_DONE);
-                    progress[status.source()] = 1.0;
-                    this->progress_done++;
-                    printProgress();
-                } else {
-                    assert(false);
-                }
-            }
-
-            wcerr << "  done." << endl;
-        } else {
-            mpi_world.send(0, MSG_DONE);
-        }
-        mpi_world.barrier();
-    }
-
     void trainUnigramTaggers() {
         if (!phase_unigram_taggers.empty()) {
             assert(phase_unigram_taggers.size() == numPhases());
@@ -413,7 +343,7 @@ public:
 
         phase_unigram_taggers.resize(numPhases());
         for (int p = 0; p < numPhases(); p++) {
-            if (mpi_world.rank() == 0)
+            if (mpi_world.rank() == 0 && !quiet)
                 wcerr << "Training unigram tagger for phase " << p << "..." << endl;
             const Tagset* tagset = phase_tagsets[p];
             phase_unigram_taggers[p].train(text,
@@ -426,7 +356,7 @@ public:
 
         trainUnigramTaggers();
 
-        if (mpi_world.rank() == 0)
+        if (mpi_world.rank() == 0 && !quiet)
             wcerr << "Preparing initial tagging for phase " << phase
                     << " ...  ";
         const Tagset* previous_tagset =
@@ -445,7 +375,7 @@ public:
             lexeme.expected_tag = findGoldenTag(lexeme, tagset, previous_tagset,
                     previous_tag);
         }
-        if (mpi_world.rank() == 0)
+        if (mpi_world.rank() == 0 && !quiet)
             wcerr << "done." << endl;
 
         /*int cnt = 0;
@@ -524,7 +454,7 @@ public:
         bucket_counts.resize(num_buckets);
         int num_rules = 0;
 
-        initProgress(boost::str(boost::wformat(
+        progress.init(boost::str(boost::wformat(
             L"Counting initial rules for phase %d ...") % phase));
 
         #pragma omp parallel for default(shared) \
@@ -532,7 +462,7 @@ public:
         for (int i = INDEX_OFFSET; i < n; ++i) {
             if (((++num) % 1000) == 0) {
                 #pragma omp critical (generateInitialScores_progress)
-                communicateProgress(num/(float)n);
+                progress.set(num/(float)n);
             }
             Lexeme& lex = text[i];
 
@@ -544,7 +474,7 @@ public:
             }
         }
 
-        finishProgress();
+        progress.finish();
         mpi_world.barrier();
 
         vector<bool> buckets_map;
@@ -569,8 +499,8 @@ public:
 
         */
         num = 0;
-        initProgress(boost::str(boost::wformat(
-            L"Generating initial rules for phase %d ...") % phase));
+        progress.init(boost::str(boost::format(
+            "Generating initial rules for phase %d ...") % phase));
 
         #pragma omp parallel default(shared)
         {
@@ -581,7 +511,7 @@ public:
             for (int i = INDEX_OFFSET; i < n; ++i) {
                 if (((++num) % 1000) == 0) {
                     #pragma omp critical (generateInitialScores_progress)
-                    communicateProgress(num/(float)n);
+                    progress.set(num/(float)n);
                 }
                 Lexeme& lex = text[i];
 
@@ -651,7 +581,7 @@ public:
             applyScoreChanges(score_adds, score_subs);
         }
 
-        finishProgress();
+        progress.finish();
     }
 
     void updateScores(int phase, int round, int threshold, int vicinity_radius) {
@@ -714,7 +644,7 @@ public:
     }
 
     void initializeGoodScores(int threshold) {
-        if (mpi_world.rank() == 0)
+        if (mpi_world.rank() == 0 && !quiet)
             wcerr << "Gathering rules with score >= threshold ...  ";
 
         good_scores.clear();
@@ -726,7 +656,7 @@ public:
         size_t total_good_rules;
         mpi::reduce(mpi_world, good_scores.size(), total_good_rules,
                 std::plus<size_t>(), 0);
-        if (mpi_world.rank() == 0)
+        if (mpi_world.rank() == 0 && !quiet)
             wcerr << total_good_rules << " rules" << endl;
     }
 
@@ -744,7 +674,7 @@ public:
 
             if (!found || cancelled) break;
 
-            if (mpi_world.rank() == 0) {
+            if (mpi_world.rank() == 0 && !quiet) {
                 wcerr << boost::wformat(
                         L"(%d) CHOSEN RULE (good=%.1lf, bad=%.1lf, candidates=%d, good_candidates=%d): %s") %
                                 round %
@@ -755,7 +685,7 @@ public:
                                 b.asString(tstore).c_str() << endl;
             }
 
-            if (mpi_world.rank() == 0 && DBG) {
+            if (mpi_world.rank() == 0 && DBG && !quiet) {
                 std::pair<score_type, score_type> good_scores = countScores(phase, b);
                 if (good_scores != make_pair(good, bad)) {
                     wcerr << boost::wformat(L"\n*** WRONG SCORES ***"
@@ -772,7 +702,7 @@ public:
                     text.size() - INDEX_OFFSET,
                     2 * (good + bad));
 
-            if ((round % 10) == 1 && mpi_world.rank() == 0) {
+            if ((round % 10) == 1 && mpi_world.rank() == 0 && !quiet) {
 				int errors = 0;
 				double accuracy, avg_score;
                 calculatePhaseStats(phase_tagset, phase, next_text, &accuracy,
@@ -951,18 +881,16 @@ public:
         cancelled = true;
     }
 
+    void setQuiet(bool value = true) {
+        quiet = value;
+    }
+
     const vector<Lexeme>& getText() const {
         return text;
     }
 
     int numPhases() const {
         return phase_tstores.size();
-    }
-
-    void setAutoselectedTags(vector<Lexeme>& text) {
-        int p = numPhases() - 1;
-        BOOST_FOREACH(Lexeme& lex, text)
-            lex.setAutoselectedTag(lex.chosen_tag[p]);
     }
 
     void tagText(vector<Lexeme>& text_to_tag) {
@@ -975,13 +903,14 @@ public:
             generateInitialTags(i, our_text_to_tag);
             applyAllRules(our_text_to_tag, i);
         }
-        reportTaggingStats(our_text_to_tag);
-        setAutoselectedTags(our_text_to_tag);
+        if (!quiet)
+            reportTaggingStats(our_text_to_tag);
 
-        text_to_tag.clear();
-        text_to_tag.insert(text_to_tag.end(),
-                our_text_to_tag.begin() + INDEX_OFFSET,
-                our_text_to_tag.end() - INDEX_OFFSET);
+        int p = numPhases() - 1;
+        for (int i = 0; i < text_to_tag.size(); i++) {
+            text_to_tag[i].setAutoselectedTag(
+                    our_text_to_tag[i + INDEX_OFFSET].chosen_tag[p]);
+        }
     }
 
     void applyAllRules(vector<Lexeme>& text, int phase) {
@@ -993,11 +922,13 @@ public:
 
             applyRule(phase, rule, text, next_text, INDEX_OFFSET,
                     text.size() - INDEX_OFFSET, 0, false);
-            wcerr << boost::wformat(L"Phase %d. Rule %d/%d applied: %s\n") %
-					phase % rule_num % num_rules %
-                    ascii_to_wstring(rule.asString(phase_tstores[phase]));
+            if (!quiet) {
+                wcerr << boost::wformat(L"Phase %d. Rule %d/%d applied: %s\n") %
+                        phase % rule_num % num_rules %
+                        ascii_to_wstring(rule.asString(phase_tstores[phase]));
+            }
 
-			if (rule_num % 10 == 0) {
+			if (rule_num % 10 == 0 && !quiet) {
 				double accuracy, avg_score;
 				int errors;
 				calculatePhaseStats(phase_tagsets[phase], phase, next_text, &accuracy,

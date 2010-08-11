@@ -57,14 +57,14 @@ vector<const Tagset*> load_tagsets(const string& name) {
     vector<const Tagset*> tagsets;
     SpejdTagsetLoader tagset_loader;
     if (fs::is_directory(filepath)) {
-        for (int i = 0; ; i++) {
+        for (int i = 1; ; i++) {
             fs::path tagset_cfg = filepath
                 / boost::str(boost::format("%d.cfg") % i);
             if (!fs::exists(tagset_cfg)) {
-                if (i == 0) {
+                if (i == 1) {
                     throw Exception(boost::str(boost::format(
                                     "Found tagset directory '%1%', but no "
-                                    "tagset file found. Expected '0.cfg'.")
+                                    "tagset file found. Expected '1.cfg'.")
                                 % filepath));
                 }
                 break;
@@ -84,7 +84,8 @@ vector<const Tagset*> load_tagsets(const string& name) {
 }
 
 const Tagset* load_tagset(const string& name) {
-    return load_tagsets(name)[0];
+    vector<const Tagset*> tagsets = load_tagsets(name);
+    return tagsets[tagsets.size() - 1];
 }
 
 const po::options_description& tagset_options() {

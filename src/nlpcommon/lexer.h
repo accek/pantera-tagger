@@ -53,9 +53,14 @@ class Lexer : public HasProgress
 {
 protected:
     std::istream& stream;
+    bool quiet;
 
 public:
-    Lexer(std::istream& stream) : stream(stream) { }
+    Lexer(std::istream& stream) : stream(stream), quiet(false) { }
+
+    void setQuiet(bool value = true) {
+        quiet = value;
+    }
 
     virtual void parseStream(LexerCollector<Lexeme>& collector) = 0;
 
