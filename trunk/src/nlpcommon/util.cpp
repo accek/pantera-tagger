@@ -66,5 +66,24 @@ fs::path find_with_path(const string& path, const string& filename) {
                 % filename % path));
 }
 
+std::locale& get_locale(const char* name) {
+    static std::map<string, std::locale> locales;
+    std::map<string, std::locale>::iterator i = locales.find(name);
+    if (i == locales.end()) {
+        std::locale l;
+        try {
+            l = std::locale(name);
+        } catch (...) {
+            const char* human_name = name[0] == '\0' ? "(default)" : name;
+            std::cerr << "Warning: system does not support required locale '"
+                << human_name << "'. We will continue with the '"
+                << l.name() << "' locale, but things may not work as "
+                "expected." << std::endl;
+        }
+        locales.insert(std::make_pair(string(name), l));
+    }
+    return locales[string(name)];
+}
+
 }
 

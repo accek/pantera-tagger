@@ -192,8 +192,10 @@ private:
                 this->stream << "          <f name=\"tool\">\n";
                 this->stream << "           <string>PANTERA Tagger (" PACKAGE_STRING ")</string>\n";
                 this->stream << "          </f>\n";
-                this->stream << "          <f fVal=\"#morph_"
-                    << ld->getId() << '_' << chosen_tag << "-msd\" name=\"choice\"/>\n";
+                if (chosen_tag != -1) {
+                    this->stream << "          <f fVal=\"#morph_"
+                        << ld->getId() << '_' << chosen_tag << "-msd\" name=\"choice\"/>\n";
+                }
                 this->stream << "         </fs>\n";
                 this->stream << "        </f>\n";
                 this->stream << "       </fs>\n";

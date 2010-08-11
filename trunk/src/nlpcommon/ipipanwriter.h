@@ -34,6 +34,10 @@ private:
 
                 typedef typename Lexeme::tag_type tag_type;
 				typedef std::pair<tag_type, wstring> tag_base_type;
+                BOOST_FOREACH(const tag_type& tag, lex.getAutoselectedTags()) {
+                    this->stream << "<!-- autoselected: " <<
+                        tag.asString(tagset) << " -->\n";
+                }
                 BOOST_FOREACH(const tag_base_type& tb, lex.getTagBases()) {
 					const tag_type& tag = tb.first;
 					const wstring& base = tb.second;

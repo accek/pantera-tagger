@@ -53,9 +53,16 @@ private:
     }
 
 	void handleChunkEnd() {
-		Lexeme lex(chunks_to_close.top());
-        collector->collectLexeme(lex);
-		chunks_to_close.pop();
+        if (chunks_to_close.empty()) {
+            if (!this->quiet) {
+                std::cerr << "IpiPanLexer: Ignoring incorrect chunk nesting. "
+                    "Skipping unexpected end of chunk." << std::endl;
+            }
+        } else {
+            Lexeme lex(chunks_to_close.top());
+            collector->collectLexeme(lex);
+            chunks_to_close.pop();
+        }
 	}
 
     void handleNoSpace() {

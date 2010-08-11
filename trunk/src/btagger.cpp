@@ -1,13 +1,3 @@
-/*
- ============================================================================
- Name        : btagger.cpp
- Author      : Szymon Acedanski
- Version     :
- Copyright   : Copyright (C) Institute of CS, Polish Academy of Sciences
- Description : Hello World in C++,
- ============================================================================
- */
-
 #include <boost/foreach.hpp>
 #include <boost/mpi.hpp>
 #include <boost/archive/binary_iarchive.hpp>

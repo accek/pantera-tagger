@@ -16,7 +16,9 @@ libnlpcommoninclude_HEADERS = \
 	exception.h ipipanlexer.h lexer.h progress.h tag.h util.h writer.h \
 	tagset.h category.h pos.h scorer.h cascorer.h finderrors.h \
 	datwriter.h datlexer.h stats.h poliqarp-weights.h category-weights.h \
-	stats.h lexemesfilter.h plaintextwriter.h plaintextlexer.h morfeusz.h
+	stats.h lexemesfilter.h plaintextwriter.h plaintextlexer.h morfeusz.h \
+	nkjptextlexer.h nkjplexerdata.h nkjpwriter.h libsegmentsentencer.h \
+	tagset_convert.h polish_tagset_convert.h _pstream.h
 
 if HAVE_PROTOBUF
 

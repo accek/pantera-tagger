@@ -61,6 +61,7 @@ public:
         }
 
         Tag ret;
+        ret.clear();
         ret.setPos(this->to_tagset->getPartOfSpeechIndex(to_pos));
 
         int to_cat_index = 0;
