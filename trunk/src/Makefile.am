@@ -1,4 +1,4 @@
-AM_CXXFLAGS = @BOOST_CPPFLAGS@ @OPENMP_CXXFLAGS@ \
+AM_CXXFLAGS = @BOOST_CPPFLAGS@ @OPENMP_CXXFLAGS@ @MORFEUSZ_CFLAGS@ \
 	-I../third_party/TaKIPI18/Linux/Corpus \
 	-DSEGMENT_PATH=\"$(libexecdir)/$(PACKAGE):${abs_top_srcdir}/third_party/segment\" \
 	-DENGINES_PATH=\"$(pkgdatadir)/engines:${abs_top_srcdir}/engines\"
@@ -14,6 +14,7 @@ SUFFIXES = .m4 .m4h
 	m4 -I rules/m4 -P $< > $@
 
 Boost_LIBRARY_DIRS = $(abspath $(patsubst -L%,%,$(filter -L%,@BOOST_LDFLAGS@)))
+Boost_INCLUDE_DIRS = $(abspath $(patsubst -I%,%,$(filter -I%,@BOOST_CPPFLAGS@)))
 Icu_LIBRARY_DIRS = $(abspath $(patsubst -L%,%,$(filter -L%,@ICU_LIBS@)))
 Icu_INCLUDE_DIRS = $(abspath $(patsubst -I%,%,$(filter -I%,@ICU_CFLAGS@)))
 Morfeusz_LIBRARY_DIRS = $(abspath $(patsubst -L%,%,$(filter -L%,@MORFEUSZ_LIBS@)))
@@ -23,6 +24,7 @@ Morfeusz_LIBRARY_DIRS = $(abspath $(patsubst -L%,%,$(filter -L%,@MORFEUSZ_LIBS@)
 	cmake \
 		-DCMAKE_BUILD_TYPE=None \
 		-DBOOST_LIBRARYDIR="$(Boost_LIBRARY_DIRS)" \
+		-DBoost_INCLUDE_DIR="$(Boost_INCLUDE_DIRS)" \
 		-DMORFEUSZ_LIBRARY="$(Morfeusz_LIBRARY_DIRS)" \
 		-DICU_LIBRARY="$(Icu_LIBRARY_DIRS)/libicuuc.so" \
 		-DICU_I18N_LIBRARY="$(Icu_LIBRARY_DIRS)/libicui18n.so" \
@@ -63,7 +65,7 @@ pantera_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
 				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ \
 				   @BOOST_SYSTEM_LIB@ @BOOST_FILESYSTEM_LIB@ \
 				   @BOOST_MPI_LIB@ @ICU_LIBS@ \
-				   @MORFEUSZ_LIBS@ -liconv $(LIBCORPUS_LINK_FLAGS) \
+				   @MORFEUSZ_LIBS@ $(LIBCORPUS_LINK_FLAGS) \
 				   $(GLOBAL_LINK_FLAGS) $(LIBMORFEUSZ_LINK_FLAGS)
 pantera_LDADD = nlpcommon/libnlpcommon.la \
 				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
