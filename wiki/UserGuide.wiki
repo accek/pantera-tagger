@@ -2,6 +2,8 @@
 
 = Pantera Tagger User's Guide =
 
+<wiki:toc max_depth="3" />
+
 == Installation ==
 
 === Prerequisites ===
