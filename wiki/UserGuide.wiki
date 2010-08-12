@@ -1,0 +1,19 @@
+#summary The User's Guide
+
+= Pantera Tagger User's Guide =
+
+== Installation ==
+
+Prerequisites:
+ * C++ Boost Libraries, namely:
+  * Boost.System
+  * Boost.Filesystem
+  * Boost.Regex (ICU support not required)
+  * Boost.Program_Options
+  * Boost.Serialization
+  * Boost.MPI
+ * Some [http://en.wikipedia.org/wiki/Message_Passing_Interface MPI] implementation, eg. [http://www.open-mpi.org/ OpenMPI]
+ * [http://site.icu-project.org/ ICU4C libary]
+ * [http://nlp.ipipan.waw.pl/~wolinski/morfeusz/ Morfeusz] (morphological analyzer for Polish)
+
+Two major third-party components: [TaKIPI http://nlp.pwr.wroc.pl/takipi/] (another tagger of Polish; we use its morphological guesser) and [http://sourceforge.net/projects/segment/ segment] (sentencer) are distributed with Pantera.
