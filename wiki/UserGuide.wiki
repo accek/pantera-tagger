@@ -86,6 +86,16 @@ make install
 cd ../..
 }}}
 
+Also make sure that the `pl_PL.utf8` locale is installed. You may test
+this by compiling and running the following program (C++):
+{{{
+#include <iostream>
+#include <locale>
+main() { std::cout << std::locale("pl_PL.utf8").name() << std::endl; }
+}}}
+If the program is aborted with an exception, you need to install this
+locale.
+
 === Installing Pantera ===
 
 {{{
@@ -152,6 +162,34 @@ more subfolders with handwritten golden tags, saved in XCES format {{{morph.xml}
   --engine my_engine.btengine
   file_or_folder_xces_or_nkjp_one_or_more
 }}}
+
+=== Custom morphosyntactic dictionary ===
+
+Sometimes morfeusz or guesser return strange interpretations for some forms.
+You may create a custom morphosyntactic dictionary, which will be used instead
+of morfeusz for some forms.
+
+First you need to create it. The format is like below:
+{{{
+form
+ [base]
+ tag
+ tag
+ [base]
+ tag
+}}}
+for example:
+{{{
+tak
+ [tak]
+ conj
+ qub
+ [taka]
+ subst:pl:gen:f
+}}}
+Then use command line option `-d` and pass the name of the file as its argument.
+
+Lookups to the custom dictionary are always case-insensitive.
 
 === Running on multiple processors / multiple machines ===
 
