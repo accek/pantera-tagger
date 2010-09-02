@@ -381,8 +381,10 @@ public:
 
                     // Add "ign".
                     tag_type tag = tag_type::parseString(out_tagset, string("ign"));
-                    current_lex.addAllowedTag(tag);
-                    current_lex.addTagBase(tag, forma);
+                    if (!current_lex.isAllowedTag(tag)) {
+                        current_lex.addAllowedTag(tag);
+                        current_lex.addTagBase(tag, forma);
+                    }
 
                     morfeusz_set_option(MORFOPT_ENCODING, MORFEUSZ_UTF_8);
                     interps = morfeusz_analyse(
