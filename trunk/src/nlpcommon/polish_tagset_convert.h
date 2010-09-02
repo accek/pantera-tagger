@@ -57,7 +57,12 @@ public:
 
         // Remap unknown tag to "ign".
         if (to_pos == NULL) {
-            to_pos = this->to_tagset->getPartOfSpeech("ign");
+            if (from_pos->getName() == "xxs") {
+                // Convert 'xxs' to 'subst'.
+                to_pos = this->to_tagset->getPartOfSpeech("subst");
+            } else {
+                to_pos = this->to_tagset->getPartOfSpeech("ign");
+            }
         }
 
         Tag ret;
@@ -77,14 +82,16 @@ public:
             }
             if (from_cat != NULL) {
                 // We assume the values between categories match.
+                // 
+                // This also works well for converting values of degree,
+                // which in some tagsets are named 'com', while in others
+                // 'comp'.
                 ret.setValue(this->to_tagset->getCategoryIndex(to_cat),
                         tag.getValue(
                             this->from_tagset->getCategoryIndex(from_cat)));
             }
             to_cat_index++;
         }
-
-        // TODO: remap known different categories
 
         cache.insert(std::make_pair(tag, ret));
 
