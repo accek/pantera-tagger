@@ -95,13 +95,14 @@ private:
         }
 
         const Category* cat = pos->getCategories()[category_offset];
+        bool is_required_cat = pos->isRequiredCategory(category_offset);
         int cindex = morf_tagset->getCategoryIndex(cat);
         string_split_iterator new_part = part;
         ++new_part;
 
         if (part->front() == '_') {
             int num_values = cat->getValues().size();
-            for (int i = 0; i < num_values; i++) {
+            for (int i = is_required_cat ? 0 : 1; i < num_values; i++) {
                 tag.setValue(cindex, i);
                 parseMorfeuszTagSuffix(tag, pos, category_offset + 1,
                         new_part, base, lex);
