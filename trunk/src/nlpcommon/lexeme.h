@@ -52,7 +52,7 @@ private:
     vector<Tag> _allowed_tags;
     vector<Tag> _golden_tags;
     vector<Tag> _autoselected_tags;
-	vector<std::pair<Tag, wstring> > _tag_bases;
+    vector<std::pair<Tag, wstring> > _tag_bases;
     Type _type;
     boost::shared_ptr<LexerData> _lexer_data;
 
@@ -126,9 +126,9 @@ public:
             _allowed_tags.push_back(tag);
     }
 
-	void setAllowedTags(const vector<Tag>& tags) {
-		_allowed_tags = tags;
-	}
+    void setAllowedTags(const vector<Tag>& tags) {
+        _allowed_tags = tags;
+    }
 
     bool isAllowedTag(const Tag& tag) const {
         return std::find(_allowed_tags.begin(), _allowed_tags.end(), tag)
@@ -151,9 +151,9 @@ public:
             _golden_tags.push_back(tag);
     }
 
-	void setGoldenTags(const vector<Tag>& tags) {
-		_golden_tags = tags;
-	}
+    void setGoldenTags(const vector<Tag>& tags) {
+        _golden_tags = tags;
+    }
 
     bool isGoldenTag(const Tag& tag) const {
         return std::find(_golden_tags.begin(), _golden_tags.end(), tag)
@@ -171,9 +171,9 @@ public:
         return _golden_tags;
     }
 
-	void setAutoselectedTags(const vector<Tag>& tags) {
-		_autoselected_tags = tags;
-	}
+    void setAutoselectedTags(const vector<Tag>& tags) {
+        _autoselected_tags = tags;
+    }
 
     void addAutoselectedTag(const Tag& tag) {
         if (!isAutoselectedTag(tag))
@@ -201,13 +201,15 @@ public:
         _autoselected_tags.push_back(tag);
     }
 
-	const vector<std::pair<Tag, wstring> >& getTagBases() const {
-	   return _tag_bases;
-	}
+    const vector<std::pair<Tag, wstring> >& getTagBases() const {
+       return _tag_bases;
+    }
 
-	void addTagBase(const Tag& tag, const wstring& base) {
-		_tag_bases.push_back(std::make_pair(tag, base));
-	}
+    void addTagBase(const Tag& tag, const wstring& base) {
+        if (std::find(_tag_bases.begin(), _tag_bases.end(),
+                    std::make_pair(tag, base)) == _tag_bases.end())
+            _tag_bases.push_back(std::make_pair(tag, base));
+    }
 
     void writeToStreamWithTags(std::wostream& stream, const Tagset* tagset) const {
         stream << std::setw(ORTH_DISPLAY_WIDTH) << getOrth();
