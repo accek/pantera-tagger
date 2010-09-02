@@ -31,6 +31,8 @@ public:
     Tag expected_tag;
     // Vicinity parameter for marking nearby changes
     int vicinity;
+    // The most recent matched rule
+    int last_matched_rule;
 
 private:
     friend class boost::serialization::access;
@@ -41,11 +43,13 @@ private:
         ar & chosen_tag;
         ar & expected_tag;
         ar & vicinity;
+        ar & last_matched_rule;
     }
 
 public:
     BrillLexeme(typename Lexeme<Tag>::Type type = Lexeme<Tag>::SEGMENT)
-        : Lexeme<Tag>(type) { }
+        : Lexeme<Tag>(type), last_matched_rule(0)
+    { }
 
     static BrillLexeme<Tag> getNullLexeme() {
         BrillLexeme<Tag> lexeme;
@@ -55,6 +59,7 @@ public:
         lexeme.considered_tags.push_back(Tag::getNullTag());
         lexeme.expected_tag = Tag::getNullTag();
         lexeme.vicinity = 0;
+        lexeme.last_matched_rule = 0;
         BOOST_FOREACH(Tag& t, lexeme.chosen_tag)
             t = Tag::getNullTag();
         return lexeme;
