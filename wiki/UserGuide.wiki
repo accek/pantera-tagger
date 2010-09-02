@@ -146,8 +146,6 @@ more subfolders with handwritten golden tags, saved in XCES format {{{morph.xml}
 (and there are no other files ending {{{.xml}}} looking inside like XCES).
 {{{
 ./pantera \
-  --no-sentencer \
-  --no-morph \
   --tagset [ipipan|nkjp]
   --create-engine my_engine.btengine \
   --training-data traning_data/ \
