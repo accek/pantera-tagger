@@ -11,7 +11,12 @@
 #include <vector>
 #include <utility>
 #include <string>
+#include <sstream>
+#include <locale>
 #include <boost/foreach.hpp>
+#include <boost/date_time/posix_time/ptime.hpp>
+#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <boost/date_time/posix_time/posix_time_io.hpp>
 
 #include <nlpcommon/writer.h>
 #include <nlpcommon/util.h>
@@ -34,16 +39,14 @@ private:
             case Lexeme::SEGMENT:
             {
                 NKJPSegmentData* ld = dynamic_cast<NKJPSegmentData*>(lex.getLexerData());
-                this->stream << "      <seg ";
-                if (no_space)
-                    this->stream << "nkjp:nps=\"true\" ";
-                this->stream << "xml:id=\"segm_" << ld->getId() << "\">\n";
-                this->stream << "       <xi:include href=\"text.xml\" "
-                    "xpointer=\"string-range(" << para_id << ','
-                    << ld->getStart() << ','
-                    << ld->getEnd() - ld->getStart() << ")\"/>\n";
-                this->stream << "      </seg>\n";
                 this->stream << "      <!-- " << lex.getUtf8Orth() << " -->\n";
+                this->stream << "      <seg corresp=\"text_structure.xml#string-range("
+                    << para_id << ','
+                    << ld->getStart() << ','
+                    << ld->getEnd() - ld->getStart() << ")\"";
+                if (no_space)
+                    this->stream << " nkjp:nps=\"true\"";
+                this->stream << " xml:id=\"segm_" << ld->getId() << "\"/>\n";
                 no_space = false;
                 break;
             }
@@ -56,7 +59,8 @@ private:
             {
                 NKJPParagraphData* ld = dynamic_cast<NKJPParagraphData*>(lex.getLexerData());
                 para_id = ld->getId();
-                this->stream << "    <p xml:id=\"segm_" << para_id << "\">\n";
+                this->stream << "    <p corresp=\"text_structure.xml#" << para_id << "\""
+                   " xml:id=\"segm_" << para_id << "\">\n";
                 break;
             }
 
@@ -85,12 +89,12 @@ public:
         this->stream <<
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             "<?oxygen RNGSchema=\"NKJP_segmentation.rng\" type=\"xml\"?>\n"
-            "<teiCorpus xmlns=\"http://www.tei-c.org/ns/1.0\" xmlns:nkjp=\"http://www.nkjp.pl/ns/1.0\" xmlns:xi=\"http://www.w3.org/2001/XInclude\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n"
-            " <xi:include href=\"NKJP_1M_header.xml\"/>\n"
-            "  <TEI>\n"
-            "   <xi:include href=\"header.xml\"/>\n"
-            "    <text xml:lang=\"pl\" xml:id=\"segm_text\">\n"
-            "     <body xml:id=\"segm_body\">\n";
+            "<teiCorpus xmlns=\"http://www.tei-c.org/ns/1.0\" xmlns:nkjp=\"http://www.nkjp.pl/ns/1.0\" xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n"
+            " <xi:include href=\"NKJP_header.xml\"/>\n"
+            " <TEI>\n"
+            "  <xi:include href=\"header.xml\"/>\n"
+            "  <text xml:lang=\"pl\" xml:id=\"segm_text\">\n"
+            "   <body xml:id=\"segm_body\">\n";
 
 		const Tagset* tagset = data_source.getTagset();
         while (!data_source.eof()) {
@@ -112,6 +116,7 @@ class NKJPMorphWriter : public Writer<Lexeme>
 private:
     string para_id;
     bool no_space;
+    string time_str;
 
     typedef typename Lexeme::tag_type tag_type;
 
@@ -130,6 +135,7 @@ private:
                         tag));
         }
         std::sort(ret.begin(), ret.end());
+        ret.push_back(bct_type());
         return ret;
     }
 
@@ -139,57 +145,79 @@ private:
             case Lexeme::SEGMENT:
             {
                 NKJPSegmentData* ld = dynamic_cast<NKJPSegmentData*>(lex.getLexerData());
-                this->stream << "      <seg xlink:href=\"ann_segmentation.xml#segm_" << ld->getId() << "\" xml:id=\"morph_" << ld->getId() << "\">\n";
+                this->stream << "      <seg corresp=\"ann_segmentation.xml#segm_" << ld->getId() << "\" xml:id=\"morph_" << ld->getId() << "\">\n";
                 this->stream << "       <fs type=\"morph\">\n";
                 this->stream << "        <f name=\"orth\">\n";
                 this->stream << "         <string>" << lex.getUtf8Orth() << "</string>\n";
                 this->stream << "        </f>\n";
-                this->stream << "        <f name=\"interps\">\n";
+                this->stream << "        <!-- " << lex.getUtf8Orth() << " ["
+                    << ld->getStart() << ','
+                    << ld->getEnd() - ld->getStart() <<
+                    "] -->\n";
 
-                std::pair<wstring, string> key;
-                bool first = true;
-                int chosen_tag = -1;
-                int i = 0;
-                BOOST_FOREACH(const bct_type& bct, extractBcts(lex, tagset)) {
+                std::vector<bct_type> all_bcts = extractBcts(lex, tagset);
+                assert(all_bcts.size() > 0);
+                std::vector<std::vector<bct_type> > bct_groups;
+                std::pair<wstring, string> key = all_bcts[0].first;
+                std::vector<bct_type> bct_group;
+                BOOST_FOREACH(const bct_type& bct, all_bcts) {
                     if (bct.first != key) {
                         key = bct.first;
-                        if (first) {
-                            first = false;
-                        } else {
-                            this->stream << "           </vAlt>\n";
-                            this->stream << "          </f>\n";
-                            this->stream << "         </fs>\n";
-                        }
-                        this->stream << "         <fs type=\"lex\" xml:id=\"morph_"
-                            << ld->getId() << '_' << i << "-lex\">\n";
-                        this->stream << "          <f name=\"base\">\n";
-                        this->stream << "           <string>" << wstring_to_utf8(key.first)
-                            << "</string>\n";
-                        this->stream << "          </f>\n";
-                        this->stream << "          <f name=\"ctag\">\n";
-                        this->stream << "           <symbol value=\"" << key.second << "\"/>\n";
-                        this->stream << "          </f>\n";
-                        this->stream << "          <f name=\"msd\">\n";
-                        this->stream << "           <vAlt>\n";
+                        bct_groups.push_back(bct_group);
+                        bct_group.clear();
                     }
-
-                    this->stream << "            <symbol value=\"" <<
-                        bct.second.asStringMsd(tagset) << "\" xml:id=\"morph_"
-                            << ld->getId() << '_' << i << "-msd\">\n";
-
-                    if (lex.isAutoselectedTag(bct.second))
-                        chosen_tag = i;
-
-                    i++;
+                    if (bct.first.first.empty())
+                        break;
+                    bct_group.push_back(bct);
                 }
 
-                this->stream << "           </vAlt>\n";
-                this->stream << "          </f>\n";
-                this->stream << "         </fs>\n";
+                this->stream << "        <f name=\"interps\">\n";
+                if (bct_groups.size() > 1)
+                    this->stream << "         <vAlt>\n";
+
+                int i = 0;
+                int chosen_tag = -1;
+                BOOST_FOREACH(const std::vector<bct_type>& bct_group, bct_groups) {
+                    key = bct_group[0].first;
+                    this->stream << "          <fs type=\"lex\" xml:id=\"morph_"
+                        << ld->getId() << '_' << i << "-lex\">\n";
+                    this->stream << "           <f name=\"base\">\n";
+                    this->stream << "            <string>" << wstring_to_utf8(key.first)
+                        << "</string>\n";
+                    this->stream << "           </f>\n";
+                    this->stream << "           <f name=\"ctag\">\n";
+                    this->stream << "            <symbol value=\"" << key.second << "\"/>\n";
+                    this->stream << "           </f>\n";
+                    this->stream << "           <f name=\"msd\">\n";
+                    if (bct_group.size() > 1)
+                        this->stream << "            <vAlt>\n";
+
+                    BOOST_FOREACH(const bct_type& bct, bct_group) {
+                        this->stream << "             <symbol value=\"" <<
+                            bct.second.asStringMsd(tagset) << "\" xml:id=\"morph_"
+                                << ld->getId() << '_' << i << "-msd\"/>\n";
+
+                        if (lex.isAutoselectedTag(bct.second))
+                            chosen_tag = i;
+
+                        i++;
+                    }
+
+                    if (bct_group.size() > 1)
+                        this->stream << "            </vAlt>\n";
+                    this->stream << "           </f>\n";
+                    this->stream << "          </fs>\n";
+                }
+
+                if (bct_groups.size() > 1)
+                    this->stream << "         </vAlt>\n";
                 this->stream << "        </f>\n";
                 this->stream << "        <f name=\"disamb\">\n";
-                this->stream << "         <fs type=\"tool_report\">\n";
-                this->stream << "          <f name=\"tool\">\n";
+                this->stream << "         <fs feats=\"#an8003\" type=\"tool_report\">\n";
+                this->stream << "          <f name=\"date\">\n";
+                this->stream << "           <string>" << time_str << "</string>\n";
+                this->stream << "          </f>\n";
+                this->stream << "          <f name=\"resp\">\n";
                 this->stream << "           <string>PANTERA Tagger (" PACKAGE_STRING ")</string>\n";
                 this->stream << "          </f>\n";
                 if (chosen_tag != -1) {
@@ -200,7 +228,6 @@ private:
                 this->stream << "        </f>\n";
                 this->stream << "       </fs>\n";
                 this->stream << "      </seg>\n";
-                this->stream << "      <!-- " << lex.getUtf8Orth() << " -->\n";
                 no_space = false;
                 break;
             }
@@ -213,7 +240,7 @@ private:
             {
                 NKJPParagraphData* ld = dynamic_cast<NKJPParagraphData*>(lex.getLexerData());
                 para_id = ld->getId();
-                this->stream << "    <p xlink:href=\"ann_segmentation.xml#segm_" << para_id << "\" xml:id=\"" << para_id << "\">\n";
+                this->stream << "    <p xml:id=\"" << para_id << "\">\n";
                 break;
             }
 
@@ -224,7 +251,7 @@ private:
             case Lexeme::START_OF_SENTENCE:
             {
                 NKJPSentenceData* ld = dynamic_cast<NKJPSentenceData*>(lex.getLexerData());
-                this->stream << "     <s xlink:href=\"ann_segmentation.xml#segm_" << ld->getId() << "\" xml:id=\"" << ld->getId() << "\">\n";
+                this->stream << "     <s corresp=\"ann_segmentation.xml#segm_" << ld->getId() << "\" xml:id=\"" << ld->getId() << "\">\n";
                 break;
             }
 
@@ -236,18 +263,28 @@ private:
 
 public:
     NKJPMorphWriter(std::ostream& stream)
-        : Writer<Lexeme>(stream), no_space(false) { }
+        : Writer<Lexeme>(stream), no_space(false)
+    {
+        namespace ptime = boost::posix_time;
+        ptime::ptime now = ptime::second_clock::local_time();
+        ptime::time_facet* output_facet = new ptime::time_facet();
+        output_facet->format("%Y-%m-%d %H:%M:%S");
+        std::ostringstream ss;
+        ss.imbue(std::locale(std::locale::classic(), output_facet));
+        ss << now;
+        time_str = ss.str();
+    }
 
     virtual void writeToStream(WriterDataSource<Lexeme>& data_source) {
         this->stream <<
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-            "<?oxygen RNGSchema=\"NKJP_segmentation.rng\" type=\"xml\"?>\n"
-            "<teiCorpus xmlns=\"http://www.tei-c.org/ns/1.0\" xmlns:nkjp=\"http://www.nkjp.pl/ns/1.0\" xmlns:xi=\"http://www.w3.org/2001/XInclude\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n"
-            " <xi:include href=\"NKJP_1M_header.xml\"/>\n"
-            "  <TEI>\n"
-            "   <xi:include href=\"header.xml\"/>\n"
-            "    <text xml:lang=\"pl\" xml:id=\"segm_text\">\n"
-            "     <body xml:id=\"segm_body\">\n";
+            "<?oxygen RNGSchema=\"NKJP_morphosyntax.rng\" type=\"xml\"?>\n"
+            "<teiCorpus xmlns=\"http://www.tei-c.org/ns/1.0\" xmlns:nkjp=\"http://www.nkjp.pl/ns/1.0\" xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n"
+            " <xi:include href=\"NKJP_header.xml\"/>\n"
+            " <TEI>\n"
+            "  <xi:include href=\"header.xml\"/>\n"
+            "  <text>\n"
+            "   <body>\n";
 
 		const Tagset* tagset = data_source.getTagset();
         while (!data_source.eof()) {
