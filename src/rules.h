@@ -64,6 +64,7 @@ public:
             };
         };
         wchar_t chars[4];
+        uint16_t rule_number;
     } params;
 
 private:
