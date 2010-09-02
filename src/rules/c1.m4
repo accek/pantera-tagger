@@ -80,11 +80,21 @@ static string orth_match_repr(bool match_nearby, const wchar_t* pattern, int pre
     return string(buf);
 }
 
+static string history_match_repr(bool use_history, int rule_number) {
+    if (!use_history)
+        return "";
+    if (rule_number == 0)
+        return " AND T[0] was not changed";
+    return boost::str(boost::format(" AND T[0] was changed by rule %d in phase %d")
+        % (rule_number % 10000) % (rule_number / 10000));
+}
+
 m4_define(`NEARBY_CAT', `
 
 PTEMPLATE_BEGIN(`Nearby'$1`CatPredicateTemplate', $1,
     `, bool AlwaysPos = false, bool MatchNearbyOrth = false,
-    int PrefixLen = 0, int SuffixLen = 0')
+    int PrefixLen = 0, int SuffixLen = 0,
+    bool UseHistory = false')
 
     PTEMPLATE_FIND_PREDICATES {
         assert(PrefixLen == 0 || SuffixLen == 0);
@@ -93,6 +103,8 @@ PTEMPLATE_BEGIN(`Nearby'$1`CatPredicateTemplate', $1,
 
         Predicate<Lexeme> p = Predicate<Lexeme>(this);
         p.params.pos[0] = POSNUM(0);
+        if (UseHistory)
+            p.params.rule_number = text[index].last_matched_rule;
         if (!MatchNearbyOrth && !copy_prefix(ORTH(0), p.params.chars, PrefixLen))
             return;
         if (!MatchNearbyOrth && !copy_suffix(ORTH(0), p.params.chars, SuffixLen))
@@ -139,6 +151,8 @@ PTEMPLATE_BEGIN(`Nearby'$1`CatPredicateTemplate', $1,
     PTEMPLATE_MATCH {
         if (p.params.pos[0] != POSNUM(0))
             return false;
+        if (UseHistory && text[index].last_matched_rule != p.params.rule_number)
+            return false;
         if (PrefixLen || SuffixLen) {
             if (!MatchNearbyOrth && !match_prefix(ORTH(0), p.params.chars, PrefixLen))
                 return false;
@@ -161,9 +175,10 @@ PTEMPLATE_BEGIN(`Nearby'$1`CatPredicateTemplate', $1,
     }
 
     PTEMPLATE_STRING_REPR(
-        "(" PTEMPLATE_FOR_EACH_OFFSET(`"T[%d]|pos,%s = %s,%s"', `" OR "') ") AND T[0]|pos,%s = %s,%s%s",
+        "(" PTEMPLATE_FOR_EACH_OFFSET(`"T[%d]|pos,%s = %s,%s"', `" OR "') ") AND T[0]|pos,%s = %s,%s%s%s",
             PTEMPLATE_FOR_EACH_OFFSET(`Offset, C(0), AlwaysPos ? P(1) : "*", V(0, 1), ')
-            C(0), P(0), V(0, 0), orth_match_repr(MatchNearbyOrth, p.params.chars, PrefixLen, SuffixLen).c_str())
+            C(0), P(0), V(0, 0), orth_match_repr(MatchNearbyOrth, p.params.chars, PrefixLen, SuffixLen).c_str(),
+            history_match_repr(UseHistory, p.params.rule_number).c_str())
 
     PTEMPLATE_USES_CATEGORY0(`yes')
 

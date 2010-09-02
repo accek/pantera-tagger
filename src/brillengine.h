@@ -108,13 +108,16 @@ private:
             vector<Lexeme>& text2,
             int start_index = 0,
             int end_index = std::numeric_limits<int>::max(),
-            int vicinity_estimate = 0, bool use_mpi = true) {
+            int vicinity_estimate = 0, bool use_mpi = true,
+            int rule_number = 0) {
         assert(text1.size() == text2.size());
         start_index = std::min(start_index, (int)text1.size());
         end_index = std::min(end_index, (int)text1.size());
 
-        BOOST_FOREACH(int i, in_vicinity)
+        BOOST_FOREACH(int i, in_vicinity) {
             text2[i].chosen_tag[phase] = text1[i].chosen_tag[phase];
+            text2[i].last_matched_rule = text1[i].last_matched_rule;
+        }
 
         in_vicinity.clear();
         if (vicinity_estimate)
@@ -126,6 +129,7 @@ private:
                 assert(text2[i].chosen_tag[phase] == text1[i].chosen_tag[phase]);
                 if (b.isApplicable(phase_tstores[phase], text1, i)) {
                     text2[i].chosen_tag[phase] = b.changedTag(phase_tstores[phase], text1, i);
+                    text2[i].last_matched_rule = rule_number + phase * 10000;
                     in_vicinity.push_back(i);
                 }
             }
@@ -136,6 +140,7 @@ private:
                 BOOST_FOREACH(int i, in_vicinity) {
                     assert(b.isApplicable(phase_tstores[phase], text1, i));
                     text2[i].chosen_tag[phase] = b.changedTag(phase_tstores[phase], text1, i);
+                    text2[i].last_matched_rule = rule_number + phase * 10000;
                 }
             }
         }
@@ -700,7 +705,7 @@ public:
 
             applyRule(phase, b, text, next_text, INDEX_OFFSET,
                     text.size() - INDEX_OFFSET,
-                    2 * (good + bad));
+                    2 * (good + bad), true, round);
 
             if ((round % 10) == 1 && mpi_world.rank() == 0 && !quiet) {
 				int errors = 0;
@@ -921,7 +926,7 @@ public:
 			rule_num++;
 
             applyRule(phase, rule, text, next_text, INDEX_OFFSET,
-                    text.size() - INDEX_OFFSET, 0, false);
+                    text.size() - INDEX_OFFSET, 0, false, rule_num);
             if (!quiet) {
                 wcerr << boost::wformat(L"Phase %d. Rule %d/%d applied: %s\n") %
                         phase % rule_num % num_rules %
