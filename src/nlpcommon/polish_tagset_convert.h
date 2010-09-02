@@ -86,9 +86,35 @@ public:
                 // This also works well for converting values of degree,
                 // which in some tagsets are named 'com', while in others
                 // 'comp'.
-                ret.setValue(this->to_tagset->getCategoryIndex(to_cat),
-                        tag.getValue(
-                            this->from_tagset->getCategoryIndex(from_cat)));
+                //
+                // We also consider the case of reduced gender (no
+                // n1,n2,n3,p1,p2,p3).
+
+                int to_index = this->to_tagset->getCategoryIndex(to_cat);
+                int value = tag.getValue(
+                                this->from_tagset->getCategoryIndex(from_cat));
+                if (to_cat->getValues().size() <= value) {
+                    string value_str = from_cat->getValue(value);
+                    if (from_cat->getName() == "gender") {
+                        if (value_str[0] == 'p') {
+                            value_str[0] = 'm';
+                            value = to_cat->getIndex(value_str);
+                        } else if (value_str[0] == 'n') {
+                            value = to_cat->getIndex("n");
+                        } else {
+                            throw Exception(boost::str(boost::format(
+                                            "Unexpected gender '%1%' when converting "
+                                            "between Polish tagsets.")
+                                        % value_str));
+                        }
+                    } else {
+                        throw Exception(boost::str(boost::format(
+                                        "Don't know how to use reduced category "
+                                        "'%1%' (value to convert: '%2%')")
+                                    % to_cat->getName() % value_str));
+                    }
+                }
+                ret.setValue(to_index, value);
             }
             to_cat_index++;
         }
