@@ -163,6 +163,12 @@ more subfolders with handwritten golden tags, saved in XCES format {{{morph.xml}
   file_or_folder_xces_or_nkjp_one_or_more
 }}}
 
+=== Using newer Morfeusz morphosyntactic analyzer ===
+
+It is recommended to ask Marcin Woliński for a newer version of Morfeusz,
+which supports newer Polish tagset -- NKJP. If using this version, change the definition
+of {{{MORFEUSZ_TAGSET}}} in {{{src/nlpcommon/morfeusz.h}}}.
+
 === Custom morphosyntactic dictionary ===
 
 Sometimes morfeusz or guesser return strange interpretations for some forms.
