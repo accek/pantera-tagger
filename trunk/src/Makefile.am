@@ -1,7 +1,7 @@
 AM_CXXFLAGS = @BOOST_CPPFLAGS@ @OPENMP_CXXFLAGS@ @MORFEUSZ_CFLAGS@ \
 	-I../third_party/TaKIPI18/Linux/Corpus \
-	-DSEGMENT_PATH=\"$(libexecdir)/$(PACKAGE):${abs_top_srcdir}/third_party/segment\" \
-	-DENGINES_PATH=\"$(pkgdatadir)/engines:${abs_top_srcdir}/engines\"
+	-DSEGMENT_PATH=\"$(libexecdir)/$(PACKAGE):@abs_top_srcdir@/third_party/segment\" \
+	-DENGINES_PATH=\"$(pkgdatadir)/engines:@abs_top_srcdir@/engines\"
 
 if HAVE_PROTOBUF
 AM_CXXFLAGS += @PROTOBUF_CFLAGS@
@@ -45,10 +45,10 @@ install-exec-local: ../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
 GLOBAL_LINK_FLAGS = -Wl,-rpath -Wl,$(pkglibdir)
 
 LIBCORPUS_LINK_FLAGS = -L../third_party/TaKIPI18/Linux/bin/Corpus \
-					   -Wl,-rpath -Wl,${abs_top_srcdir}/third_party/TaKIPI18/Linux/bin/Corpus \
+					   -Wl,-rpath -Wl,@abs_top_srcdir@/third_party/TaKIPI18/Linux/bin/Corpus \
 					   -lcorpus
 
-LIBMORFEUSZ_LINK_FLAGS = -Wl,-rpath -Wl,${abs_top_srcdir}/third_party/morfeusz/lib
+LIBMORFEUSZ_LINK_FLAGS = -Wl,-rpath -Wl,@abs_top_srcdir@/third_party/morfeusz/lib
 
 BUILT_SOURCES = rules/c1.m4h
 
