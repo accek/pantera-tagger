@@ -45,6 +45,23 @@ public:
         END_OF_FILE = 0x20,
         END_OF_PARAGRAPH = 0x40,
         END_OF_SENTENCE = 0x80,
+
+        // Example of ambiguous segmentation coding.
+        //
+        // [START_OF_AMBIGUITY]
+        //   [ACCEPTED_FRAGMENT]
+        //     [SEGMENT gdzie]
+        //     [NO_SPACE]
+        //     [SEGMENT ś]
+        //   [REJECTED_FRAGMENT]
+        //     [SEGMENT gdzieś]
+        // [END_OF_AMBIGUITY]
+
+        START_OF_AMBIGUITY = 0x100,
+        UNRESOLVED_FRAGMENT = 0x200,
+        ACCEPTED_FRAGMENT = 0x400,
+        REJECTED_FRAGMENT = 0x800,
+        END_OF_AMBIGUITY = 0x1000,
     };
 
 private:

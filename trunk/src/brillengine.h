@@ -562,7 +562,7 @@ public:
                         #pragma omp critical
                         {
                             wcerr << endl << "*** Inconsistency detected" << endl;
-                            wcerr << "RULE: " << ascii_to_wstring(r.asString(tstore)) << endl;
+                            wcerr << "RULE: " << r.asWString(tstore) << endl;
                             wcerr << "Is not applicable at offset " << i
                                 << ", but reported by rules generator.";
                             throw new Exception("Internal inconsistency: "
@@ -680,14 +680,16 @@ public:
             if (!found || cancelled) break;
 
             if (mpi_world.rank() == 0 && !quiet) {
+                wstring rule_str = b.asWString(tstore);
                 wcerr << boost::wformat(
-                        L"(%d) CHOSEN RULE (good=%.1lf, bad=%.1lf, candidates=%d, good_candidates=%d): %s") %
+                        L"(%d) CHOSEN RULE (good=%.1lf, bad=%.1lf, candidates=%d, good_candidates=%d): %ls") %
                                 round %
                                 double(good) %
                                 double(bad) %
                                 int(scores.size()) %
                                 int(good_scores.size()) %
-                                b.asString(tstore).c_str() << endl;
+                                rule_str
+                      << endl;;
             }
 
             if (mpi_world.rank() == 0 && DBG && !quiet) {
@@ -864,7 +866,7 @@ public:
                     #pragma omp critical
                     {
                         wcerr << endl << "*** Inconsistency detected" << endl;
-                        wcerr << "RULE: " << ascii_to_wstring(b.asString(tstore)) << endl;
+                        wcerr << "RULE: " << b.asWString(tstore) << endl;
                         wcerr << "Is applicable at offset " << i
                             << ", but not reported by rules generator.";
                         throw new Exception("Internal inconsistency: "
@@ -928,9 +930,9 @@ public:
             applyRule(phase, rule, text, next_text, INDEX_OFFSET,
                     text.size() - INDEX_OFFSET, 0, false, rule_num);
             if (!quiet) {
-                wcerr << boost::wformat(L"Phase %d. Rule %d/%d applied: %s\n") %
-                        phase % rule_num % num_rules %
-                        ascii_to_wstring(rule.asString(phase_tstores[phase]));
+                wcerr << boost::wformat(L"Phase %d. Rule %d/%d applied: %ls\n")
+                        % phase % rule_num % num_rules
+                        % rule.asWString(phase_tstores[phase]);
             }
 
 			if (rule_num % 10 == 0 && !quiet) {

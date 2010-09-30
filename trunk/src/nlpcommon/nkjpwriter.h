@@ -32,21 +32,32 @@ class NKJPSegmWriter : public Writer<Lexeme>
 private:
     string para_id;
     bool no_space;
+    int id_generator;
 
 	void writeLexeme(const Lexeme& lex, const Tagset* tagset)
     {
         switch (lex.getType()) {
             case Lexeme::SEGMENT:
             {
+                int start, end;
+                string id;
+
                 NKJPSegmentData* ld = dynamic_cast<NKJPSegmentData*>(lex.getLexerData());
+                if (ld) {
+                    start = ld->getStart();
+                    end = ld->getEnd();
+                    id = ld->getId();
+                } else {
+                    start = end = 0;
+                    id = boost::str(boost::format("seg%d") % (++id_generator));
+                }
+
                 this->stream << "      <!-- " << lex.getUtf8Orth() << " -->\n";
                 this->stream << "      <seg corresp=\"text_structure.xml#string-range("
-                    << para_id << ','
-                    << ld->getStart() << ','
-                    << ld->getEnd() - ld->getStart() << ")\"";
+                    << para_id << ',' << start << ',' << end - start << ")\"";
                 if (no_space)
                     this->stream << " nkjp:nps=\"true\"";
-                this->stream << " xml:id=\"segm_" << ld->getId() << "\"/>\n";
+                this->stream << " xml:id=\"segm_" << id << "\"/>\n";
                 no_space = false;
                 break;
             }
@@ -58,7 +69,11 @@ private:
             case Lexeme::START_OF_PARAGRAPH:
             {
                 NKJPParagraphData* ld = dynamic_cast<NKJPParagraphData*>(lex.getLexerData());
-                para_id = ld->getId();
+                if (ld) {
+                    para_id = ld->getId();
+                } else {
+                    para_id = boost::str(boost::format("p%d") % ++id_generator);
+                }
                 this->stream << "    <p corresp=\"text_structure.xml#" << para_id << "\""
                    " xml:id=\"segm_" << para_id << "\">\n";
                 break;
@@ -71,7 +86,13 @@ private:
             case Lexeme::START_OF_SENTENCE:
             {
                 NKJPSentenceData* ld = dynamic_cast<NKJPSentenceData*>(lex.getLexerData());
-                this->stream << "     <s xml:id=\"segm_" << ld->getId() << "\">\n";
+                string id;
+                if (ld) {
+                    id = ld->getId();
+                } else {
+                    id = boost::str(boost::format("s%d") % ++id_generator);
+                }
+                this->stream << "     <s xml:id=\"segm_" << id << "\">\n";
                 break;
             }
 
@@ -86,6 +107,8 @@ public:
         : Writer<Lexeme>(stream), no_space(false) { }
 
     virtual void writeToStream(WriterDataSource<Lexeme>& data_source) {
+        id_generator = 0;
+
         this->stream <<
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             "<?oxygen RNGSchema=\"NKJP_segmentation.rng\" type=\"xml\"?>\n"
@@ -117,6 +140,7 @@ private:
     string para_id;
     bool no_space;
     string time_str;
+    int id_generator;
 
     typedef typename Lexeme::tag_type tag_type;
 
@@ -144,16 +168,26 @@ private:
         switch (lex.getType()) {
             case Lexeme::SEGMENT:
             {
+                int start, end;
+                string id;
+
                 NKJPSegmentData* ld = dynamic_cast<NKJPSegmentData*>(lex.getLexerData());
-                this->stream << "      <seg corresp=\"ann_segmentation.xml#segm_" << ld->getId() << "\" xml:id=\"morph_" << ld->getId() << "\">\n";
+                if (ld) {
+                    start = ld->getStart();
+                    end = ld->getEnd();
+                    id = ld->getId();
+                } else {
+                    start = end = 0;
+                    id = boost::str(boost::format("seg%d") % (++id_generator));
+                }
+
+                this->stream << "      <seg corresp=\"ann_segmentation.xml#segm_" << id << "\" xml:id=\"morph_" << id << "\">\n";
                 this->stream << "       <fs type=\"morph\">\n";
                 this->stream << "        <f name=\"orth\">\n";
                 this->stream << "         <string>" << lex.getUtf8Orth() << "</string>\n";
                 this->stream << "        </f>\n";
                 this->stream << "        <!-- " << lex.getUtf8Orth() << " ["
-                    << ld->getStart() << ','
-                    << ld->getEnd() - ld->getStart() <<
-                    "] -->\n";
+                    << start << ',' << end - start << "] -->\n";
 
                 std::vector<bct_type> all_bcts = extractBcts(lex, tagset);
                 assert(all_bcts.size() > 0);
@@ -180,7 +214,7 @@ private:
                 BOOST_FOREACH(const std::vector<bct_type>& bct_group, bct_groups) {
                     key = bct_group[0].first;
                     this->stream << "          <fs type=\"lex\" xml:id=\"morph_"
-                        << ld->getId() << '_' << i << "-lex\">\n";
+                        << id << '_' << i << "-lex\">\n";
                     this->stream << "           <f name=\"base\">\n";
                     this->stream << "            <string>" << wstring_to_utf8(key.first)
                         << "</string>\n";
@@ -195,7 +229,7 @@ private:
                     BOOST_FOREACH(const bct_type& bct, bct_group) {
                         this->stream << "             <symbol value=\"" <<
                             bct.second.asStringMsd(tagset) << "\" xml:id=\"morph_"
-                                << ld->getId() << '_' << i << "-msd\"/>\n";
+                                << id << '_' << i << "-msd\"/>\n";
 
                         if (lex.isAutoselectedTag(bct.second))
                             chosen_tag = i;
@@ -222,7 +256,7 @@ private:
                 this->stream << "          </f>\n";
                 if (chosen_tag != -1) {
                     this->stream << "          <f fVal=\"#morph_"
-                        << ld->getId() << '_' << chosen_tag << "-msd\" name=\"choice\"/>\n";
+                        << id << '_' << chosen_tag << "-msd\" name=\"choice\"/>\n";
                 }
                 this->stream << "         </fs>\n";
                 this->stream << "        </f>\n";
@@ -239,7 +273,11 @@ private:
             case Lexeme::START_OF_PARAGRAPH:
             {
                 NKJPParagraphData* ld = dynamic_cast<NKJPParagraphData*>(lex.getLexerData());
-                para_id = ld->getId();
+                if (ld) {
+                    para_id = ld->getId();
+                } else {
+                    para_id = boost::str(boost::format("p%d") % ++id_generator);
+                }
                 this->stream << "    <p xml:id=\"" << para_id << "\">\n";
                 break;
             }
@@ -251,7 +289,13 @@ private:
             case Lexeme::START_OF_SENTENCE:
             {
                 NKJPSentenceData* ld = dynamic_cast<NKJPSentenceData*>(lex.getLexerData());
-                this->stream << "     <s corresp=\"ann_segmentation.xml#segm_" << ld->getId() << "\" xml:id=\"" << ld->getId() << "\">\n";
+                string id;
+                if (ld) {
+                    id = ld->getId();
+                } else {
+                    id = boost::str(boost::format("s%d") % ++id_generator);
+                }
+                this->stream << "     <s corresp=\"ann_segmentation.xml#segm_" << id << "\" xml:id=\"" << id << "\">\n";
                 break;
             }
 
@@ -276,6 +320,8 @@ public:
     }
 
     virtual void writeToStream(WriterDataSource<Lexeme>& data_source) {
+        id_generator = 0;
+
         this->stream <<
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             "<?oxygen RNGSchema=\"NKJP_morphosyntax.rng\" type=\"xml\"?>\n"

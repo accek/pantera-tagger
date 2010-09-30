@@ -112,18 +112,18 @@ public:
     void setValue(unsigned int category_index, unsigned int value_index)
             { assert(false); }
     unsigned int getValue(unsigned int category_index) const
-            { assert(false); }
+            { assert(false); return 0; }
     void setPos(unsigned int pos_index)
             { assert(false); }
     unsigned int getPos() const
-            { assert(false); }
+            { assert(false); return 0; }
     void clear()
             { assert(false); }
 
     bool operator==(const Final& other) const
-            { assert(false); }
+            { assert(false); return false; }
     bool operator!=(const Final& other) const
-            { assert(false); }
+            { assert(false); return false; }
 
     static const Final& getNullTag() {
         static Final tag;

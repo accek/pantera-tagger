@@ -64,28 +64,27 @@ static inline bool copy_suffix(const wstring& string, wchar_t* pattern, int len)
     return true;
 }
 
-static string orth_match_repr(bool match_nearby, const wchar_t* pattern, int prefix_len,
+static wstring orth_match_repr(bool match_nearby, const wchar_t* pattern, int prefix_len,
         int suffix_len) {
-    char buf[STR_SIZE];
     wchar_t wbuf[STR_SIZE];
     int plen = std::max(prefix_len, suffix_len);
     wmemcpy(wbuf, pattern, plen);
     wbuf[plen] = L'\0';
     if (!prefix_len && !suffix_len)
-        return "";
-    sprintf(buf, " AND %s %s (%d chars) with '%ls'",
-        match_nearby ? "nearby segment" : "T[0]",
-        prefix_len > 0 ? "starts" : "ends",
-        plen, wbuf);
-    return string(buf);
+        return L"";
+    return boost::str(boost::wformat(L" AND %hs %hs (%d chars) with '%ls'")
+        % (match_nearby ? "nearby segment" : "T[0]")
+        % (prefix_len > 0 ? "starts" : "ends")
+        % plen
+        % wbuf);
 }
 
-static string history_match_repr(bool use_history, int rule_number) {
+static wstring history_match_repr(bool use_history, int rule_number) {
     if (!use_history)
-        return "";
+        return L"";
     if (rule_number == 0)
-        return " AND T[0] was not changed";
-    return boost::str(boost::format(" AND T[0] was changed by rule %d in phase %d")
+        return L" AND T[0] was not changed";
+    return boost::str(boost::wformat(L" AND T[0] was changed by rule %d in phase %d")
         % (rule_number % 10000) % (rule_number / 10000));
 }
 
@@ -175,10 +174,10 @@ PTEMPLATE_BEGIN(`Nearby'$1`CatPredicateTemplate', $1,
     }
 
     PTEMPLATE_STRING_REPR(
-        "(" PTEMPLATE_FOR_EACH_OFFSET(`"T[%d]|pos,%s = %s,%s"', `" OR "') ") AND T[0]|pos,%s = %s,%s%s%s",
-            PTEMPLATE_FOR_EACH_OFFSET(`Offset, C(0), AlwaysPos ? P(1) : "*", V(0, 1), ')
-            C(0), P(0), V(0, 0), orth_match_repr(MatchNearbyOrth, p.params.chars, PrefixLen, SuffixLen).c_str(),
-            history_match_repr(UseHistory, p.params.rule_number).c_str())
+        L"(" PTEMPLATE_FOR_EACH_OFFSET(`L"T[%d]|pos,%hs = %hs,%hs"', `L" OR "') L") AND T[0]|pos,%hs = %hs,%hs%ls%ls",
+             PTEMPLATE_FOR_EACH_OFFSET(`Offset, C(0), AlwaysPos ? P(1) : "*", V(0, 1), ')
+             C(0), P(0), V(0, 0), orth_match_repr(MatchNearbyOrth, p.params.chars, PrefixLen, SuffixLen).c_str(),
+             history_match_repr(UseHistory, p.params.rule_number).c_str())
 
     PTEMPLATE_USES_CATEGORY0(`yes')
 
@@ -235,7 +234,7 @@ PTEMPLATE_BEGIN(`NearbyExact'$1`CatPredicateTemplate', $1, `, bool AlwaysPos = f
     }
 
     PTEMPLATE_STRING_REPR(
-        PTEMPLATE_FOR_EACH_OFFSET(`"T[%d]|pos,%s = %s,%s"', `" AND "') " AND T[0]|pos = %s AND T[0]|%s = %s",
+        PTEMPLATE_FOR_EACH_OFFSET(`L"T[%d]|pos,%hs = %hs,%hs"', `L" AND "') L" AND T[0]|pos = %hs AND T[0]|%hs = %hs",
             PTEMPLATE_FOR_EACH_OFFSET(`Offset, C(0), AlwaysPos ? P(O) : "*", V(0, O), ')
             P(0), C(0), V(0, 0))
 
@@ -271,11 +270,11 @@ bool predicateMatches(const Predicate<Lexeme>& p,
     return (p.params.tags[0] == text[index].chosen_tag[Phase]
             && text[index].getOrth()[0] >= 'A' && text[index].getOrth()[0] <= 'Z');
 }
-string predicateAsString(const Predicate<Lexeme>& p) {
+wstring predicateAsWString(const Predicate<Lexeme>& p) {
 
     char str[STR_SIZE];
     sprintf(str, "T[0] = %s AND ORTH[0] starts with capital letter", T(tags[0]));
-    return string(str);
+    return ascii_to_wstring(str);
 }
 };
 
@@ -307,11 +306,11 @@ bool predicateMatches(const Predicate<Lexeme>& p,
             && orth[0] == p.params.chars[0]
             && orth[1] == p.params.chars[1]);
 }
-string predicateAsString(const Predicate<Lexeme>& p) {
+wstring predicateAsWString(const Predicate<Lexeme>& p) {
 
-    char str[STR_SIZE];
-    sprintf(str, "T[0] = %s AND ORTH starts with %c%c", T(tags[0]), p.params.chars[0], p.params.chars[1]);
-    return string(str);
+    wchar_t str[STR_SIZE];
+    swprintf(str, STR_SIZE, L"T[0] = %hs AND ORTH starts with '%lc%lc'", T(tags[0]), p.params.chars[0], p.params.chars[1]);
+    return wstring(str);
 }
 };
 
@@ -343,11 +342,11 @@ bool predicateMatches(const Predicate<Lexeme>& p,
             && orth[len - 2] == p.params.chars[0]
             && orth[len - 1] == p.params.chars[1]);
 }
-string predicateAsString(const Predicate<Lexeme>& p) {
+wstring predicateAsWString(const Predicate<Lexeme>& p) {
 
-    char str[STR_SIZE];
-    sprintf(str, "T[0] = %s AND ORTH ends with %c%c", T(tags[0]), p.params.chars[0], p.params.chars[1]);
-    return string(str);
+    wchar_t str[STR_SIZE];
+    swprintf(str, STR_SIZE, L"T[0] = %hs AND ORTH ends with '%lc%lc'", T(tags[0]), p.params.chars[0], p.params.chars[1]);
+    return wstring(str);
 }
 };
 

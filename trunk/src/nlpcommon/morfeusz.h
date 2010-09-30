@@ -21,6 +21,7 @@
 #include <vector>
 #include <morfeusz.h>
 #include <guesser_api.h>
+#include <algorithm>
 
 #include <nlpcommon/lexeme.h>
 #include <nlpcommon/progress.h>
@@ -277,7 +278,7 @@ public:
                 base.clear();
                 interps.clear();
                 key = utf8_to_wstring(line);
-                boost::to_lower(key, get_locale("pl_PL.UTF-8"));
+                boost::to_lower(key, get_locale("pl_PL"));
             }
         }
 
@@ -302,18 +303,48 @@ public:
                     const_cast<char*>(lex.getUtf8Orth().c_str()));
             //std::cerr << "To morf: " << lex.getUtf8Orth().c_str() << std::endl;
             
-            // TODO: Check first if there is ambiguity. If so, disable interpretations to
-            //       skip.
+            bool is_ambiguous = false;
+            int start_of_amb = 100000;
+            int end_of_amb = -1;
 
-            Lexeme current_lex;
             int segm = -1;
             for (int i = 0; ; i++) {
                 InterpMorf& interp = interps[i];
                 if (interp.p == -1)
                     break;
-                if (interp.p + 1 != interp.k || interp.p < segm
-                        || interp.p > segm + 1) {
-                    if (!quiet) {
+                if (interp.p < segm) {
+                    is_ambiguous = true;
+                    end_of_amb = std::max(end_of_amb, segm);
+                    start_of_amb = std::min(start_of_amb, interp.p);
+                }
+                segm = interp.p;
+            }
+
+            Lexeme current_lex;
+            segm = -1;
+            for (int i = 0; ; i++) {
+                InterpMorf& interp = interps[i];
+                if (interp.p == -1)
+                    break;
+                if (is_ambiguous && interp.p == start_of_amb) {
+                    if (segm != -1)
+                        ret.push_back(current_lex);
+                    ret.push_back(Lexeme(Lexeme::START_OF_AMBIGUITY));
+                    ret.push_back(Lexeme(Lexeme::UNRESOLVED_FRAGMENT));
+                    start_of_amb = -1;
+                    segm = -1;
+                }
+                if (is_ambiguous && interp.p >= end_of_amb) {
+                    ret.push_back(current_lex);
+                    ret.push_back(Lexeme(Lexeme::END_OF_AMBIGUITY));
+                    ret.push_back(Lexeme(Lexeme::NO_SPACE));
+                    end_of_amb = 100000;
+                }
+                if (interp.p < segm) {
+                    ret.push_back(current_lex);
+                    ret.push_back(Lexeme(Lexeme::UNRESOLVED_FRAGMENT));
+                    segm = -1;
+                    /*if (!quiet) {
                         std::cerr << 
 								boost::format("Ambiguous interpretation "
                                     "returned by Morfeusz for word '%1%' "
@@ -327,7 +358,7 @@ public:
                                 i++)
                             std::cerr << text[i].getUtf8Orth() << ' ';
                         std::cerr << std::endl << std::endl;
-                    }
+                    }*/
                     continue;
                 }
 
@@ -347,7 +378,7 @@ public:
 
                 if (!morph_dict.empty()) {
                     wstring morph_key(utf8_to_wstring(interp.forma));
-                    boost::to_lower(morph_key, get_locale("pl_PL.UTF-8"));
+                    boost::to_lower(morph_key, get_locale("pl_PL"));
 
                     std::map<wstring, std::vector<std::pair<wstring, string> > >
                        ::const_iterator i = morph_dict.find(morph_key);
@@ -397,6 +428,9 @@ public:
             if (segm >= 0) {
                 ret.push_back(current_lex);
                 //std::cerr << "Morf: " << current_lex.getUtf8Orth() << std::endl;
+            }
+            if (is_ambiguous && end_of_amb != 100000) {
+                ret.push_back(Lexeme(Lexeme::END_OF_AMBIGUITY));
             }
 		}
 

@@ -20,10 +20,10 @@ bool predicateMatches(const Predicate<Lexeme>& p,
     return (p.params.tags[1] == text[index + Offset].chosen_tag[Phase - 1])
             && p.params.tags[0] == text[index].chosen_tag[Phase];
 }
-string predicateAsString(const Predicate<Lexeme>& p) {
+wstring predicateAsWString(const Predicate<Lexeme>& p) {
     char str[STR_SIZE];
     sprintf(str, "T[%d] = %s AND T[0] = %s", Offset, T(tags[1]), S(tags[0]));
-    return string(str);
+    return ascii_to_wstring(str);
 }
 };
 
@@ -54,11 +54,11 @@ bool predicateMatches(const Predicate<Lexeme>& p,
             p.params.tags[1] == text[index + Offset2].chosen_tag[Phase - 1])
             && p.params.tags[0] == text[index].chosen_tag[Phase];
 }
-string predicateAsString(const Predicate<Lexeme>& p) {
+wstring predicateAsWString(const Predicate<Lexeme>& p) {
     char str[STR_SIZE];
     sprintf(str, "(T[%d] = %s OR T[%d] = %s) AND T[0] = %s", Offset1, T(tags[1]),
             Offset2, T(tags[1]), S(tags[0]));
-    return string(str);
+    return ascii_to_wstring(str);
 }
 };
 
