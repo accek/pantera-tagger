@@ -511,6 +511,8 @@ int main(int argc, char** argv) {
             "of non-ASCII characters, you take the risk!" << std::endl;
     }
 
+    wcerr.imbue(std::locale());
+
     mpi::environment env(argc, argv);
     mpi::communicator world;
 
