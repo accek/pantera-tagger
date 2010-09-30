@@ -1,5 +1,5 @@
 AM_CXXFLAGS = @BOOST_CPPFLAGS@ -I.. -Wall \
-	-DDEFAULT_TAGSET_PATH=\"${pkgdatadir}/tagsets:${abs_top_srcdir}/tagsets\"
+	-DDEFAULT_TAGSET_PATH=\"${pkgdatadir}/tagsets:@abs_top_srcdir@/tagsets\"
 
 CLEANFILES = 
 
