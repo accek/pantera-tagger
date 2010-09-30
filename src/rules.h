@@ -43,7 +43,7 @@ public:
     virtual void findMatchingPredicates(std::vector<Predicate<Lexeme> >& v,
             std::vector<Lexeme>& text, int index) = 0;
 
-    virtual string predicateAsString(const Predicate<Lexeme>& p) = 0;
+    virtual wstring predicateAsWString(const Predicate<Lexeme>& p) = 0;
 
     virtual bool usesCategory0() {
         return false;
@@ -145,7 +145,7 @@ public:
     virtual tag_type changedTag(const Action<Lexeme>& a,
             std::vector<Lexeme>& text, int index) const = 0;
 
-    virtual string actionAsString(const Action<Lexeme>& a) = 0;
+    virtual wstring actionAsWString(const Action<Lexeme>& a) = 0;
 };
 
 template<class Lexeme>
@@ -252,12 +252,12 @@ public:
         return predicate < r.predicate;
     }
 
-    string asString(const TemplatesStore<Lexeme>* tstore) const {
+    wstring asWString(const TemplatesStore<Lexeme>* tstore) const {
         PredicateTemplate<Lexeme>* ptpl = tstore->getPTemplate(predicate.tpl_id);
         ActionTemplate<Lexeme>* atpl = tstore->getATemplate(action.tpl_id);
         const Tagset* tagset = ptpl->tagsets[ptpl->tagsets.size() - 1];
-        return string("(") + ptpl->predicateAsString(predicate)
-                + string(") -> ") + atpl->actionAsString(action);
+        return wstring(L"(") + ptpl->predicateAsWString(predicate)
+                + wstring(L") -> ") + atpl->actionAsWString(action);
     }
 };
 

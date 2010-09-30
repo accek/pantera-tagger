@@ -43,10 +43,13 @@ class Tagset;
 string find_prefix(string& haystack, char needle);
 
 // String - wstring conversion
-wstring ascii_to_wstring(const string& wstring);
+wstring ascii_to_wstring(const string& string);
 wstring utf8_to_wstring(const string& s);
 string wstring_to_utf8(const wstring& s);
 
+static inline wstring ascii_to_wstring(const char* s) {
+    return ascii_to_wstring(string(s));
+}
 
 // Output a difference between actual and expected tags on one token
 // in a human-readable way.

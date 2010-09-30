@@ -15,6 +15,7 @@
 
 #include <nlpcommon/tag.h>
 #include <nlpcommon/tagset.h>
+#include <nlpcommon/plaintextlexer.h>
 #include <nlpcommon/ipipanlexer.h>
 #include <nlpcommon/nkjptextlexer.h>
 #include <nlpcommon/lexemesfilter.h>
@@ -23,6 +24,7 @@
 #include <nlpcommon/finderrors.h>
 #include <nlpcommon/morfeusz.h>
 #include <nlpcommon/libsegmentsentencer.h>
+#include <nlpcommon/polish_segm_disamb.h>
 
 #include "rules/impl.h"
 #include "brilllexeme.h"
@@ -58,13 +60,16 @@ static Lexer<MyLexeme>* make_lexer(const string& type,
         return new NKJPTextLexer<MyLexeme>(stream);
     } else if (type == "ipipan-morph") {
         return new IpiPanLexer<MyLexeme>(stream);
+    } else if (type == "plaintext") {
+        return new PlainTextLexer<MyLexeme>(stream);
     } else {
         assert(false && "Unexpected file type in make_lexer.");
     }
 }
 
 static void find_input_files(const fs::path& path,
-        vector<pair<string, string> >& found_files) {
+        vector<pair<string, string> >& found_files,
+        bool specified_directly = true) {
     // The vector is of (file_path, file_type).
 
     if (fs::is_regular_file(path)) {
@@ -85,11 +90,14 @@ static void find_input_files(const fs::path& path,
                     break;
                 }
             }
+        } else if (path.extension() == ".txt" && specified_directly) {
+            found_files.push_back(make_pair(path.file_string(),
+                        "plaintext"));
         }
     } else if (fs::is_directory(path)) {
         fs::directory_iterator begin(path), end;
         BOOST_FOREACH(fs::path p, make_pair(begin, end))
-            find_input_files(p, found_files);
+            find_input_files(p, found_files, false);
     }
 }
 
@@ -149,18 +157,29 @@ static void preprocess_file(const fs::path& path, const string& type,
 
     // 3. Morphological analyzer.
     if (options.count("no-morph") == 0) {
-        print_status("MORPH", path.file_string());
+
         static MorfeuszAnalyzer<MyLexeme> morfeusz(tagset,
                 options.count("no-guesser") == 0);
-        morfeusz.setQuiet(options.count("verbose") == 0);
+        static PolishSegmDisambiguator<MyLexeme> segm_disamb;
+        static bool first_time = true;
 
-        if (options.count("morph-dict")) {
-            BOOST_FOREACH(const string& filename,
-                    options["morph-dict"].as<vector<string> >())
-                morfeusz.loadMorphDict(filename);
+        if (first_time) {
+            first_time = false;
+
+            morfeusz.setQuiet(options.count("verbose") == 0);
+
+            if (options.count("morph-dict")) {
+                BOOST_FOREACH(const string& filename,
+                        options["morph-dict"].as<vector<string> >())
+                    morfeusz.loadMorphDict(filename);
+            }
         }
 
+        print_status("MORPH", path.file_string());
         text = morfeusz.analyzeText(text);
+
+        print_status("SEGM-DISAMB", path.file_string());
+        segm_disamb.disambiguateSegmentation(text);
     }
 }
 
@@ -172,8 +191,10 @@ static void postprocess_file(const fs::path& path, const string& type,
         ofstream rewrite_out((path.file_string() + ".disamb").c_str());
         IpiPanWriter<MyLexeme> writer(rewrite_out);
         writer.writeVectorToStream(tagset, text);
-    } else if (type == "nkjp-text") {
-        dynamic_cast<NKJPTextLexer<MyLexeme>*>(lexer.get())->alignText(text);
+    } else if (type == "nkjp-text" || type == "plaintext") {
+        NKJPTextLexer<MyLexeme>* nkjp_lexer = dynamic_cast<NKJPTextLexer<MyLexeme>*>(lexer.get());
+        if (nkjp_lexer)
+            nkjp_lexer->alignText(text);
 
         fs::path p(path);
         p.remove_filename();
@@ -237,6 +258,7 @@ void parse_command_line(int argc, char** argv) {
         ("no-sentencer", "disable sentencer")
         ("no-morph", "disable morphological analyzer (and guesser)")
         ("no-guesser", "disable guesser")
+        ("no-tagger", "disable tagger")
         ("engine", po::value<string>()->default_value(DEFAULT_ENGINE),
          "Brill engine to use (file ending with .btengine)")
         ("create-engine,T", po::value<string>(),
@@ -293,7 +315,27 @@ void parse_command_line(int argc, char** argv) {
         notify(options);
     }
 
-    if (options.count("help")) {
+    bool show_help = false;
+
+    if (!options.count("input-file") && !options.count("create-engine")) {
+        std::cerr << "error: No input file specified" << std::endl;
+        show_help = true;
+    }
+
+    if (options.count("create-engine") && !options.count("training-data")) {
+        std::cerr << "error: No training data specified, use --training-data"
+            << std::endl;
+        show_help = true;
+    }
+
+    if (options.count("create-engine")
+            && options["engine"].as<string>() != DEFAULT_ENGINE) {
+        std::cerr << "error: Options --create-engine and --engine are "
+            "mutually exclusive" << std::endl;
+        show_help = true;
+    }
+
+    if (show_help || options.count("help")) {
         cerr << visible << endl;
         exit(1);
     }
@@ -308,10 +350,6 @@ ostream& operator<<(ostream& os, const vector<T>& v)
 
 int real_main(mpi::communicator& world, int argc, char** argv) {
     parse_command_line(argc, argv);
-    /*if (!options.count("input-file")) {
-        std::cerr << "No input file specified" << std::endl;
-        return 1;
-    }*/
 
     // 1. Setup engine.
     vector<const Tagset*> tagsets = load_tagsets(
@@ -348,7 +386,7 @@ int real_main(mpi::communicator& world, int argc, char** argv) {
             
             engine.setText(all_text);
 
-        } else {
+        } else if (!options.count("no-tagger")) {
             // No training mode.
             cerr << endl << "Loading engine ..." << endl;
             fs::path engine_path = find_with_path(ENGINES_PATH,
@@ -361,23 +399,30 @@ int real_main(mpi::communicator& world, int argc, char** argv) {
         cerr << "Sending data to all worker processes ..." << endl;
     }
 
-    mpi::broadcast(world, engine, 0);
+    if (options.count("create-engine") || !options.count("no-tagger")) {
+        mpi::broadcast(world, engine, 0);
+    }
 
     // Run training if needed.
-    int threshold = options["threshold"].as<int>();
-    if (!engine.isTrained())
+    if (options.count("create-engine")) {
+        int threshold = options["threshold"].as<int>();
         for (int i = 0; i < engine.numPhases(); i++)
             engine.runPhase(i, rule_generators[i], threshold);
 
-    // Save engine if needed.
-    if (world.rank() == 0 && options.count("create-engine")) {
-        string engine_filename = options["create-engine"].as<string>();
-        ofstream engine_stream(engine_filename.c_str(), ios::out |
-                ios::binary);
-        cerr << endl << "Saving engine to " << engine_filename << " ...  ";
-        boost::archive::binary_oarchive engine_archive(engine_stream);
-        engine_archive << engine;
-        cerr << "done." << endl;
+        // Save engine if needed.
+        if (world.rank() == 0) {
+            string engine_filename = options["create-engine"].as<string>();
+            ofstream engine_stream(engine_filename.c_str(), ios::out |
+                    ios::binary);
+            cerr << endl << "Saving engine to " << engine_filename << " ...  ";
+            boost::archive::binary_oarchive engine_archive(engine_stream);
+            engine_archive << engine;
+            cerr << "done." << endl;
+        }
+    }
+
+    if (options.count("create-engine") || !options.count("no-tagger")) {
+        engine.setQuiet(options.count("verbose") == 0);
     }
 
     // Scan for input files.
@@ -391,49 +436,86 @@ int real_main(mpi::communicator& world, int argc, char** argv) {
     }
     mpi::broadcast(world, input_files, 0);
 
-    engine.setQuiet(options.count("verbose") == 0);
-
     MPIProgressController progress(world);
     progress.init("Processing ...", input_files.size());
     float done = 0;
+    int num_errors = 0;
     for (int i = world.rank(); i < input_files.size(); i += world.size()) {
         const input_pair_type& input_pair = input_files[i];
         const string& path = input_pair.first;
+        float progress_left = 1.0;
 
-        vector<MyLexeme> text;
-        preprocess_file(input_pair.first, input_pair.second, tagset, text);
-        progress.set(done += 0.3);
+        try {
+            vector<MyLexeme> text;
+            preprocess_file(input_pair.first, input_pair.second, tagset, text);
+            progress.set(done += 0.3);
+            progress_left -= 0.3;
 
-        print_status("PRE-TAGGER", path);
-        LexemesFilter<MyLexeme> segments_filter(MyLexeme::SEGMENT);
-        text = segments_filter.filterText(text);
-        print_status("TAGGER", path);
-        engine.tagText(text);
-        progress.set(done += 0.4);
+            if (!options.count("no-tagger")) {
+                print_status("PRE-TAGGER", path);
+                LexemesFilter<MyLexeme> segments_filter(MyLexeme::SEGMENT);
+                text = segments_filter.filterText(text);
+                print_status("TAGGER", path);
+                engine.tagText(text);
+                progress.set(done += 0.4);
+                progress_left -= 0.4;
 
-        print_status("POST-TAGGER", path);
-        analyze_errors(string(input_pair.first) + ".errors.txt", tagset, text);
-        text = segments_filter.unfilterText(text);
-        postprocess_file(input_pair.first, input_pair.second, tagset, text);
-        progress.set(done += 0.3);
+                print_status("POST-TAGGER", path);
+                analyze_errors(string(input_pair.first) + ".errors.txt", tagset, text);
+                text = segments_filter.unfilterText(text);
+            }
+
+            postprocess_file(input_pair.first, input_pair.second, tagset, text);
+        } catch (std::exception const& e) {
+            cerr << "[" << path << "] ERROR: Caught " << typeid(e).name() << " with message: " << e.what() << endl;
+            num_errors++;
+        } catch (...) {
+            cerr << "[" << path << "] ERROR: Caught unknown exception." << endl;
+            num_errors++;
+        }
+
+        progress.set(done += progress_left);
     }
     progress.finish();
 
-    if (world.rank() == 0)
-        cerr << "All done." << endl;
+    int all_errors;
+    mpi::reduce(world, num_errors, all_errors, std::plus<int>(), 0);
+
+    if (world.rank() == 0) {
+        cerr << "All done.";
+        if (all_errors > 0) {
+            cerr << " Encountered " << all_errors << " error(s).";
+        }
+        cerr << endl;
+        return all_errors > 0 ? 1 : 0;
+    }
+
+    return 0;
 }
 
 int main(int argc, char** argv) {
     ios_base::sync_with_stdio(false);
 
-    // This is needed for correct wcin/wcout behaviour.
-    setlocale(LC_CTYPE, "");
+    // This was needed for correct wcin/wcout behaviour on MacOS.
+    // As we do not support it anymore and it seems to interfere
+    // with std::locale::global(std::locale("")), we leave it
+    // commented out.
+    //setlocale(LC_CTYPE, "");
+    
+    // Use the locale from the environment.
+    try {
+        std::locale::global(std::locale(""));
+    } catch (...) {
+        std::cerr << "warning: terminal-compatible locale is "
+            "not supported; this may cause incorrect handling "
+            "of non-ASCII characters, you take the risk!" << std::endl;
+    }
 
     mpi::environment env(argc, argv);
     mpi::communicator world;
 
 #if HAVE_OPENMP
-    wcerr << "OpenMP parallelism enabled (processors: " <<
+    cerr << "OpenMP parallelism enabled (processors: " <<
         omp_get_num_procs() << ", dynamic thread allocation: "
         << omp_get_dynamic() << ")" << endl;
 
@@ -445,11 +527,11 @@ int main(int argc, char** argv) {
     try {
         return real_main(world, argc, argv);
     } catch (std::exception const& e) {
-        wcerr << "***FATAL***: Caught " << typeid(e).name() << " with message:" << endl;
-        wcerr << e.what() << endl;
+        cerr << "***FATAL***: Caught " << typeid(e).name() << " with message:" << endl;
+        cerr << e.what() << endl;
         throw;
     } catch (...) {
-        wcerr << "***FATAL***: Caught unknown exception." << endl;
+        cerr << "***FATAL***: Caught unknown exception." << endl;
         throw;
     }
 }

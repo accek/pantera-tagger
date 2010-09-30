@@ -17,10 +17,10 @@ bool predicateMatches(const Predicate<Lexeme>& p,
             vector<Lexeme>& text, int index) {
     return p.params.tags[0] == text[index].chosen_tag[Phase];
 }
-string predicateAsString(const Predicate<Lexeme>& p) {
+wstring predicateAsWString(const Predicate<Lexeme>& p) {
     char str[STR_SIZE];
     sprintf(str, "T[0] = %s", T(tags[0]));
-    return string(str);
+    return ascii_to_wstring(str);
 }
 };
 
@@ -46,10 +46,10 @@ bool predicateMatches(const Predicate<Lexeme>& p,
     return (p.params.tags[1] == text[index + Offset].chosen_tag[Phase])
             && p.params.tags[0] == text[index].chosen_tag[Phase];
 }
-string predicateAsString(const Predicate<Lexeme>& p) {
+wstring predicateAsWString(const Predicate<Lexeme>& p) {
     char str[STR_SIZE];
     sprintf(str, "T[%d] = %s AND T[0] = %s", Offset, T(tags[1]), T(tags[0]));
-    return string(str);
+    return ascii_to_wstring(str);
 }
 };
 
@@ -76,11 +76,11 @@ bool predicateMatches(const Predicate<Lexeme>& p,
             || p.params.tags[1] == text[index + Offset2].chosen_tag[Phase])
             && p.params.tags[0] == text[index].chosen_tag[Phase];
 }
-string predicateAsString(const Predicate<Lexeme>& p) {
+wstring predicateAsWString(const Predicate<Lexeme>& p) {
     char str[STR_SIZE];
     sprintf(str, "(T[%d] = %s OR T[%d] = %s) AND T[0] = %s",
             Offset1, T(tags[1]), Offset2, T(tags[1]), T(tags[0]));
-    return string(str);
+    return ascii_to_wstring(str);
 }
 };
 
@@ -110,11 +110,11 @@ bool predicateMatches(const Predicate<Lexeme>& p,
             || p.params.tags[1] == text[index + Offset3].chosen_tag[Phase])
             && p.params.tags[0] == text[index].chosen_tag[Phase];
 }
-string predicateAsString(const Predicate<Lexeme>& p) {
+wstring predicateAsWString(const Predicate<Lexeme>& p) {
     char str[STR_SIZE];
     sprintf(str, "(T[%d] = %s OR T[%d] = %s OR T[%d] = %s) AND T[0] = %s",
             Offset1, T(tags[1]), Offset2, T(tags[1]), Offset3, T(tags[1]), T(tags[0]));
-    return string(str);
+    return ascii_to_wstring(str);
 }
 };
 
@@ -142,11 +142,11 @@ bool predicateMatches(const Predicate<Lexeme>& p,
             && p.params.tags[2] == text[index + Offset2].chosen_tag[Phase])
             && p.params.tags[0] == text[index].chosen_tag[Phase];
 }
-string predicateAsString(const Predicate<Lexeme>& p) {
+wstring predicateAsWString(const Predicate<Lexeme>& p) {
     char str[STR_SIZE];
     sprintf(str, "T[%d] = %s AND T[%d] = %s AND T[0] = %s", 
             Offset1, T(tags[1]), Offset2, T(tags[2]), T(tags[0]));
-    return string(str);
+    return ascii_to_wstring(str);
 }
 };
 
@@ -170,11 +170,11 @@ bool predicateMatches(const Predicate<Lexeme>& p,
     return (p.params.tags[0] == text[index].chosen_tag[Phase]
             && isupper(text[index].getOrth()[0], this->tagsets[Phase]->getLocale()));
 }
-string predicateAsString(const Predicate<Lexeme>& p) {
+wstring predicateAsWString(const Predicate<Lexeme>& p) {
 
     char str[STR_SIZE];
     sprintf(str, "T[0] = %s AND ORTH[0] starts with capital letter", T(tags[0]));
-    return string(str);
+    return ascii_to_wstring(str);
 }
 };
 
@@ -206,11 +206,11 @@ bool predicateMatches(const Predicate<Lexeme>& p,
             && orth[0] == p.params.chars[0]
             && orth[1] == p.params.chars[1]);
 }
-string predicateAsString(const Predicate<Lexeme>& p) {
+wstring predicateAsWString(const Predicate<Lexeme>& p) {
 
     char str[STR_SIZE];
     sprintf(str, "T[0] = %s AND ORTH starts with %lc%lc", T(tags[0]), p.params.chars[0], p.params.chars[1]);
-    return string(str);
+    return ascii_to_wstring(str);
 }
 };
 
@@ -242,11 +242,11 @@ bool predicateMatches(const Predicate<Lexeme>& p,
             && orth[len - 2] == p.params.chars[0]
             && orth[len - 1] == p.params.chars[1]);
 }
-string predicateAsString(const Predicate<Lexeme>& p) {
+wstring predicateAsWString(const Predicate<Lexeme>& p) {
 
     char str[STR_SIZE];
     sprintf(str, "T[0] = %s AND ORTH ends with %lc%lc", T(tags[0]), p.params.chars[0], p.params.chars[1]);
-    return string(str);
+    return ascii_to_wstring(str);
 }
 };
 

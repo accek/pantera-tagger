@@ -43,10 +43,10 @@ m4_define(`PTEMPLATE_MATCH', `
 ')
 
 m4_define(`PTEMPLATE_STRING_REPR', `
-    string predicateAsString(const Predicate<Lexeme>& p) {
-        char str[STR_SIZE];
-        sprintf(str, $@);
-        return string(str);
+    wstring predicateAsWString(const Predicate<Lexeme>& p) {
+        wchar_t str[STR_SIZE];
+        swprintf(str, STR_SIZE, $@);
+        return wstring(str);
     }m4_dnl
 ')
 

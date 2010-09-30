@@ -32,9 +32,9 @@ public:
         return a.params.tag;
     }
 
-    virtual string actionAsString(const Action<Lexeme>& a) {
-        return boost::str(boost::format("T[0] := %1%") %
-            a.params.tag.asString(this->tagsets[Phase]));
+    virtual wstring actionAsWString(const Action<Lexeme>& a) {
+        return boost::str(boost::wformat(L"T[0] := %1%") %
+            ascii_to_wstring(a.params.tag.asString(this->tagsets[Phase])));
     }
 };
 
@@ -115,10 +115,10 @@ public:
                 text[index].considered_tags, a.params.category);
     }
 
-    virtual string actionAsString(const Action<Lexeme>& a) {
-        return boost::str(boost::format("T[0]|%1% := %2%") %
-                this->tagsets[Phase]->getCategory(a.params.category)->getName() %
-                this->tagsets[Phase]->getCategory(a.params.category)->getValue(a.params.value));
+    virtual wstring actionAsWString(const Action<Lexeme>& a) {
+        return boost::str(boost::wformat(L"T[0]|%1% := %2%") %
+                ascii_to_wstring(this->tagsets[Phase]->getCategory(a.params.category)->getName()) %
+                ascii_to_wstring(this->tagsets[Phase]->getCategory(a.params.category)->getValue(a.params.value)));
     }
 };
 
@@ -160,8 +160,8 @@ public:
                 text[index].considered_tags);
     }
 
-    virtual string actionAsString(const Action<Lexeme>& a) {
-        return boost::str(boost::format("T[0]|pos := %1%") %
-                this->tagsets[Phase]->getPartOfSpeech(a.params.pos)->getName());
+    virtual wstring actionAsWString(const Action<Lexeme>& a) {
+        return boost::str(boost::wformat(L"T[0]|pos := %1%") %
+                ascii_to_wstring(this->tagsets[Phase]->getPartOfSpeech(a.params.pos)->getName()));
     }
 };
