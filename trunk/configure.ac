@@ -44,6 +44,8 @@ if test "x$eclipse" = "xyes"; then
 	esac
 fi
 
+AM_ICONV
+
 AX_BOOST_BASE([1.40.0])
 AX_BOOST_SYSTEM
 AX_BOOST_FILESYSTEM
