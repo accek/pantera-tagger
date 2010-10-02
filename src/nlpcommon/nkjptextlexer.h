@@ -151,6 +151,12 @@ public:
         int segment_num = 0;
         int sentence_num = 0;
 
+        bool in_ambiguity = false;
+        boost::wsregex_iterator saved_raw_i;
+        size_t saved_block_cursor;
+        size_t saved_block_offset;
+
+
         int text_len = text.size();
         int i;
         for (i = 0; i < text_len; i++) {
@@ -158,6 +164,8 @@ public:
             switch (lex.getType()) {
                 case Lexeme::START_OF_PARAGRAPH:
                 {
+                    assert(!in_ambiguity);
+
                     para_id = dynamic_cast<NKJPParagraphData*>(
                             lex.getLexerData())->getId();
 
@@ -209,8 +217,9 @@ public:
                             if (block_substr != needle) {
                                 throw Exception(boost::str(
                                             boost::format("Unexpetced '%2%' "
-                                                "looking for '%1%'")
-                                            % wstring_to_utf8(needle) % wstring_to_utf8(block_substr)));
+                                                "looking for '%1%' (context: '%3%')")
+                                            % wstring_to_utf8(needle) % wstring_to_utf8(block_substr)
+                                            % wstring_to_utf8(block)));
                             }
                             segment_num++;
                             string segm_id = boost::str(
@@ -239,11 +248,40 @@ public:
                     break;
                 }
 
+                case Lexeme::START_OF_AMBIGUITY:
+                    assert(!in_ambiguity);
+                    in_ambiguity = true;
+                    saved_raw_i = raw_i;
+                    saved_block_cursor = block_cursor;
+                    saved_block_offset = block_offset;
+                    break;
+
+                case Lexeme::UNRESOLVED_FRAGMENT:
+                    throw Exception("NKJPTextLexer cannot align text with "
+                            "unresolved segmentation.");
+                    
+                case Lexeme::ACCEPTED_FRAGMENT:
+                case Lexeme::REJECTED_FRAGMENT:
+                    assert(in_ambiguity);
+                    raw_i = saved_raw_i;
+                    block_cursor = saved_block_cursor;
+                    block_offset = saved_block_offset;
+                    block = raw_i->str(MATCH_TEXT);
+                    break;
+
+                case Lexeme::END_OF_AMBIGUITY:
+                    assert(in_ambiguity);
+                    in_ambiguity = false;
+                    break;
+
                 default:
                     // do nothing
                     ;
             }
         }
+
+        // Make sure the text is not truncated and left inside an ambiguity.
+        assert(!in_ambiguity);
     }
 };
 
