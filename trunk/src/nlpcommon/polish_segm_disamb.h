@@ -7,6 +7,7 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
+#include <boost/foreach.hpp>
 #include <boost/regex.hpp>
 
 #include <nlpcommon/exception.h>
@@ -23,15 +24,34 @@ template<class Lexeme>
 class PolishSegmDisambiguator : public SegmDisambiguator<Lexeme>
 {
 private:
-    std::vector<std::pair<boost::wregex, string> > rules;
+    typedef std::pair<boost::wregex, string> rule_t;
+
+    std::vector<rule_t> rules;
 
     bool shouldBeSeparate(std::vector<Lexeme>& text, int i) {
         wstring orth = text[i].getOrth();
         boost::to_lower(orth, get_locale("pl_PL"));
 
-        // TODO: process according to configuration
+        BOOST_FOREACH(const rule_t& rule, this->rules) {
+            if (boost::regex_match(orth, rule.first)) {
+                const string& action = rule.second;
+                //std::cerr << "DISAMB " << wstring_to_utf8(orth) << ' ' << action << std::endl;
+                if (action == "together")
+                    return false;
+                else if (action == "separate")
+                    return true;
+                else
+                    throw Exception(boost::str(boost::format(
+                                    "PolishSegmDisambiguator does not know "
+                                    "disambiguation action '%1%'") % action));
+            }
+        }
 
-        return true;
+        // Default: together
+        std::wcerr << L"warning: no disambiguation rule matched for word '"
+            << orth << L"'. Assuming together, but please specify a wildcard "
+            L"rule if this is your intention." << std::endl;
+        return false;
     }
 
 

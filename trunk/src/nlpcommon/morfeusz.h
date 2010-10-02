@@ -308,17 +308,22 @@ public:
             int end_of_amb = -1;
 
             int segm = -1;
+            int segmk = -1;
             for (int i = 0; ; i++) {
                 InterpMorf& interp = interps[i];
+                //std::cerr << '[' << interp.p << ',' << interp.k << ']';
                 if (interp.p == -1)
                     break;
                 if (interp.p < segm) {
                     is_ambiguous = true;
-                    end_of_amb = std::max(end_of_amb, segm);
-                    start_of_amb = std::min(start_of_amb, interp.p);
+                    end_of_amb = segmk;
+                    start_of_amb = interp.p;
                 }
                 segm = interp.p;
+                segmk = interp.k;
             }
+
+            //std::cerr << "\n\nAMBI " << start_of_amb << ' ' << end_of_amb << '\n';
 
             Lexeme current_lex;
             segm = -1;
@@ -338,9 +343,11 @@ public:
                     ret.push_back(current_lex);
                     ret.push_back(Lexeme(Lexeme::END_OF_AMBIGUITY));
                     ret.push_back(Lexeme(Lexeme::NO_SPACE));
+                    segm = -1;
                     end_of_amb = 100000;
                 }
                 if (interp.p < segm) {
+                    assert(interp.p >= start_of_amb && interp.k <= end_of_amb);
                     ret.push_back(current_lex);
                     ret.push_back(Lexeme(Lexeme::UNRESOLVED_FRAGMENT));
                     segm = -1;
@@ -359,7 +366,6 @@ public:
                             std::cerr << text[i].getUtf8Orth() << ' ';
                         std::cerr << std::endl << std::endl;
                     }*/
-                    continue;
                 }
 
                 if (interp.p > segm) {

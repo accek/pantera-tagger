@@ -33,9 +33,23 @@ private:
     string para_id;
     bool no_space;
     int id_generator;
+    bool in_rejected;
+    bool in_paren;
 
-	void writeLexeme(const Lexeme& lex, const Tagset* tagset)
-    {
+    void openParen() {
+        assert(!in_paren);
+        this->stream << "      <nkjp:paren>\n";
+        in_paren = true;
+    }
+
+    void closeParen() {
+        if (in_paren) {
+            this->stream << "      </nkjp:paren>\n";
+            in_paren = false;
+        }
+    }
+
+    void writeLexeme(const Lexeme& lex, const Tagset* tagset) {
         switch (lex.getType()) {
             case Lexeme::SEGMENT:
             {
@@ -57,6 +71,8 @@ private:
                     << para_id << ',' << start << ',' << end - start << ")\"";
                 if (no_space)
                     this->stream << " nkjp:nps=\"true\"";
+                if (in_rejected)
+                    this->stream << " nkjp:rejected=\"true\"";
                 this->stream << " xml:id=\"segm_" << id << "\"/>\n";
                 no_space = false;
                 break;
@@ -80,7 +96,7 @@ private:
             }
 
             case Lexeme::END_OF_PARAGRAPH:
-				this->stream << "    </p>\n";
+                this->stream << "    </p>\n";
                 break;
 
             case Lexeme::START_OF_SENTENCE:
@@ -97,7 +113,35 @@ private:
             }
 
             case Lexeme::END_OF_SENTENCE:
-				this->stream << "     </s>\n";
+                this->stream << "     </s>\n";
+                break;
+
+            case Lexeme::START_OF_AMBIGUITY:
+                this->stream << "      <choice>\n";
+                break;
+
+            case Lexeme::UNRESOLVED_FRAGMENT:
+                this->closeParen();
+                this->openParen();
+                in_rejected = false;
+                break;
+
+            case Lexeme::ACCEPTED_FRAGMENT:
+                this->closeParen();
+                this->openParen();
+                in_rejected = false;
+                break;
+
+            case Lexeme::REJECTED_FRAGMENT:
+                this->closeParen();
+                this->openParen();
+                in_rejected = true;
+                break;
+
+            case Lexeme::END_OF_AMBIGUITY:
+                this->closeParen();
+                in_rejected = false;
+                this->stream << "      </choice>\n";
                 break;
         }
     }
@@ -108,6 +152,8 @@ public:
 
     virtual void writeToStream(WriterDataSource<Lexeme>& data_source) {
         id_generator = 0;
+        in_rejected = false;
+        in_paren = false;
 
         this->stream <<
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
@@ -119,7 +165,7 @@ public:
             "  <text xml:lang=\"pl\" xml:id=\"segm_text\">\n"
             "   <body xml:id=\"segm_body\">\n";
 
-		const Tagset* tagset = data_source.getTagset();
+        const Tagset* tagset = data_source.getTagset();
         while (!data_source.eof()) {
             writeLexeme(data_source.nextLexeme(), tagset);
             this->advanceProgress();
@@ -141,6 +187,7 @@ private:
     bool no_space;
     string time_str;
     int id_generator;
+    bool in_rejected;
 
     typedef typename Lexeme::tag_type tag_type;
 
@@ -163,13 +210,16 @@ private:
         return ret;
     }
 
-	void writeLexeme(const Lexeme& lex, const Tagset* tagset)
+    void writeLexeme(const Lexeme& lex, const Tagset* tagset)
     {
         switch (lex.getType()) {
             case Lexeme::SEGMENT:
             {
                 int start, end;
                 string id;
+
+                if (in_rejected)
+                    break;
 
                 NKJPSegmentData* ld = dynamic_cast<NKJPSegmentData*>(lex.getLexerData());
                 if (ld) {
@@ -267,7 +317,8 @@ private:
             }
 
             case Lexeme::NO_SPACE:
-                no_space = true;
+                if (!in_rejected)
+                    no_space = true;
                 break;
 
             case Lexeme::START_OF_PARAGRAPH:
@@ -283,7 +334,7 @@ private:
             }
 
             case Lexeme::END_OF_PARAGRAPH:
-				this->stream << "    </p>\n";
+                this->stream << "    </p>\n";
                 break;
 
             case Lexeme::START_OF_SENTENCE:
@@ -300,7 +351,17 @@ private:
             }
 
             case Lexeme::END_OF_SENTENCE:
-				this->stream << "     </s>\n";
+                this->stream << "     </s>\n";
+                break;
+
+            case Lexeme::REJECTED_FRAGMENT:
+                in_rejected = true;
+                break;
+
+            case Lexeme::ACCEPTED_FRAGMENT:
+            case Lexeme::UNRESOLVED_FRAGMENT:
+            case Lexeme::END_OF_AMBIGUITY:
+                in_rejected = false;
                 break;
         }
     }
@@ -321,6 +382,7 @@ public:
 
     virtual void writeToStream(WriterDataSource<Lexeme>& data_source) {
         id_generator = 0;
+        in_rejected = false;
 
         this->stream <<
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
@@ -332,7 +394,7 @@ public:
             "  <text>\n"
             "   <body>\n";
 
-		const Tagset* tagset = data_source.getTagset();
+        const Tagset* tagset = data_source.getTagset();
         while (!data_source.eof()) {
             writeLexeme(data_source.nextLexeme(), tagset);
             this->advanceProgress();
