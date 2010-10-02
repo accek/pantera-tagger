@@ -207,10 +207,9 @@ bool predicateMatches(const Predicate<Lexeme>& p,
             && orth[1] == p.params.chars[1]);
 }
 wstring predicateAsWString(const Predicate<Lexeme>& p) {
-
-    char str[STR_SIZE];
-    sprintf(str, "T[0] = %s AND ORTH starts with %lc%lc", T(tags[0]), p.params.chars[0], p.params.chars[1]);
-    return ascii_to_wstring(str);
+    wchar_t str[STR_SIZE];
+    swprintf(str, STR_SIZE, L"T[0] = %hs AND ORTH starts with '%lc%lc'", T(tags[0]), p.params.chars[0], p.params.chars[1]);
+    return wstring(str);
 }
 };
 
@@ -243,10 +242,9 @@ bool predicateMatches(const Predicate<Lexeme>& p,
             && orth[len - 1] == p.params.chars[1]);
 }
 wstring predicateAsWString(const Predicate<Lexeme>& p) {
-
-    char str[STR_SIZE];
-    sprintf(str, "T[0] = %s AND ORTH ends with %lc%lc", T(tags[0]), p.params.chars[0], p.params.chars[1]);
-    return ascii_to_wstring(str);
+    wchar_t str[STR_SIZE];
+    swprintf(str, STR_SIZE, L"T[0] = %hs AND ORTH ends with '%lc%lc'", T(tags[0]), p.params.chars[0], p.params.chars[1]);
+    return wstring(str);
 }
 };
 
