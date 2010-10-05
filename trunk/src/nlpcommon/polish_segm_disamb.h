@@ -109,10 +109,12 @@ public:
                     if (num_fragments == 1) {
                         text[first_i].setType(Lexeme::ACCEPTED_FRAGMENT);
                     } else if (num_fragments == 2) {
-                        if (second_i - first_i != 4 || second_i != i - 2) {
-                            if (second_i - first_i == 2 && second_i == i - 4) {
+                        if (second_i != i - 2) {
+                            if (second_i - first_i == 2) {
                                 std::swap(first_i, second_i);
                             } else {
+				std::cerr << "i=" << i << ", first_i=" << first_i << ", second_i=" << second_i << std::endl;
+				std::cerr << text[first_i+1].getUtf8Orth() << ' ' << text[second_i+1].getUtf8Orth() << std::endl;
                                 throw Exception("PolishSegmDisambiguator got "
                                         "unexpected ambiguity. Only [BEG][UNR]"
                                         "[SEG][NS][SEG][UNR][SEG][END] is "

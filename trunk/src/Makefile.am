@@ -17,7 +17,8 @@ Boost_LIBRARY_DIRS = $(abspath $(patsubst -L%,%,$(filter -L%,@BOOST_LDFLAGS@)))
 Boost_INCLUDE_DIRS = $(abspath $(patsubst -I%,%,$(filter -I%,@BOOST_CPPFLAGS@)))
 Icu_LIBRARY_DIRS = $(abspath $(patsubst -L%,%,$(filter -L%,@ICU_LIBS@)))
 Icu_INCLUDE_DIRS = $(abspath $(patsubst -I%,%,$(filter -I%,@ICU_CFLAGS@)))
-Morfeusz_LIBRARY_DIRS = $(abspath $(patsubst -L%,%,$(filter -L%,@MORFEUSZ_LIBS@)))
+Morfeusz_LIBRARY_DIRS = $(abspath $(firstword $(patsubst -L%,%,$(filter -L%,@MORFEUSZ_LIBS@)) /usr/lib))
+
 
 ../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so:
 	( cd ../third_party/TaKIPI18/Linux/bin && \
