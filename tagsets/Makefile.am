@@ -1,1 +1,1 @@
-SUBDIRS = ipipan nkjp
+SUBDIRS = ipipan nkjp nkjp-morfeusz

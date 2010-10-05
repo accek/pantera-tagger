@@ -31,7 +31,7 @@
 #include <nlpcommon/polish_tagset_convert.h>
 
 #ifndef MORFEUSZ_TAGSET
-#define MORFEUSZ_TAGSET "ipipan"
+#define MORFEUSZ_TAGSET "nkjp-morfeusz"
 #endif
 
 #ifndef ODGADYWACZ_TAGSET
@@ -382,6 +382,10 @@ public:
                 //std::cerr << boost::format("morfeusz: %1% %2% %3% %4% %5%\n") %
                 //    interp.p % interp.k % interp.forma % interp.haslo % interp.interp;
 
+                wstring forma = utf8_to_wstring(interp.forma);
+                if (current_lex.getOrth().length() < forma.length())
+                    current_lex.setOrth(forma);
+
                 if (!morph_dict.empty()) {
                     wstring morph_key(utf8_to_wstring(interp.forma));
                     boost::to_lower(morph_key, get_locale("pl_PL"));
@@ -396,7 +400,6 @@ public:
 
                 if (interp.interp == NULL) {
                     string forma_copy(interp.forma);
-                    wstring forma = utf8_to_wstring(forma_copy);
 
                     SetCorpusEncoding(GUESSER_UTF8);
 

@@ -134,7 +134,6 @@ public:
     }
 
     void setOrth(const wstring& orth) {
-        assert(_orth.empty());
         _orth = orth;
     }
 
