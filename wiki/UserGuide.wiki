@@ -161,11 +161,15 @@ more subfolders with handwritten golden tags, saved in XCES format {{{morph.xml}
   file_or_folder_xces_or_nkjp_one_or_more
 }}}
 
-=== Using newer Morfeusz morphosyntactic analyzer ===
+Please note that
+ * if the input file contains morphosyntactic annotation, you probably want to disable morphosyntactic annotation in Pantera, passing {{{--no-morph}}} option
+ * if the input file is split into sentences or if you do not need sentencing, pass {{{--no-sentencer}}}
+
+=== Using older Morfeusz morphosyntactic analyzer ===
 
 It is recommended to ask Marcin Woliński for a newer version of Morfeusz,
-which supports newer Polish tagset -- NKJP. If using this version, change the definition
-of {{{MORFEUSZ_TAGSET}}} in {{{src/nlpcommon/morfeusz.h}}}.
+which supports newer Polish tagset -- NKJP. If using an older version, change the definition
+of {{{MORFEUSZ_TAGSET}}} to {{{ipipan}}} in {{{src/nlpcommon/morfeusz.h}}}.
 
 === Custom morphosyntactic dictionary ===
 
