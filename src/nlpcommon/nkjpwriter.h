@@ -300,7 +300,7 @@ private:
                     this->stream << "         </vAlt>\n";
                 this->stream << "        </f>\n";
                 this->stream << "        <f name=\"disamb\">\n";
-                this->stream << "         <fs feats=\"#an8003\" type=\"tool_report\">\n";
+                this->stream << "         <fs feats=\"#pantera\" type=\"tool_report\">\n";
                 this->stream << "          <f name=\"date\">\n";
                 this->stream << "           <string>" << time_str << "</string>\n";
                 this->stream << "          </f>\n";
