@@ -63,7 +63,8 @@ private:
                     id = ld->getId();
                 } else {
                     start = end = 0;
-                    id = boost::str(boost::format("seg%d") % (++id_generator));
+                    id = boost::str(boost::format("seg%d",
+                                std::locale::classic()) % (++id_generator));
                 }
 
                 this->stream << "      <!-- " << lex.getUtf8Orth() << " -->\n";
@@ -88,7 +89,8 @@ private:
                 if (ld) {
                     para_id = ld->getId();
                 } else {
-                    para_id = boost::str(boost::format("p%d") % ++id_generator);
+                    para_id = boost::str(boost::format("p%d",
+                                std::locale::classic()) % ++id_generator);
                 }
                 this->stream << "    <p corresp=\"text_structure.xml#" << para_id << "\""
                    " xml:id=\"segm_" << para_id << "\">\n";
@@ -106,7 +108,7 @@ private:
                 if (ld) {
                     id = ld->getId();
                 } else {
-                    id = boost::str(boost::format("s%d") % ++id_generator);
+                    id = boost::str(boost::format("s%d", std::locale::classic()) % ++id_generator);
                 }
                 this->stream << "     <s xml:id=\"segm_" << id << "\">\n";
                 break;
@@ -228,7 +230,8 @@ private:
                     id = ld->getId();
                 } else {
                     start = end = 0;
-                    id = boost::str(boost::format("seg%d") % (++id_generator));
+                    id = boost::str(boost::format("seg%d",
+                                std::locale::classic()) % (++id_generator));
                 }
 
                 this->stream << "      <seg corresp=\"ann_segmentation.xml#segm_" << id << "\" xml:id=\"morph_" << id << "\">\n";
@@ -327,7 +330,8 @@ private:
                 if (ld) {
                     para_id = ld->getId();
                 } else {
-                    para_id = boost::str(boost::format("p%d") % ++id_generator);
+                    para_id = boost::str(boost::format("p%d",
+                                std::locale::classic()) % ++id_generator);
                 }
                 this->stream << "    <p xml:id=\"" << para_id << "\">\n";
                 break;
@@ -344,7 +348,7 @@ private:
                 if (ld) {
                     id = ld->getId();
                 } else {
-                    id = boost::str(boost::format("s%d") % ++id_generator);
+                    id = boost::str(boost::format("s%d", std::locale::classic()) % ++id_generator);
                 }
                 this->stream << "     <s corresp=\"ann_segmentation.xml#segm_" << id << "\" xml:id=\"" << id << "\">\n";
                 break;
@@ -381,6 +385,8 @@ public:
     }
 
     virtual void writeToStream(WriterDataSource<Lexeme>& data_source) {
+        this->stream.imbue(get_utf8_locale());
+
         id_generator = 0;
         in_rejected = false;
 

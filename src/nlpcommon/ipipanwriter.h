@@ -77,6 +77,8 @@ public:
     IpiPanWriter(std::ostream& stream) : Writer<Lexeme>(stream) { }
 
     virtual void writeToStream(WriterDataSource<Lexeme>& data_source) {
+        this->stream.imbue(get_utf8_locale());
+
         this->stream <<
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
             "<!DOCTYPE cesAna SYSTEM \"xcesAnaIPI.dtd\">\n"

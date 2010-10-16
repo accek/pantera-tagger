@@ -67,6 +67,7 @@ public:
         : Writer<Lexeme>(stream), wrap_at(wrap_at) { }
 
     virtual void writeToStream(WriterDataSource<Lexeme>& data_source) {
+        this->stream.imbue(get_utf8_locale());
         no_space = true;
         current_pos = 0;
         while (!data_source.eof()) {

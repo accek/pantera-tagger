@@ -90,6 +90,9 @@ fs::path find_with_path(const string& path, const string& filename);
 
 std::locale& get_locale(const char* name);
 
+// Return a classic locale with utf8 codecvt facet
+std::locale& get_utf8_locale();
+
 // MPI progress controller.
 
 class MPIProgressController
