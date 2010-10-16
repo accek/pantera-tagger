@@ -73,6 +73,31 @@ private:
     // lowercase form -> vector of (base, tag)
     std::map<wstring, std::vector<std::pair<wstring, string> > > morph_dict;
 
+    bool filterMorfeuszTag(wstring orth, const wstring& base,
+            const tag_type& tag) {
+        // 5. Inne
+        //
+        // Jeżeli formą ortograficzną jest "ona", "ją", "nią", "jej", "niej",
+        // "nią", "on", "nim", "ono", "je", "oni", "ich", "nich", "im", "nim",
+        // "one", "je", "nie" (z dowolną kasztowością), to usuń wszystkie
+        // interpretacje "...:nakc...".
+        boost::to_lower(orth, get_locale("pl_PL"));
+        if (orth == L"ona" || orth == L"ją" || orth == L"nią" ||
+                orth == L"jej" || orth == L"niej" || orth == L"on" ||
+                orth == L"nim" || orth == L"ono" || orth == L"je" ||
+                orth == L"oni" || orth == L"ich" || orth == L"nich" ||
+                orth == L"im" || orth == L"one" || orth == L"nie") {
+            const PartOfSpeech* pos = out_tagset->getPartOfSpeech(
+                    tag.getPos());
+            const Category* acc_cat = out_tagset->getCategory("accentability");
+            int cat_index = out_tagset->getCategoryIndex(acc_cat);
+            if (pos->hasCategory(acc_cat)
+                    && acc_cat->getValue(tag.getValue(cat_index)) == "nakc")
+                return false;
+        }
+        return true;
+    }
+
     void parseMorfeuszTagSuffix(
             tag_type& tag,
             const PartOfSpeech* pos,
@@ -90,20 +115,21 @@ private:
             }
 
             tag_type out_tag = morf_converter->convert(lex, tag);
-            lex.addTagBase(out_tag, base);
-            lex.addAllowedTag(out_tag);
+            if (filterMorfeuszTag(lex.getOrth(), base, out_tag)) {
+                lex.addTagBase(out_tag, base);
+                lex.addAllowedTag(out_tag);
+            }
             return;
         }
 
         const Category* cat = pos->getCategories()[category_offset];
-        bool is_required_cat = pos->isRequiredCategory(category_offset);
         int cindex = morf_tagset->getCategoryIndex(cat);
         string_split_iterator new_part = part;
         ++new_part;
 
         if (part->front() == '_') {
             int num_values = cat->getValues().size();
-            for (int i = is_required_cat ? 0 : 1; i < num_values; i++) {
+            for (int i = 1; i < num_values; i++) {
                 tag.setValue(cindex, i);
                 parseMorfeuszTagSuffix(tag, pos, category_offset + 1,
                         new_part, base, lex);
@@ -121,10 +147,10 @@ private:
         }
     }
 
-    void parseMorfeuszTag(const string_split_iterator& mtag, const wstring& base,
+    void parseMorfeuszTag(const string& mtag, const wstring& base,
             Lexeme& lex) {
         string_split_iterator cat_it =
-                boost::make_split_iterator(*mtag, boost::token_finder(
+                boost::make_split_iterator(mtag, boost::token_finder(
                             boost::is_any_of(":")));
         const PartOfSpeech* pos = morf_tagset->getPartOfSpeech(
                 boost::copy_range<string>(*cat_it));
@@ -135,13 +161,73 @@ private:
         parseMorfeuszTagSuffix(tag, pos, 0, ++cat_it, base, lex);
     }
 
-    void parseMorfeuszTags(const string& mtags, const wstring& base,
+    void adjustMorfeuszTag(const wstring& orth, wstring& base, string& tag) {
+        static const char* regex_expression = 
+            // 1. Klasy gramatyczne
+            //
+            // a) num:
+            //
+            // - jeżeli rodzaj to "n1.p1.p2" (lub podzbiór tych rodzajów), to
+            //   zamieniamy klasę na numcol (reszta tagu pozostaje taka sama, z
+            //   dokładnością do zmiany rodzaju; zob. poniżej)
+            //
+            // - jeżeli rodzaj inny (w tym zawierający powyższe), to pozostaje
+            //   num
+            "(^num(:.*:(?:n1\\.p1\\.p2|n1\\.p1|n1\\.p2|p1\\.p2|n1|p1|p2):.*)$)|"
+ 
+            // b) intrj --> interj
+            "(^intrj$)|"
+
+            // 2. b) Skróty:
+            //
+            // brev:npun --> brev:pun.npun
+            "(^brev:npun$)"
+            ;
+        static boost::regex regex(regex_expression);
+        static const char* replacement_format =
+            "(?1numcol$2)"
+            "(?3interj)"
+            "(?4brev\\:pun.npun)"
+            ;
+
+        //std::cerr << "adjustMorfeuszTag: " << tag;
+
+        tag = boost::regex_replace(tag, regex, replacement_format,
+                boost::match_default | boost::format_all);
+
+        // 3. Lematyzacja:
+        //
+        // Jeżeli klasą gramatyczną jest "siebie", to lematem też musi być
+        // "siebie" (a nie "się", jak w Morfeuszu).
+        //
+        // Jest tylko jedno "się", o interpretacji "qub".
+        if (tag.substr(0, 6) == "siebie") {
+            base = L"się";
+        }
+
+        //std::cerr << " -> " << tag << std::endl;
+    }
+
+    void parseMorfeuszTags(string mtags, wstring base,
             Lexeme& lex) {
+        // Jeżeli formą ortograficzną jest "to" (z dowolną kasztowością), to
+        // dodajemy interpretację "pred" z formą hasłową "to" (o ile takiej
+        // interpretacji nie ma).
+        wstring orth = boost::to_lower_copy(lex.getOrth(), get_locale("pl_PL"));
+        if (orth == L"to") {
+            parseMorfeuszTag("pred", orth, lex);
+        }
+
+        boost::iterator_range<std::string::const_iterator> range(mtags.begin(),
+                mtags.end());
         for (string_split_iterator tag_it =
-                boost::make_split_iterator(mtags, boost::token_finder(
-                        boost::is_any_of("|")));
+                boost::make_split_iterator(range,
+                    boost::token_finder(boost::is_any_of("|")));
                 tag_it != string_split_iterator(); ++tag_it) {
-            parseMorfeuszTag(tag_it, base, lex);
+            string tag(boost::copy_range<string>(*tag_it));
+            adjustMorfeuszTag(orth, base, tag);
+            if (!tag.empty())
+                parseMorfeuszTag(tag, base, lex);
         }
     }
 

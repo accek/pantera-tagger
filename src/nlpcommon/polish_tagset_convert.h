@@ -96,8 +96,11 @@ public:
                 if (to_cat->getValues().size() <= value) {
                     string value_str = from_cat->getValue(value);
                     if (from_cat->getName() == "gender") {
-                        if (value_str[0] == 'p') {
-                            value_str[0] = 'm';
+                        if (value_str == "p1") {
+                            value_str = "m1";
+                            value = to_cat->getIndex(value_str);
+                        } else if (value_str == "p2" || value_str == "p3") {
+                            value_str = "n";
                             value = to_cat->getIndex(value_str);
                         } else if (value_str[0] == 'n') {
                             value = to_cat->getIndex("n");
