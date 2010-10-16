@@ -121,6 +121,8 @@ public:
     MPIProgressController(mpi::communicator& mpi_world)
         : mpi_world(mpi_world) { }
 
+    virtual ~MPIProgressController() { }
+
     void init(const string& msg, float expected_sum = 0.0) {
         mpi_world.barrier();
         if (mpi_world.rank() == 0) {
