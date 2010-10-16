@@ -190,7 +190,7 @@ public:
                 {
                     sentence_num++;
                     string sent_id = boost::str(
-                            boost::format("%1%.%2%-s")
+                            boost::format("%1%.%2%-s", std::locale::classic())
                             % para_id % sentence_num);
                     lex.setLexerData(new NKJPSentenceData(sent_id));
                     break;
@@ -223,7 +223,8 @@ public:
                             }
                             segment_num++;
                             string segm_id = boost::str(
-                                    boost::format("%1%.%2%-seg")
+                                    boost::format("%1%.%2%-seg",
+                                        std::locale::classic())
                                     % para_id % segment_num);
                             size_t start = pos + block_offset;
                             size_t end = start + needle.length();

@@ -221,14 +221,7 @@ void analyze_errors(const string& filename, const Tagset* tagset,
         return;
 
     wofstream stream(filename.c_str());
-    std::locale errors_locale;
-    try {
-        errors_locale = std::locale("");
-        if (errors_locale.name() == "*")
-            errors_locale = std::locale("pl_PL.UTF-8");
-    } catch (...) { }
-    stream.imbue(errors_locale);
-
+    stream.imbue(get_utf8_locale());
     print_status("ERRORS", filename);
     TaggingErrorsCollector<MyLexeme> errors_collector(tagset);
     errors_collector.addTaggingErrors(text);
