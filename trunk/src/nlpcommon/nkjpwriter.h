@@ -237,7 +237,7 @@ private:
                 this->stream << "      <seg corresp=\"ann_segmentation.xml#segm_" << id << "\" xml:id=\"morph_" << id << "\">\n";
                 this->stream << "       <fs type=\"morph\">\n";
                 this->stream << "        <f name=\"orth\">\n";
-                this->stream << "         <string>" << lex.getUtf8Orth() << "</string>\n";
+                this->stream << "         <string>" << wstring_to_xml(lex.getOrth()) << "</string>\n";
                 this->stream << "        </f>\n";
                 this->stream << "        <!-- " << lex.getUtf8Orth() << " ["
                     << start << ',' << end - start << "] -->\n";
@@ -269,7 +269,7 @@ private:
                     this->stream << "          <fs type=\"lex\" xml:id=\"morph_"
                         << id << '_' << i << "-lex\">\n";
                     this->stream << "           <f name=\"base\">\n";
-                    this->stream << "            <string>" << wstring_to_utf8(key.first)
+                    this->stream << "            <string>" << wstring_to_xml(key.first)
                         << "</string>\n";
                     this->stream << "           </f>\n";
                     this->stream << "           <f name=\"ctag\">\n";

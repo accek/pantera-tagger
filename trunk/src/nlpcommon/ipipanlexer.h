@@ -71,14 +71,14 @@ private:
 
     void handleOrth(const string& orth) {
         newLexeme(Lexeme::SEGMENT);
-        current_lex.setOrth(utf8_to_wstring(orth));
+        current_lex.setOrth(xml_to_wstring(orth));
     }
 
     void handleCtag(const string& base, const string& ctag,
 			bool disamb, bool disamb_sh) {
         typename Lexeme::tag_type tag =
                 Lexeme::tag_type::parseString(collector->getTagset(), ctag);
-		current_lex.addTagBase(tag, utf8_to_wstring(base));
+		current_lex.addTagBase(tag, xml_to_wstring(base));
         current_lex.addAllowedTag(tag);
         if (disamb)
             current_lex.addGoldenTag(tag);
