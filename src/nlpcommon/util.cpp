@@ -6,6 +6,7 @@
  */
 
 #include <boost/program_options/detail/utf8_codecvt_facet.hpp>
+#include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/format.hpp>
@@ -94,6 +95,36 @@ string wstring_to_utf8(const wstring& s) {
     } 
 
     return string(pstr.get());
+}
+
+string wstring_to_xml(const wstring& s) {
+    wstring buf(s);
+    boost::replace_all(buf, L"&", L"&amp;");
+    boost::replace_all(buf, L"\"", L"&quot;");
+    boost::replace_all(buf, L"'", L"&apos;");
+    boost::replace_all(buf, L"<", L"&lt;");
+    boost::replace_all(buf, L">", L"&gt;");
+    return wstring_to_utf8(buf);
+}
+
+wstring xml_to_wstring(const string& s) {
+    string buf(s);
+    boost::replace_all(buf, "&quot;", "\"");
+    boost::replace_all(buf, "&apos;", "'");
+    boost::replace_all(buf, "&lt;", "<");
+    boost::replace_all(buf, "&gt;", ">");
+    boost::replace_all(buf, "&amp;", "&");
+    return utf8_to_wstring(buf);
+}
+
+wstring wxml_to_wstring(const wstring& s) {
+    wstring buf(s);
+    boost::replace_all(buf, L"&quot;", L"\"");
+    boost::replace_all(buf, L"&apos;", L"'");
+    boost::replace_all(buf, L"&lt;", L"<");
+    boost::replace_all(buf, L"&gt;", L">");
+    boost::replace_all(buf, L"&amp;", L"&");
+    return buf;
 }
 
 fs::path find_with_path(const string& path, const string& filename) {

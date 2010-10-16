@@ -51,6 +51,11 @@ static inline wstring ascii_to_wstring(const char* s) {
     return ascii_to_wstring(string(s));
 }
 
+// String - XML conversion (with entities support)
+string wstring_to_xml(const wstring& s);
+wstring xml_to_wstring(const string& s);
+wstring wxml_to_wstring(const wstring& s);
+
 // Output a difference between actual and expected tags on one token
 // in a human-readable way.
 template<class Tag>

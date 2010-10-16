@@ -30,7 +30,7 @@ private:
             case Lexeme::SEGMENT:
                 this->stream <<
                     "<tok>\n"
-                    "<orth>" << lex.getUtf8Orth() << "</orth>\n";
+                    "<orth>" << wstring_to_xml(lex.getOrth()) << "</orth>\n";
 
                 typedef typename Lexeme::tag_type tag_type;
 				typedef std::pair<tag_type, wstring> tag_base_type;
@@ -47,7 +47,7 @@ private:
 						this->stream << " disamb=\"1\"";
                     if (!lex.isAutoselectedTag(tag))
 						this->stream << " disamb_sh=\"0\"";
-					this->stream << "><base>" << wstring_to_utf8(base)
+					this->stream << "><base>" << wstring_to_xml(base)
 						<< "</base><ctag>" << tag.asString(tagset)
 						<< "</ctag></lex>\n";
                 }

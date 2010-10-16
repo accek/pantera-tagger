@@ -121,14 +121,17 @@ public:
         string raw_text_s = string(std::istreambuf_iterator<char>(this->stream),
                 std::istreambuf_iterator<char>());
         raw_text = utf8_to_wstring(raw_text_s);
-        boost::wsregex_iterator i(raw_text.begin(), raw_text.end(), parsing_regex);
+        boost::wsregex_iterator i(raw_text.begin(), raw_text.end(),
+                parsing_regex);
         boost::wsregex_iterator end;
         for (; i != end; ++i) {
             if ((*i)[MATCH_NEWPAR].matched)
                 handleNewParagraph(wstring_to_utf8(i->str(MATCH_NEWPAR_ID)));
-            boost::wsregex_iterator j((*i)[MATCH_TEXT].first, (*i)[MATCH_TEXT].second, text_regex);
+            boost::wsregex_iterator j((*i)[MATCH_TEXT].first,
+                    (*i)[MATCH_TEXT].second, text_regex);
             for (; j != end; ++j) {
-                handleOrth(j->str(MATCH_ORTH), (*j)[MATCH_PRECEDING_SPACE].matched);
+                handleOrth(wxml_to_wstring(j->str(MATCH_ORTH)),
+                        (*j)[MATCH_PRECEDING_SPACE].matched);
             }
             if ((*i)[MATCH_ENDPAR].matched)
                 handleEndOfParagraph();
@@ -179,7 +182,7 @@ public:
                                        " paragraph with id '%1%'") % para_id));
                     }
 
-                    block = raw_i->str(MATCH_TEXT);
+                    block = wxml_to_wstring(raw_i->str(MATCH_TEXT));
                     block_cursor = 0;
                     block_offset = 0;
                     sentence_num = 0;
@@ -244,7 +247,7 @@ public:
 
                         block_offset += block.length();
                         block_cursor = 0;
-                        block = raw_i->str(MATCH_TEXT);
+                        block = wxml_to_wstring(raw_i->str(MATCH_TEXT));
                     }
                     break;
                 }
@@ -267,7 +270,7 @@ public:
                     raw_i = saved_raw_i;
                     block_cursor = saved_block_cursor;
                     block_offset = saved_block_offset;
-                    block = raw_i->str(MATCH_TEXT);
+                    block = wxml_to_wstring(raw_i->str(MATCH_TEXT));
                     break;
 
                 case Lexeme::END_OF_AMBIGUITY:
