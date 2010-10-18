@@ -4,6 +4,8 @@
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
@@ -196,15 +198,31 @@ static void postprocess_file(const fs::path& path, const string& type,
         if (nkjp_lexer)
             nkjp_lexer->alignText(text);
 
+        string segm_filename = "ann_segmentation.xml";
+        string morph_filename = "ann_morphosyntax.xml";
+        if (options.count("compress")) {
+            segm_filename += ".gz";
+            morph_filename += ".gz";
+        }
+
         fs::path p(path);
         p.remove_filename();
-        fs::ofstream out_stream(p / "ann_segmentation.xml");
-        NKJPSegmWriter<MyLexeme> writer(out_stream);
-        writer.writeVectorToStream(tagset, text);
+        fs::ofstream segm_file(p / segm_filename);
+        fs::ofstream morph_file(p / morph_filename);
 
-        fs::ofstream out_stream2(p / "ann_morphosyntax.xml");
-        NKJPMorphWriter<MyLexeme> writer2(out_stream2);
-        writer2.writeVectorToStream(tagset, text);
+        boost::iostreams::filtering_stream<boost::iostreams::output> segm_stream;
+        boost::iostreams::filtering_stream<boost::iostreams::output> morph_stream;
+        if (options.count("compress")) {
+            segm_stream.push(boost::iostreams::gzip_compressor());
+            morph_stream.push(boost::iostreams::gzip_compressor());
+        }
+        segm_stream.push(segm_file);
+        morph_stream.push(morph_file);
+
+        NKJPSegmWriter<MyLexeme> segm_writer(segm_stream);
+        segm_writer.writeVectorToStream(tagset, text);
+        NKJPMorphWriter<MyLexeme> morph_writer(morph_stream);
+        morph_writer.writeVectorToStream(tagset, text);
     }
 }
 
@@ -245,6 +263,7 @@ void parse_command_line(int argc, char** argv) {
     po::options_description config("Configuration");
     config.add_options()
         ("verbose,v", "be verbose")
+        ("compress,z", "compress output, if possible")
         ("tagset,t", po::value<string>()->default_value(DEFAULT_TAGSET),
          "name of tagset to use (or a Spejd-compatible tagset config file, "
          "or a multitier tagset folder containing 0.cfg, 1.cfg etc.)")
