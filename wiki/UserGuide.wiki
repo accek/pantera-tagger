@@ -14,6 +14,7 @@
   * Boost.Regex (ICU support not required)
   * Boost.Program_Options
   * Boost.Serialization
+  * Boost.IOStreams
   * Boost.DateTime
   * Boost.MPI
  * Some [http://en.wikipedia.org/wiki/Message_Passing_Interface MPI] implementation, eg. [http://www.open-mpi.org/ OpenMPI]
@@ -64,7 +65,7 @@ tar jxf boost_1_43_0.tar.bz2
 cd boost_1_43_0
 bjam --with-system --with-filesystem --with-mpi \
   --with-regex --with-program_options \
-  --prefix=$PREFIX \
+  --with-iostreams --prefix=$PREFIX \
   install
 cd ..
 }}}
@@ -219,6 +220,10 @@ Runing on multiple processors may alleviate this problem.
 
 To run Pantera on more than one machine, please refer to MPI documentation.
 
+=== Compressed output ===
+
+Pantera supports gzip-compressed output files for NKJP output format.
+Use {{{-z}}} option to enable this option.
 
 == Problems and known issues ==
 
