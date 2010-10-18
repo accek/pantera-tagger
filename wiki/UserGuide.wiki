@@ -125,6 +125,7 @@ some additional options to {{{./configure}}}. I personally use the following com
   --with-boost-filesystem=boost_filesystem \
   --with-boost-regex=boost_regex \
   --with-boost-program-options=boost_program_options \
+  --with-boost-iostreams=boost_iostreams \
   --with-boost-serialization=boost_serialization \
   --with-boost-mpi=boost_mpi \
   --prefix="$PREFIX"
