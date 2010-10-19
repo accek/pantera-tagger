@@ -55,6 +55,7 @@ static inline wstring ascii_to_wstring(const char* s) {
 string wstring_to_xml(const wstring& s);
 wstring xml_to_wstring(const string& s);
 wstring wxml_to_wstring(const wstring& s);
+string escape_xml_comment(const string& s);
 
 // Output a difference between actual and expected tags on one token
 // in a human-readable way.

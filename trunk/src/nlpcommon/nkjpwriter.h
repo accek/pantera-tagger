@@ -67,7 +67,8 @@ private:
                                 std::locale::classic()) % (++id_generator));
                 }
 
-                this->stream << "      <!-- " << lex.getUtf8Orth() << " -->\n";
+                this->stream << "      <!-- " << escape_xml_comment(lex.getUtf8Orth())
+                    << " -->\n";
                 this->stream << "      <seg corresp=\"text_structure.xml#string-range("
                     << para_id << ',' << start << ',' << end - start << ")\"";
                 if (no_space)
@@ -239,7 +240,8 @@ private:
                 this->stream << "        <f name=\"orth\">\n";
                 this->stream << "         <string>" << wstring_to_xml(lex.getOrth()) << "</string>\n";
                 this->stream << "        </f>\n";
-                this->stream << "        <!-- " << lex.getUtf8Orth() << " ["
+                this->stream << "        <!-- " <<
+                    escape_xml_comment(lex.getUtf8Orth()) << " ["
                     << start << ',' << end - start << "] -->\n";
 
                 std::vector<bct_type> all_bcts = extractBcts(lex, tagset);
