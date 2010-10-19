@@ -329,25 +329,34 @@ void parse_command_line(int argc, char** argv) {
 
     bool show_help = false;
 
-    if (!options.count("input-file") && !options.count("create-engine")) {
-        std::cerr << "error: No input file specified" << std::endl;
+    if (options.count("help")) {
         show_help = true;
+    } else {
+        if (options.count("version")) {
+            cerr << PACKAGE_STRING << endl;
+            exit(0);
+        }
+
+        if (!options.count("input-file") && !options.count("create-engine")) {
+            std::cerr << "error: No input file specified" << std::endl;
+            show_help = true;
+        }
+
+        if (options.count("create-engine") && !options.count("training-data")) {
+            std::cerr << "error: No training data specified, use --training-data"
+                << std::endl;
+            show_help = true;
+        }
+
+        if (options.count("create-engine")
+                && options["engine"].as<string>() != DEFAULT_ENGINE) {
+            std::cerr << "error: Options --create-engine and --engine are "
+                "mutually exclusive" << std::endl;
+            show_help = true;
+        }
     }
 
-    if (options.count("create-engine") && !options.count("training-data")) {
-        std::cerr << "error: No training data specified, use --training-data"
-            << std::endl;
-        show_help = true;
-    }
-
-    if (options.count("create-engine")
-            && options["engine"].as<string>() != DEFAULT_ENGINE) {
-        std::cerr << "error: Options --create-engine and --engine are "
-            "mutually exclusive" << std::endl;
-        show_help = true;
-    }
-
-    if (show_help || options.count("help")) {
+    if (show_help) {
         cerr << visible << endl;
         exit(1);
     }
