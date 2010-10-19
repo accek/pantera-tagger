@@ -127,6 +127,12 @@ wstring wxml_to_wstring(const wstring& s) {
     return buf;
 }
 
+string escape_xml_comment(const string& s) {
+    string buf(s);
+    boost::replace_all(buf, "--", "\\-\\-");
+    return buf;
+}
+
 fs::path find_with_path(const string& path, const string& filename) {
     if (fs::exists(filename))
         return fs::path(filename);
