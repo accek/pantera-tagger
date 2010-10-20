@@ -302,12 +302,9 @@ private:
                     this->stream << "         </vAlt>\n";
                 this->stream << "        </f>\n";
                 this->stream << "        <f name=\"disamb\">\n";
-                this->stream << "         <fs feats=\"#pantera\" type=\"tool_report\">\n";
+                this->stream << "         <fs feats=\"#pantera0.9\" type=\"tool_report\">\n";
                 this->stream << "          <f name=\"date\">\n";
                 this->stream << "           <string>" << time_str << "</string>\n";
-                this->stream << "          </f>\n";
-                this->stream << "          <f name=\"resp\">\n";
-                this->stream << "           <string>PANTERA Tagger (" PACKAGE_STRING ")</string>\n";
                 this->stream << "          </f>\n";
                 if (chosen_tag != -1) {
                     this->stream << "          <f fVal=\"#morph_"
