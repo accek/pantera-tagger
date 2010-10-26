@@ -61,6 +61,7 @@ Now let's move to installing Boost:
 
 {{{
 wget "http://sourceforge.net/projects/boost/files/boost/1.43.0/boost_1_43_0.tar.bz2/download"
+[ -f download ] && mv download bost_1_43_0.tar.bz2
 tar jxf boost_1_43_0.tar.bz2
 cd boost_1_43_0
 bjam --with-system --with-filesystem --with-mpi \
