@@ -89,8 +89,8 @@ public:
             : Lexer<Lexeme>(stream)
     {
         parsing_regex = boost::wregex(
-				L"(?:(<p|<ab|<u)[^>]*?(?:xml:id=[\"'](.*?)[\"']).*?>|(/gap>|lb/>))"
-                  "(.*?)<(/p>|/ab>|/u>)?"
+				L"(?:(<p|<ab|<u)[^>]*?(?:xml:id=[\"']([^\"']*)[\"'])[^/>]*?>|(/gap>|lb/>))"
+                  "([^<>]*?)<(/p>|/ab>|/u>)?"
                 );
 
         text_regex = boost::wregex(
