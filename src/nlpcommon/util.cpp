@@ -172,7 +172,7 @@ std::locale& get_locale(const char* name) {
 
 std::locale& get_utf8_locale() {
     static std::locale utf8_locale;
-    bool initialized = false;
+    static bool initialized = false;
 
     if (!initialized) {
         try {
