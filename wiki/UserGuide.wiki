@@ -49,11 +49,12 @@ newest Ubuntu does not distribute MPI any more. So:
 wget "http://www.open-mpi.org/software/ompi/v1.4/downloads/openmpi-1.4.2.tar.bz2"
 tar jxf openmpi-1.4.2.tar.bz2
 cd openmpi-1.4.2
-./configure --prefix=$PREFIX
+./configure --prefix=$PREFIX --without-memory-manager
 make
 make install
 cd ..
 }}}
+The {{{--without-memory-manager}}} option is needed on some platforms to workaround an unidentified bug in OpenMPI's optional memory manager.
 
 The other problem may be the missing Boost.MPI. In this case it is wise to compile
 all the needed Boost components from source. To compile Boost, [http://sourceforge.net/projects/boost/files/boost-jam/3.1.18/boost-jam-3.1.18.tgz/download bjam] binary is needed. Most distros have it.
