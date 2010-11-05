@@ -106,7 +106,8 @@ public:
                     const std::string& utf8_orth = lex.getUtf8Orth();
 
                     if (response[response_position] == '|'
-                            && utf8_orth.substr(0, 1) != "|") {
+                            && response.substr(response_position,
+                                utf8_orth.length()) != utf8_orth) {
                         // New sentence starts here.
                         if (first_sentence) {
                             first_sentence = false;
