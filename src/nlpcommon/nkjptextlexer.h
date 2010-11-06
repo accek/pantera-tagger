@@ -80,6 +80,11 @@ private:
         return false;
     }
 
+#define SPACE_CHARACTERS \
+    L"\x00a0\x2000\x2001\x2002\x2003\x2004\x2005" \
+    L"\x2006\x2007\x2008\x2009\x200a\x200b\x202f" \
+    L"\x205f\x3000\xfeff \t"
+
     static bool is_not_space(wchar_t c) {
         return !is_space(c);
     }
@@ -89,12 +94,12 @@ public:
             : Lexer<Lexeme>(stream)
     {
         parsing_regex = boost::wregex(
-				L"(?:(<p|<ab|<u)[^>]*?(?:xml:id=[\"']([^\"']*)[\"'])[^/>]*?>|(/gap>|lb/>))"
+				L"(?:(?:(<p|<ab|<u)[^>]*?(?:xml:id=[\"']([^\"']*)[\"'])[^/>]*?>)|(/gap>|gap/>|lb/>))"
                   "([^<>]*?)<(/p>|/ab>|/u>)?"
                 );
 
         text_regex = boost::wregex(
-				L"(\\s)?([^\\s]+)"  // Word may be preceded by space
+				L"([" SPACE_CHARACTERS L"])?([^" SPACE_CHARACTERS L"]+)"  // Word may be preceded by space
                 );
     }
 
