@@ -213,8 +213,8 @@ static void postprocess_file(const fs::path& path, const string& type,
         boost::iostreams::filtering_stream<boost::iostreams::output> segm_stream;
         boost::iostreams::filtering_stream<boost::iostreams::output> morph_stream;
         if (options.count("compress")) {
-            segm_stream.push(boost::iostreams::gzip_compressor());
-            morph_stream.push(boost::iostreams::gzip_compressor());
+            segm_stream.push(boost::iostreams::gzip_compressor(1, 1024*1024));
+            morph_stream.push(boost::iostreams::gzip_compressor(1, 1024*1024));
         }
         segm_stream.push(segm_file);
         morph_stream.push(morph_file);
