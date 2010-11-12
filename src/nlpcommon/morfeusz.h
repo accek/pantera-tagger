@@ -433,7 +433,12 @@ public:
                     end_of_amb = 100000;
                 }
                 if (interp.p < segm) {
-                    assert(interp.p >= start_of_amb && interp.k <= end_of_amb);
+                    if (!(interp.p >= start_of_amb && interp.k <= end_of_amb)) {
+                        throw Exception(boost::str(boost::format(
+                                        "Morfeusz module cannot handle complex "
+                                        "ambiguity near '%1%'") %
+                                    interp.forma));
+                    }
                     ret.push_back(current_lex);
                     ret.push_back(Lexeme(Lexeme::UNRESOLVED_FRAGMENT));
                     segm = -1;
