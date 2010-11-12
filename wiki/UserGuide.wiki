@@ -223,10 +223,13 @@ Runing on multiple processors may alleviate this problem.
 
 To run Pantera on more than one machine, please refer to MPI documentation.
 
-=== Compressed output ===
+=== Output control ===
 
 Pantera supports gzip-compressed output files for NKJP output format.
 Use {{{-z}}} option to enable this option.
+
+You may also use {{{--skip-done}}} option to skip processing files for which all output files exist.
+Nowadays Pantera creates output files atomically, so it is not possible that a Pantera process stopped in the middle of writing an output file causes a subsequent run with {{{--skip-done}}} miss this file. This is implemented by writing output to temporary files first and then renaming them to final names.
 
 == Problems and known issues ==
 
