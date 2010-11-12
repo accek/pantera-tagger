@@ -63,27 +63,16 @@ private:
         inside_paragraph = false;
     }
 
-    static bool is_space(wchar_t c) {
-        // This should be just
-        //   return boost::algorithm::is_space()(c)
-        // but it looks like that not all implementations work correctly
-        // for come unicode codes.
-        if (boost::algorithm::is_space()(c))
-            return true;
-        if (c == L'\x00a0'
-                || (c >= L'\x2000' && c <= L'\x200b')
-                || c == L'\x202f'
-                || c == L'\x205f'
-                || c == L'\x3000'
-                || c == L'\xfeff')
-            return true;
-        return false;
-    }
-
 #define SPACE_CHARACTERS \
     L"\x00a0\x2000\x2001\x2002\x2003\x2004\x2005" \
     L"\x2006\x2007\x2008\x2009\x200a\x200b\x202f" \
-    L"\x205f\x3000\xfeff \t\r\n"
+    L"\x205f\x3000\x2028\x2029\xfeff \t\r\n"
+
+    static bool is_space(wchar_t c) {
+        static const wstring space_string(SPACE_CHARACTERS);
+        return std::find(space_string.begin(), space_string.end(), c)
+            != space_string.end();
+    }
 
     static bool is_not_space(wchar_t c) {
         return !is_space(c);
@@ -94,9 +83,9 @@ public:
             : Lexer<Lexeme>(stream)
     {
         parsing_regex = boost::wregex(
-				L"(?:(?:(<p|<ab|<u)[^>]*?(?:xml:id=[\"']([^\"']*)[\"'])[^/>]*?>)|(/gap>|gap\\s*/>|lb\\s*/>))"
-                  "([^<>]*?)<(/p>|/ab>|/u>)?"
-                );
+				L"(?:(?:(<p|<ab|<u)[^>]*?(?:xml:id=[\"']([^\"']*)[\"'])[^/>]*?>)|(?<!<desc|.<gap)>)"
+                  "([^<>]*)<(/p>|/ab>|/u>)?",
+                  boost::regex::perl);
 
         text_regex = boost::wregex(
 				L"([" SPACE_CHARACTERS L"])?([^" SPACE_CHARACTERS L"]+)"  // Word may be preceded by space
@@ -106,9 +95,8 @@ public:
     enum {
         MATCH_NEWPAR = 1,
         MATCH_NEWPAR_ID = 2,
-        MATCH_CONTPAR = 3,
-        MATCH_TEXT = 4,
-        MATCH_ENDPAR = 5,
+        MATCH_TEXT = 3,
+        MATCH_ENDPAR = 4,
 
         MATCH_PRECEDING_SPACE = 1,
         MATCH_ORTH = 2

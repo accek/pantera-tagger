@@ -91,7 +91,10 @@ AS_IF([test "x$with_tcmalloc" != "xno"],
       [have_tcmalloc=no])
 
 AS_IF([test "x$have_tcmalloc" = "xyes"],
-      [LDFLAGS="$LDFLAGS"],
+      [LDFLAGS="$LDFLAGS";
+       CFLAGS="$CFLAGS -fno-omit-frame-pointer";
+       CXXFLAGS="$CXXFLAGS -fno-omit-frame-pointer";
+       ],
       [AS_IF([test "x$with_tcmalloc" = "xyes"],
              [AC_MSG_ERROR([tcmalloc requested but not found])
       ])

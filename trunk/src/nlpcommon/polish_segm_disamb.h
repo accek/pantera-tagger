@@ -113,12 +113,13 @@ public:
                             if (second_i - first_i == 2) {
                                 std::swap(first_i, second_i);
                             } else {
-				std::cerr << "i=" << i << ", first_i=" << first_i << ", second_i=" << second_i << std::endl;
-				std::cerr << text[first_i+1].getUtf8Orth() << ' ' << text[second_i+1].getUtf8Orth() << std::endl;
-                                throw Exception("PolishSegmDisambiguator got "
-                                        "unexpected ambiguity. Only [BEG][UNR]"
-                                        "[SEG][NS][SEG][UNR][SEG][END] is "
-                                        "supported.");
+                                throw Exception(boost::str(boost::format(
+                                                "PolishSegmDisambiguator got "
+                                                "unexpected ambiguity. Only [BEG][UNR]"
+                                                "[SEG][NS][SEG][UNR][SEG][END] is "
+                                                "supported. It was near '%1%' and '%2%'.")
+                                            % text[first_i+1].getUtf8Orth()
+                                            % text[second_i+1].getUtf8Orth()));
                             }
                         }
                         bool separate = shouldBeSeparate(text, second_i + 1);
@@ -139,9 +140,13 @@ public:
                     } else if (num_fragments == 2) {
                         second_i = i;
                     } else {
-                        throw Exception("PolishSegmDisambiguator cannot "
-                                "handle ambiguities with more than 2 "
-                                "possibilities.");
+                        throw Exception(boost::str(boost::format(
+                                        "PolishSegmDisambiguator cannot "
+                                        "handle ambiguities with more than 2 "
+                                        "possibilities. "
+                                        "It was near '%1%' and '%2%'.")
+                                    % text[first_i+1].getUtf8Orth()
+                                    % text[second_i+1].getUtf8Orth()));
                     }
                     break;
 
@@ -149,7 +154,7 @@ public:
                     // do nothing
                     ;
             }
-		}
+        }
     }
 };
 

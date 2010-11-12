@@ -10,6 +10,8 @@
 #include <fstream>
 #include <cstdlib>
 #include <clocale>
+#include <sstream>
+#include <unistd.h>
 
 #if HAVE_OPENMP
 #include <omp.h>
@@ -48,6 +50,9 @@ po::variables_map options;
 typedef BTagger::BrillLexeme<Tag> MyLexeme;
 typedef BestScoreMultiGoldenScorer<BinaryScorer<MyLexeme::tag_type> > MyScorer;
 
+static vector<fs::path> gen_output_paths(const fs::path& input_path, 
+        const string& type);
+
 static void lexing_progress(int token) {
     cerr << "\rLexing...  " << token;
 }
@@ -74,11 +79,13 @@ static void find_input_files(const fs::path& path,
         bool specified_directly = true) {
     // The vector is of (file_path, file_type).
 
+    vector<pair<string, string> > candidates;
+
     if (fs::is_regular_file(path)) {
         if (path.filename() == "text_structure.xml") {
-            found_files.push_back(make_pair(path.file_string(), "nkjp-text"));
+            candidates.push_back(make_pair(path.file_string(), "nkjp-text"));
         } else if (path.filename() == "morph.xml") {
-            found_files.push_back(make_pair(path.file_string(),
+            candidates.push_back(make_pair(path.file_string(),
                         "ipipan-morph"));
         } else if (path.extension() == ".xml") {
             fs::ifstream stream(path);
@@ -87,19 +94,36 @@ static void find_input_files(const fs::path& path,
                 char line[1024];
                 stream.getline(line, sizeof(line));
                 if (!strncmp(pattern, line, strlen(pattern))) {
-                    found_files.push_back(make_pair(path.file_string(),
+                    candidates.push_back(make_pair(path.file_string(),
                                 "ipipan-morph"));
                     break;
                 }
             }
         } else if (path.extension() == ".txt" && specified_directly) {
-            found_files.push_back(make_pair(path.file_string(),
+            candidates.push_back(make_pair(path.file_string(),
                         "plaintext"));
         }
     } else if (fs::is_directory(path)) {
         fs::directory_iterator begin(path), end;
         BOOST_FOREACH(fs::path p, make_pair(begin, end))
             find_input_files(p, found_files, false);
+    }
+
+    typedef pair<string, string> input_pair_type;
+    BOOST_FOREACH(const input_pair_type& p, candidates) {
+        if (options.count("skip-done")) {
+            vector<fs::path> output_paths = gen_output_paths(p.first, p.second);
+            bool all_exist = true;
+            BOOST_FOREACH(const fs::path& path, output_paths) {
+                if (!fs::exists(path)) {
+                    all_exist = false;
+                    break;
+                }
+            }
+            if (all_exist)
+                continue;
+        }
+        found_files.push_back(p);
     }
 }
 
@@ -131,7 +155,32 @@ void setup_engine(BTagger::BrillEngine<MyLexeme, MyScorer>& engine,
 }
 
 static void print_status(const char* status, const string& path) {
-    cerr << "\x1b[30G\x1b[?7l" << status << ' ' << path << "\x1b[?7h\x1b[K\r";
+    //cerr << "\x1b[30G\x1b[?7l" << status << ' ' << path << "\x1b[?7h\x1b[K\r" <<
+    //    std::flush;
+    std::ostringstream s;
+    s.imbue(std::locale::classic());
+    s << '[' << getpid() << "] " << status << ' ' << path << std::endl;
+    cerr << s.str();
+}
+
+static vector<fs::path> gen_output_paths(const fs::path& input_path, const string&
+        type) {
+    vector<fs::path> ret;
+    if (type == "ipipan-morph") {
+        ret.push_back(input_path.file_string() + ".disamb");
+    } else if (type == "nkjp-text" || type == "plaintext") {
+        string segm_filename = "ann_segmentation.xml";
+        string morph_filename = "ann_morphosyntax.xml";
+        if (options.count("compress")) {
+            segm_filename += ".gz";
+            morph_filename += ".gz";
+        }
+        fs::path p(input_path);
+        p.remove_filename();
+        ret.push_back(p / segm_filename);
+        ret.push_back(p / morph_filename);
+    }
+    return ret;
 }
 
 boost::scoped_ptr<Lexer<MyLexeme> > lexer;
@@ -186,7 +235,7 @@ static void preprocess_file(const fs::path& path, const string& type,
 }
 
 static void postprocess_file(const fs::path& path, const string& type,
-        const Tagset* tagset, vector<MyLexeme>& text) {
+        const vector<fs::path> output_paths, const Tagset* tagset, vector<MyLexeme>& text) {
     print_status("WRITER", path.file_string());
 
     if (type == "ipipan-morph") {
@@ -198,17 +247,13 @@ static void postprocess_file(const fs::path& path, const string& type,
         if (nkjp_lexer)
             nkjp_lexer->alignText(text);
 
-        string segm_filename = "ann_segmentation.xml";
-        string morph_filename = "ann_morphosyntax.xml";
-        if (options.count("compress")) {
-            segm_filename += ".gz";
-            morph_filename += ".gz";
+        vector<fs::path> tmp_paths;
+        BOOST_FOREACH(fs::path output_path, output_paths) {
+            tmp_paths.push_back(output_path.replace_extension(".tmp"));
         }
 
-        fs::path p(path);
-        p.remove_filename();
-        fs::ofstream segm_file(p / segm_filename);
-        fs::ofstream morph_file(p / morph_filename);
+        fs::ofstream segm_file(tmp_paths[0]);
+        fs::ofstream morph_file(tmp_paths[1]);
 
         boost::iostreams::filtering_stream<boost::iostreams::output> segm_stream;
         boost::iostreams::filtering_stream<boost::iostreams::output> morph_stream;
@@ -223,6 +268,15 @@ static void postprocess_file(const fs::path& path, const string& type,
         segm_writer.writeVectorToStream(tagset, text);
         NKJPMorphWriter<MyLexeme> morph_writer(morph_stream);
         morph_writer.writeVectorToStream(tagset, text);
+
+        BOOST_FOREACH(const fs::path& output_path, output_paths) {
+            if (fs::exists(output_path))
+                fs::remove(output_path);
+        }
+
+        for (int i = 0; i < output_paths.size(); i++) {
+            fs::rename(tmp_paths[i], output_paths[i]);
+        }
     }
 }
 
@@ -264,6 +318,7 @@ void parse_command_line(int argc, char** argv) {
     config.add_options()
         ("verbose,v", "be verbose")
         ("compress,z", "compress output, if possible")
+        ("skip-done", "skip processing if output files exist")
         ("tagset,t", po::value<string>()->default_value(DEFAULT_TAGSET),
          "name of tagset to use (or a Spejd-compatible tagset config file, "
          "or a multitier tagset folder containing 0.cfg, 1.cfg etc.)")
@@ -467,6 +522,9 @@ int real_main(mpi::communicator& world, int argc, char** argv) {
         float progress_left = 1.0;
 
         try {
+            vector<fs::path> output_paths = gen_output_paths(input_pair.first,
+                    input_pair.second);
+
             vector<MyLexeme> text;
             preprocess_file(input_pair.first, input_pair.second, tagset, text);
             progress.set(done += 0.3);
@@ -486,7 +544,8 @@ int real_main(mpi::communicator& world, int argc, char** argv) {
                 text = segments_filter.unfilterText(text);
             }
 
-            postprocess_file(input_pair.first, input_pair.second, tagset, text);
+            postprocess_file(input_pair.first, input_pair.second, output_paths, tagset, text);
+            print_status("DONE", path);
         } catch (std::exception const& e) {
             cerr << "[" << path << "] ERROR: Caught " << typeid(e).name() << " with message: " << e.what() << endl;
             num_errors++;
