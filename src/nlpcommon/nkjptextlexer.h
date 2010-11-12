@@ -66,7 +66,7 @@ private:
 #define SPACE_CHARACTERS \
     L"\x00a0\x2000\x2001\x2002\x2003\x2004\x2005" \
     L"\x2006\x2007\x2008\x2009\x200a\x200b\x202f" \
-    L"\x205f\x3000\x2028\x2029\xfeff \t\r\n"
+    L"\x205f\x3000\x2028\x2029\xfeff \t\r\n\x0085"
 
     static bool is_space(wchar_t c) {
         static const wstring space_string(SPACE_CHARACTERS);
