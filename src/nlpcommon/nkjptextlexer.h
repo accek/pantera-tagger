@@ -83,12 +83,12 @@ public:
             : Lexer<Lexeme>(stream)
     {
         parsing_regex = boost::wregex(
-				L"(?:(?:(<p|<ab|<u)[^>]*?(?:xml:id=[\"']([^\"']*)[\"'])[^/>]*?>)|(?<!<desc|.<gap)>)"
-                  "([^<>]*)<(/p>|/ab>|/u>)?",
+                L"(?:(?:(<p|<ab|<u)[^>]*?(?:xml:id=[\"']([^\"']*)[\"'])[^/>]*?>)|"
+                 "(?<!<desc|.<gap)>)([^<>]*)<(?!p\\>|ab\\>|u\\>)(/p>|/ab>|/u>)?",
                   boost::regex::perl);
 
         text_regex = boost::wregex(
-				L"([" SPACE_CHARACTERS L"])?([^" SPACE_CHARACTERS L"]+)"  // Word may be preceded by space
+                L"([" SPACE_CHARACTERS L"])?([^" SPACE_CHARACTERS L"]+)"  // Word may be preceded by space
                 );
     }
 
