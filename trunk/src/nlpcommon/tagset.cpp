@@ -48,11 +48,11 @@ vector<const Tagset*> load_tagsets(const string& name) {
         return i->second;
     }
 
-
-    assert(options.count("tagset-path"));
-
-    fs::path filepath = find_with_path(
-            options["tagset-path"].as<string>(), name);
+    // this is for the libpantera, which may not have options initialized
+    string tagsetPath = options.count("tagset-path")
+    		? options["tagset-path"].as<string>()
+    		: DEFAULT_TAGSET_PATH;
+    fs::path filepath = find_with_path(tagsetPath, name);
 
     vector<const Tagset*> tagsets;
     SpejdTagsetLoader tagset_loader;

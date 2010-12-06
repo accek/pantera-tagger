@@ -56,7 +56,8 @@ BUILT_SOURCES = rules/c1.m4h
 #bin_PROGRAMS = xces2dat xces2txt dat2dat eval txt2xces \
 #			   nkjp2xces pantera
 
-bin_PROGRAMS = pantera
+bin_PROGRAMS = pantera wrapper_test
+lib_LTLIBRARIES = libpantera.la
 
 pantera_SOURCES = pantera.cpp \
 	rules/a.h rules/c1.m4h rules/p1.h rules/p2.h \
@@ -70,6 +71,23 @@ pantera_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
 				   @MORFEUSZ_LIBS@ $(LIBCORPUS_LINK_FLAGS) \
 				   $(GLOBAL_LINK_FLAGS) $(LIBMORFEUSZ_LINK_FLAGS)
 pantera_LDADD = nlpcommon/libnlpcommon.la \
+				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
+
+libpantera_la_SOURCES = wrapper.cpp
+include_HEADERS = wrapper.h
+
+wrapper_test_SOURCES = wrapper_test.cpp \
+	rules/a.h rules/c1.m4h rules/p1.h rules/p2.h \
+	rules/impl.h rules/make.h brillengine.h \
+	brillexeme.h unigram.h rules.h
+wrapper_test_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
+				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ \
+				   @BOOST_SYSTEM_LIB@ @BOOST_FILESYSTEM_LIB@ \
+				   @BOOST_IOSTREAMS_LIB@ \
+				   @BOOST_MPI_LIB@ @ICU_LIBS@ @LIBICONV@ \
+				   @MORFEUSZ_LIBS@ $(LIBCORPUS_LINK_FLAGS) \
+				   $(GLOBAL_LINK_FLAGS) $(LIBMORFEUSZ_LINK_FLAGS)
+wrapper_test_LDADD = libpantera.la nlpcommon/libnlpcommon.la \
 				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
 
 #eval_SOURCES = eval.cpp
