@@ -133,7 +133,8 @@ string escape_xml_comment(const string& s) {
     return buf;
 }
 
-fs::path find_with_path(const string& path, const string& filename) {
+fs::path find_with_path(const string& path, const string& filename,
+        const string& required_file_in_folder) {
     if (fs::exists(filename))
         return fs::path(filename);
 
@@ -142,7 +143,8 @@ fs::path find_with_path(const string& path, const string& filename) {
     for (vector<string>::iterator i = dirs.begin();
             i != dirs.end(); ++i) {
         fs::path candidate = fs::path(*i) / filename;
-        if (fs::exists(candidate))
+        if (fs::exists(candidate) && (!required_file_in_folder.length() ||
+                    fs::exists(candidate / required_file_in_folder)))
             return candidate;
     }
 

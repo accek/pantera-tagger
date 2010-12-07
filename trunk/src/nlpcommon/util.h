@@ -90,7 +90,8 @@ bool greater_first(const Pair& a, const Pair& b) {
 
 // Utility path functions.
 
-fs::path find_with_path(const string& path, const string& filename);
+fs::path find_with_path(const string& path, const string& filename,
+        const string& required_file_in_folder = string());
 
 // Locale.
 
