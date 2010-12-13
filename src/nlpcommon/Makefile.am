@@ -20,7 +20,7 @@ libnlpcommoninclude_HEADERS = \
 	stats.h lexemesfilter.h plaintextwriter.h plaintextlexer.h morfeusz.h \
 	nkjptextlexer.h nkjplexerdata.h nkjpwriter.h libsegmentsentencer.h \
 	tagset_convert.h polish_tagset_convert.h _pstream.h segm_disamb.h \
-	polish_segm_disamb.h
+	polish_segm_disamb.h lexeme.h
 
 if HAVE_PROTOBUF
 
