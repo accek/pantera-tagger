@@ -2,4 +2,4 @@
 
 SCRIPT_DIR=`dirname $0`
 cd "$SCRIPT_DIR"
-exec java -Xmx128m -cp "$CLASSPATH:*" SegmentInterface $*
+exec java -Xmx256m -cp "$CLASSPATH:*" SegmentInterface $*

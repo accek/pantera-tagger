@@ -48,7 +48,10 @@ public:
         vector<Lexeme> out;
 
         if (!ps.is_open()) {
-            ps.open(segment_exec,
+            vector<string> args;
+            args.push_back(segment_exec);
+            args.push_back("--null-delimiter");
+            ps.open(segment_exec, args,
                     pstreams::pstdin|pstreams::pstdout|pstreams::pstderr);
             if (!ps.is_open()) {
                 throw Exception("Cannot execute 'segment_batch' excutable "
@@ -111,9 +114,7 @@ public:
                     } else if (lex.getType() == Lexeme::SEGMENT) {
                         const std::string& utf8_orth = lex.getUtf8Orth();
 
-                        if (response[response_position] == '|'
-                                && response.substr(response_position,
-                                    utf8_orth.length()) != utf8_orth) {
+                        if (response[response_position] == '\0') {
                             // New sentence starts here.
                             if (first_sentence) {
                                 first_sentence = false;

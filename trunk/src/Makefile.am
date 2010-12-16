@@ -59,10 +59,12 @@ BUILT_SOURCES = rules/c1.m4h
 bin_PROGRAMS = pantera wrapper_test
 lib_LTLIBRARIES = libpantera.la
 
-pantera_SOURCES = pantera.cpp \
+pantera_SOURCES = pantera.cpp pantera_rules.cpp \
 	rules/a.h rules/c1.m4h rules/p1.h rules/p2.h \
 	rules/impl.h rules/make.h brillengine.h \
-	brillexeme.h unigram.h rules.h
+	brillexeme.h unigram.h rules.h pantera_rules.h \
+	pantera.h
+pantera_CXXFLAGS = $(AM_CXXFLAGS)
 pantera_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
 				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ \
 				   @BOOST_SYSTEM_LIB@ @BOOST_FILESYSTEM_LIB@ \
@@ -73,13 +75,14 @@ pantera_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
 pantera_LDADD = nlpcommon/libnlpcommon.la \
 				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
 
-libpantera_la_SOURCES = wrapper.cpp
+libpantera_la_SOURCES = wrapper.cpp pantera_rules.cpp
 include_HEADERS = wrapper.h
 
 wrapper_test_SOURCES = wrapper_test.cpp \
 	rules/a.h rules/c1.m4h rules/p1.h rules/p2.h \
 	rules/impl.h rules/make.h brillengine.h \
-	brillexeme.h unigram.h rules.h
+	brillexeme.h unigram.h rules.h pantera_rules.h \
+	pantera.h
 wrapper_test_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
 				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ \
 				   @BOOST_SYSTEM_LIB@ @BOOST_FILESYSTEM_LIB@ \

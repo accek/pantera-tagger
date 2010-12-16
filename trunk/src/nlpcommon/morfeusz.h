@@ -388,149 +388,147 @@ public:
             InterpMorf* interps = morfeusz_analyse(
                     const_cast<char*>(lex.getUtf8Orth().c_str()));
             //std::cerr << "To morf: " << lex.getUtf8Orth().c_str() << std::endl;
-            
-            bool is_ambiguous = false;
-            int start_of_amb = 100000;
-            int end_of_amb = -1;
 
-            int segm = -1;
-            int segmk = -1;
-            for (int i = 0; ; i++) {
-                InterpMorf& interp = interps[i];
-                //std::cerr << '[' << interp.p << ',' << interp.k << ']';
-                if (interp.p == -1)
-                    break;
-                if (interp.p < segm) {
-                    is_ambiguous = true;
-                    end_of_amb = segmk;
-                    start_of_amb = interp.p;
-                }
-                segm = interp.p;
-                segmk = interp.k;
-            }
+            int start_i = 0;
+            while (start_i != -1) {
+                int i;
+                
+                bool is_ambiguous = false;
+                int start_of_amb = 100000;
+                int end_of_amb = -1;
 
-            //std::cerr << "\n\nAMBI " << start_of_amb << ' ' << end_of_amb << '\n';
-
-            Lexeme current_lex;
-            segm = -1;
-            for (int i = 0; ; i++) {
-                InterpMorf& interp = interps[i];
-                if (interp.p == -1)
-                    break;
-                if (is_ambiguous && interp.p == start_of_amb) {
-                    if (segm != -1)
-                        ret.push_back(current_lex);
-                    ret.push_back(Lexeme(Lexeme::START_OF_AMBIGUITY));
-                    ret.push_back(Lexeme(Lexeme::UNRESOLVED_FRAGMENT));
-                    start_of_amb = -1;
-                    segm = -1;
-                }
-                if (is_ambiguous && interp.p >= end_of_amb) {
-                    ret.push_back(current_lex);
-                    ret.push_back(Lexeme(Lexeme::END_OF_AMBIGUITY));
-                    ret.push_back(Lexeme(Lexeme::NO_SPACE));
-                    segm = -1;
-                    end_of_amb = 100000;
-                }
-                if (interp.p < segm) {
-                    if (!(interp.p >= start_of_amb && interp.k <= end_of_amb)) {
-                        throw Exception(boost::str(boost::format(
-                                        "Morfeusz module cannot handle complex "
-                                        "ambiguity near '%1%'") %
-                                    interp.forma));
-                    }
-                    ret.push_back(current_lex);
-                    ret.push_back(Lexeme(Lexeme::UNRESOLVED_FRAGMENT));
-                    segm = -1;
-                    /*if (!quiet) {
-                        std::cerr << 
-								boost::format("Ambiguous interpretation "
-                                    "returned by Morfeusz for word '%1%' "
-                                    "(edge %2% -> %3%, expected %4% -> %5%, "
-                                    "forma='%6%')")
-                                % lex.getUtf8Orth() % interp.p % interp.k
-                                % i % (i + 1) % interp.forma << std::endl
-                                << "     ";
-                        for (int i = std::max<int>(0, tidx - 3);
-                                i <= std::min<int>(text.size(), tidx + 3);
-                                i++)
-                            std::cerr << text[i].getUtf8Orth() << ' ';
-                        std::cerr << std::endl << std::endl;
-                    }*/
-                }
-
-                if (interp.p > segm) {
-                    if (segm != -1) {
-                        ret.push_back(current_lex);
-                        //std::cerr << "Morf: " << current_lex.getUtf8Orth() << std::endl;
-                        ret.push_back(Lexeme(Lexeme::NO_SPACE));
-                    }
-                    current_lex = Lexeme(Lexeme::SEGMENT);
-                    current_lex.setUtf8Orth(interp.forma);
-                    segm = interp.p;
-                }
-
-                //std::cerr << boost::format("morfeusz: %1% %2% %3% %4% %5%\n") %
-                //    interp.p % interp.k % interp.forma % interp.haslo % interp.interp;
-
-                wstring forma = utf8_to_wstring(interp.forma);
-                if (current_lex.getOrth().length() < forma.length())
-                    current_lex.setOrth(forma);
-
-                if (!morph_dict.empty()) {
-                    wstring morph_key(utf8_to_wstring(interp.forma));
-                    boost::to_lower(morph_key, get_locale("pl_PL"));
-
-                    std::map<wstring, std::vector<std::pair<wstring, string> > >
-                       ::const_iterator i = morph_dict.find(morph_key);
-                    if (i != morph_dict.end()) {
-                        parseDictEntry(i->second, current_lex);
+                int segm = -1;
+                int segmk = -1;
+                for (i = start_i; ; i++) {
+                    InterpMorf& interp = interps[i];
+                    //std::cerr << '[' << interp.p << ',' << interp.k << ']';
+                    if (interp.p == -1)
+                        break;
+                    if (i > 0 && interp.p == interps[i-1].p
+                            && interp.k == interps[i-1].k)
                         continue;
+                    if (interp.p < segm) {
+                        is_ambiguous = true;
+                        end_of_amb = segmk;
+                        start_of_amb = interp.p;
+                        break;
                     }
+                    segm = interp.p;
+                    segmk = interp.k;
                 }
 
-                if (interp.interp == NULL) {
-                    string forma_copy(interp.forma);
+                //std::cerr << "\n\nAMBI " << start_of_amb << ' ' << end_of_amb << '\n';
 
-                    SetCorpusEncoding(GUESSER_UTF8);
+                Lexeme current_lex;
+                segm = -1;
+                i = start_i;
+                start_i = -1;
+                for (; ; i++) {
+                    InterpMorf& interp = interps[i];
 
-                    if (use_odgadywacz) {
-                        try {
-                            //std::cerr << "To odg: " << interp.forma << ' ' << lex.getUtf8Orth() << std::endl;
-                            string forms = GuessForm(forma_copy.c_str());
-                            //std::cerr << "Odg:" << forms << " LEX: " << lex.getUtf8Orth() << std::endl;
-                            parseOdgadywaczResponse(forms, current_lex);
-                        } catch (std::exception const& e) {
-                            if (!quiet) {
-                                std::cerr << 
-                                        boost::format("Odgadywacz failed for "
-                                                "word '%1%'. Error was: %2%.")
-                                        % interp.forma % e.what() << std::endl;
-                            }
+                    if (interp.p == -1)
+                        break;
+
+                    if (is_ambiguous && interp.p == start_of_amb
+                            && (i == 0 || interps[i-1].p != interp.p)) {
+                        if (segm != -1)
+                            ret.push_back(current_lex);
+                        ret.push_back(Lexeme(Lexeme::START_OF_AMBIGUITY));
+                        ret.push_back(Lexeme(Lexeme::UNRESOLVED_FRAGMENT));
+                        start_of_amb = -1;
+                        segm = -1;
+                    }
+
+                    if (is_ambiguous && interp.p >= end_of_amb) {
+                        ret.push_back(current_lex);
+                        ret.push_back(Lexeme(Lexeme::END_OF_AMBIGUITY));
+                        ret.push_back(Lexeme(Lexeme::NO_SPACE));
+                        start_i = i;
+                        is_ambiguous = false;
+                        segm = -1;
+                        break;
+                    }
+
+                    if (interp.p < segm) {
+                        ret.push_back(current_lex);
+                        ret.push_back(Lexeme(Lexeme::UNRESOLVED_FRAGMENT));
+                        segm = -1;
+                    }
+
+                    if (interp.p > segm) {
+                        if (segm != -1) {
+                            ret.push_back(current_lex);
+                            //std::cerr << "Morf: " << current_lex.getUtf8Orth() << std::endl;
+                            ret.push_back(Lexeme(Lexeme::NO_SPACE));
+                        }
+                        current_lex = Lexeme(Lexeme::SEGMENT);
+                        current_lex.setUtf8Orth(interp.forma);
+                        segm = interp.p;
+                    }
+
+                    //std::cerr << boost::format("morfeusz: %1% %2% %3% %4% %5%\n") %
+                    //    interp.p % interp.k % interp.forma % interp.haslo % interp.interp;
+
+                    wstring forma = utf8_to_wstring(interp.forma);
+                    if (current_lex.getOrth().length() < forma.length())
+                        current_lex.setOrth(forma);
+
+                    if (!morph_dict.empty()) {
+                        wstring morph_key(utf8_to_wstring(interp.forma));
+                        boost::to_lower(morph_key, get_locale("pl_PL"));
+
+                        std::map<wstring, std::vector<std::pair<wstring, string> > >
+                           ::const_iterator i = morph_dict.find(morph_key);
+                        if (i != morph_dict.end()) {
+                            parseDictEntry(i->second, current_lex);
+                            continue;
                         }
                     }
 
-                    // Add "ign".
-                    tag_type tag = tag_type::parseString(out_tagset, string("ign"));
-                    current_lex.addAllowedTag(tag);
-                    current_lex.addTagBase(tag, forma);
+                    if (interp.interp == NULL) {
+                        string forma_copy(interp.forma);
 
-                    morfeusz_set_option(MORFOPT_ENCODING, MORFEUSZ_UTF_8);
-                    interps = morfeusz_analyse(
-                            const_cast<char*>(lex.getUtf8Orth().c_str()));
-                } else {
-                    //std::cerr << "Morf:" << interp.forma << ' ' << interp.haslo << ' ' << interp.interp << std::endl;
-                    parseMorfeuszTags(interp.interp,
-                            utf8_to_wstring(interp.haslo == NULL ?
-                                interp.forma : interp.haslo), current_lex);
+                        SetCorpusEncoding(GUESSER_UTF8);
+
+                        if (use_odgadywacz) {
+                            try {
+                                //std::cerr << "To odg: " << interp.forma << ' ' << lex.getUtf8Orth() << std::endl;
+                                string forms = GuessForm(forma_copy.c_str());
+                                //std::cerr << "Odg:" << forms << " LEX: " << lex.getUtf8Orth() << std::endl;
+                                parseOdgadywaczResponse(forms, current_lex);
+                            } catch (std::exception const& e) {
+                                if (!quiet) {
+                                    std::cerr << 
+                                            boost::format("Odgadywacz failed for "
+                                                    "word '%1%'. Error was: %2%.")
+                                            % interp.forma % e.what() << std::endl;
+                                }
+                            }
+                        }
+
+                        // Add "ign".
+                        tag_type tag = tag_type::parseString(out_tagset, string("ign"));
+                        current_lex.addAllowedTag(tag);
+                        current_lex.addTagBase(tag, forma);
+
+                        morfeusz_set_option(MORFOPT_ENCODING, MORFEUSZ_UTF_8);
+                        interps = morfeusz_analyse(
+                                const_cast<char*>(lex.getUtf8Orth().c_str()));
+                    } else {
+                        //std::cerr << "Morf:" << interp.forma << ' ' << interp.haslo << ' ' << interp.interp << std::endl;
+                        parseMorfeuszTags(interp.interp,
+                                utf8_to_wstring(interp.haslo == NULL ?
+                                    interp.forma : interp.haslo),
+                                current_lex);
+                    }
                 }
-            }
-            if (segm >= 0) {
-                ret.push_back(current_lex);
-                //std::cerr << "Morf: " << current_lex.getUtf8Orth() << std::endl;
-            }
-            if (is_ambiguous && end_of_amb != 100000) {
-                ret.push_back(Lexeme(Lexeme::END_OF_AMBIGUITY));
+                if (segm >= 0) {
+                    ret.push_back(current_lex);
+                    //std::cerr << "Morf: " << current_lex.getUtf8Orth() << std::endl;
+                }
+                if (is_ambiguous) {
+                    ret.push_back(Lexeme(Lexeme::END_OF_AMBIGUITY));
+                }
             }
 		}
 
