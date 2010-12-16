@@ -96,6 +96,7 @@ public class SegmentInterface {
 		options.addOption("m", "map", true, "Map rule name in SRX 1.0.");
 		options.addOption(null, "lookbehind", true, "Maximum length of a regular expression construct that occurs in lookbehind. Default: " + SrxTextIterator.DEFAULT_MAX_LOOKBEHIND_CONSTRUCT_LENGTH + ".");
 		options.addOption(null, "margin", true, "If rule is matched but its position is in the margin (position > bufferLength - margin) then the matching is ignored. Default " + SrxTextIterator.DEFAULT_MARGIN + ".");
+		options.addOption(null, "null-delimiter", false, "Use NULL character as sentence delimiter.");
 		options.addOption("h", "help", false, "Print this help.");
 		return options;
 	}
@@ -128,13 +129,17 @@ public class SegmentInterface {
         
         Map<String, Object> parameterMap =
             createTextIteratorParameterMap(commandLine);
+
+        String delimiter = "|";
+        if (commandLine.hasOption("null-delimiter"))
+            delimiter = "\0";
         
         while (inputScanner.hasNextLine()) {
             TextIterator textIterator = new SrxTextIterator(document, languageCode,
                     inputScanner.nextLine(), parameterMap);
             while (textIterator.hasNext()) {
                 String segment = textIterator.next();
-                System.out.print("|");
+                System.out.print(delimiter);
                 System.out.print(segment);
             }
             System.out.println();

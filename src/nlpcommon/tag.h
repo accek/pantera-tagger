@@ -259,7 +259,7 @@ public:
     }
 };
 
-std::size_t hash_value(const Tag& tag) {
+static std::size_t hash_value(const Tag& tag) {
     return tag.hash();
 }
 

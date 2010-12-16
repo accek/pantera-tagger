@@ -28,9 +28,8 @@
 #include <nlpcommon/util.h>
 #include <nlpcommon/ipipanwriter.h>
 
-#include "rules/impl.h"
-#include "brilllexeme.h"
-#include "brillengine.h"
+#include "pantera.h"
+#include "pantera_rules.h"
 
 #ifndef DEFAULT_LIB_TAGSET
 #define DEFAULT_LIB_TAGSET "nkjp"
@@ -57,34 +56,6 @@ typedef BTagger::BrillLexeme<Tag> MyLexeme;
 typedef BestScoreMultiGoldenScorer<BinaryScorer<MyLexeme::tag_type> > MyScorer;
 
 static boost::scoped_ptr<Lexer<MyLexeme> > lexer;
-
-static void setup_engine(
-		BTagger::BrillEngine<MyLexeme, MyScorer>& engine,
-		const vector<const Tagset*>& tagsets,
-		vector<BTagger::RulesGenerator<MyLexeme>*>& rule_generators) {
-	if (tagsets.size() > 3) {
-		throw Exception("Tagsets with more than 3 phases are not supported.");
-	}
-
-	BTagger::RulesGenerator<MyLexeme>* g1 =
-			BTagger::Rules::make_p1_rules_generator<MyLexeme, 0>(tagsets);
-	engine.addPhase(tagsets[0], g1->getTStore());
-	rule_generators.push_back(g1);
-
-	if (tagsets.size() >= 2) {
-		BTagger::RulesGenerator<MyLexeme>* g2 =
-				BTagger::Rules::make_p2_rules_generator<MyLexeme, 1>(tagsets);
-		engine.addPhase(tagsets[1], g2->getTStore());
-		rule_generators.push_back(g2);
-	}
-
-	if (tagsets.size() >= 3) {
-		BTagger::RulesGenerator<MyLexeme>* g3 =
-				BTagger::Rules::make_p2_rules_generator<MyLexeme, 2>(tagsets);
-		engine.addPhase(tagsets[2], g3->getTStore());
-		rule_generators.push_back(g3);
-	}
-}
 
 static void load_engine_from_archive(
 		BTagger::BrillEngine<MyLexeme, MyScorer>& engine) {
@@ -158,8 +129,7 @@ vector<DefaultLexeme> PanteraWrapper::tag(const string& text) {
 	static std::vector<BTagger::RulesGenerator<MyLexeme>*> rule_generators;
 
 	if (!initialized) {
-
-		setup_engine(engine, tagsets, rule_generators);
+		add_phases_to_engine(engine, tagsets, rule_generators);
 		load_engine_from_archive(engine);
 		engine.setQuiet(true);
 

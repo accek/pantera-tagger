@@ -140,13 +140,16 @@ public:
                     } else if (num_fragments == 2) {
                         second_i = i;
                     } else {
-                        throw Exception(boost::str(boost::format(
-                                        "PolishSegmDisambiguator cannot "
+                        std::cerr << boost::str(boost::format(
+                                        "warning: PolishSegmDisambiguator cannot "
                                         "handle ambiguities with more than 2 "
                                         "possibilities. "
-                                        "It was near '%1%' and '%2%'.")
+                                        "It was near '%1%' and '%2%'. "
+                                        "Rejecting further ambiguous segments.")
                                     % text[first_i+1].getUtf8Orth()
-                                    % text[second_i+1].getUtf8Orth()));
+                                    % text[second_i+1].getUtf8Orth())
+                            << std::endl;
+                        text[i].setType(Lexeme::REJECTED_FRAGMENT);
                     }
                     break;
 
