@@ -108,27 +108,33 @@ public:
                     assert(in_ambiguous);
                     if (num_fragments == 1) {
                         text[first_i].setType(Lexeme::ACCEPTED_FRAGMENT);
-                    } else if (num_fragments == 2) {
+                    } else {
+                        bool skip_rules = false;
                         if (second_i != i - 2) {
                             if (second_i - first_i == 2) {
                                 std::swap(first_i, second_i);
                             } else {
-                                throw Exception(boost::str(boost::format(
-                                                "PolishSegmDisambiguator got "
-                                                "unexpected ambiguity. Only [BEG][UNR]"
-                                                "[SEG][NS][SEG][UNR][SEG][END] is "
-                                                "supported. It was near '%1%' and '%2%'.")
+                                std::cerr << boost::str(boost::format(
+                                                "warning: arbitrary segmentation "
+                                                "chosen for complex ambiguity "
+                                                "near '%1%' and '%2%'.")
                                             % text[first_i+1].getUtf8Orth()
-                                            % text[second_i+1].getUtf8Orth()));
+                                            % text[second_i+1].getUtf8Orth())
+                                    << std::endl;
+                                text[first_i].setType(Lexeme::ACCEPTED_FRAGMENT);
+                                text[second_i].setType(Lexeme::REJECTED_FRAGMENT);
+                                skip_rules = true;
                             }
                         }
-                        bool separate = shouldBeSeparate(text, second_i + 1);
-                        text[first_i].setType(
-                                separate ? Lexeme::ACCEPTED_FRAGMENT :
-                                    Lexeme::REJECTED_FRAGMENT);
-                        text[second_i].setType(
-                                separate ? Lexeme::REJECTED_FRAGMENT :
-                                    Lexeme::ACCEPTED_FRAGMENT);
+                        if (!skip_rules) {
+                            bool separate = shouldBeSeparate(text, second_i + 1);
+                            text[first_i].setType(
+                                    separate ? Lexeme::ACCEPTED_FRAGMENT :
+                                        Lexeme::REJECTED_FRAGMENT);
+                            text[second_i].setType(
+                                    separate ? Lexeme::REJECTED_FRAGMENT :
+                                        Lexeme::ACCEPTED_FRAGMENT);
+                        }
                     }
                     in_ambiguous = false;
                     break;
@@ -140,16 +146,19 @@ public:
                     } else if (num_fragments == 2) {
                         second_i = i;
                     } else {
-                        std::cerr << boost::str(boost::format(
-                                        "warning: PolishSegmDisambiguator cannot "
-                                        "handle ambiguities with more than 2 "
-                                        "possibilities. "
-                                        "It was near '%1%' and '%2%'. "
-                                        "Rejecting further ambiguous segments.")
-                                    % text[first_i+1].getUtf8Orth()
-                                    % text[second_i+1].getUtf8Orth())
-                            << std::endl;
-                        text[i].setType(Lexeme::REJECTED_FRAGMENT);
+                        if (num_fragments == 3)
+                            std::cerr << boost::str(boost::format(
+                                            "warning: PolishSegmDisambiguator cannot "
+                                            "handle ambiguities with more than 2 "
+                                            "possibilities. "
+                                            "It was near '%1%' and '%2%'. "
+                                            "Considering only first and last "
+                                            "possibility.")
+                                        % text[first_i+1].getUtf8Orth()
+                                        % text[second_i+1].getUtf8Orth())
+                                << std::endl;
+                        text[second_i].setType(Lexeme::REJECTED_FRAGMENT);
+                        second_i = i;
                     }
                     break;
 

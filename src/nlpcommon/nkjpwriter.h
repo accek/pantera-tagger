@@ -127,6 +127,7 @@ private:
                 this->closeParen();
                 this->openParen();
                 in_rejected = false;
+                this->stream << "      <!-- [unresolved segmentation] -->\n";
                 break;
 
             case Lexeme::ACCEPTED_FRAGMENT:

@@ -393,7 +393,7 @@ public:
             while (start_i != -1) {
                 int i;
                 
-                bool is_ambiguous = false;
+                bool has_ambiguous = false;
                 int start_of_amb = 100000;
                 int end_of_amb = -1;
 
@@ -408,7 +408,7 @@ public:
                             && interp.k == interps[i-1].k)
                         continue;
                     if (interp.p < segm) {
-                        is_ambiguous = true;
+                        has_ambiguous = true;
                         end_of_amb = segmk;
                         start_of_amb = interp.p;
                         break;
@@ -420,6 +420,7 @@ public:
                 //std::cerr << "\n\nAMBI " << start_of_amb << ' ' << end_of_amb << '\n';
 
                 Lexeme current_lex;
+                bool in_ambiguous = false;
                 segm = -1;
                 i = start_i;
                 start_i = -1;
@@ -429,27 +430,36 @@ public:
                     if (interp.p == -1)
                         break;
 
-                    if (is_ambiguous && interp.p == start_of_amb
-                            && (i == 0 || interps[i-1].p != interp.p)) {
+                    if (!in_ambiguous && interp.p == start_of_amb) {
                         if (segm != -1)
                             ret.push_back(current_lex);
                         ret.push_back(Lexeme(Lexeme::START_OF_AMBIGUITY));
                         ret.push_back(Lexeme(Lexeme::UNRESOLVED_FRAGMENT));
-                        start_of_amb = -1;
                         segm = -1;
+                        in_ambiguous = true;
                     }
 
-                    if (is_ambiguous && interp.p >= end_of_amb) {
+                    /*if (in_ambiguous) {
+                        std::cerr << interp.p << ' ' << interp.k << ' ' <<
+                            interp.forma << ' ' << interp.haslo << std::endl;
+                    }*/
+
+                    if (in_ambiguous && interp.p >= end_of_amb) {
                         ret.push_back(current_lex);
                         ret.push_back(Lexeme(Lexeme::END_OF_AMBIGUITY));
                         ret.push_back(Lexeme(Lexeme::NO_SPACE));
                         start_i = i;
-                        is_ambiguous = false;
+                        in_ambiguous = false;
                         segm = -1;
                         break;
                     }
 
                     if (interp.p < segm) {
+                        if (!(in_ambiguous && interp.p == start_of_amb))
+                            throw Exception(boost::str(boost::format(
+                                            "Too complex segmentation "
+                                            "ambiguity returned by Morfeusz "
+                                            "for '%1%'.") % lex.getUtf8Orth()));
                         ret.push_back(current_lex);
                         ret.push_back(Lexeme(Lexeme::UNRESOLVED_FRAGMENT));
                         segm = -1;
@@ -458,7 +468,6 @@ public:
                     if (interp.p > segm) {
                         if (segm != -1) {
                             ret.push_back(current_lex);
-                            //std::cerr << "Morf: " << current_lex.getUtf8Orth() << std::endl;
                             ret.push_back(Lexeme(Lexeme::NO_SPACE));
                         }
                         current_lex = Lexeme(Lexeme::SEGMENT);
@@ -526,7 +535,7 @@ public:
                     ret.push_back(current_lex);
                     //std::cerr << "Morf: " << current_lex.getUtf8Orth() << std::endl;
                 }
-                if (is_ambiguous) {
+                if (in_ambiguous) {
                     ret.push_back(Lexeme(Lexeme::END_OF_AMBIGUITY));
                 }
             }
