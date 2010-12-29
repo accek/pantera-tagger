@@ -20,6 +20,7 @@
 #include <nlpcommon/lexer.h>
 #include <nlpcommon/util.h>
 #include <nlpcommon/nkjplexerdata.h>
+#include <nlpcommon/exception.h>
 
 namespace NLPCommon {
 
@@ -58,6 +59,10 @@ private:
     }
 
     void handleEndOfParagraph() {
+        if (!inside_paragraph) {
+            throw Exception("NKJP lexer found end-of-para before "
+                    "start-of-para.");
+        }
         Lexeme lex(Lexeme::END_OF_PARAGRAPH);
         collector->collectLexeme(lex);
         inside_paragraph = false;
