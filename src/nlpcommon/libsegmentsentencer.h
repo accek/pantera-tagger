@@ -158,7 +158,8 @@ public:
                     this->advanceProgress();
                 }
 
-                out.push_back(Lexeme(Lexeme::END_OF_SENTENCE));
+                if (!first_sentence)
+                    out.push_back(Lexeme(Lexeme::END_OF_SENTENCE));
                 out.push_back(Lexeme(Lexeme::END_OF_PARAGRAPH));
 
                 i = j;
