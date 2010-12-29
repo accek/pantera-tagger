@@ -9,6 +9,7 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/format.hpp>
 #include <boost/scoped_array.hpp>
 #include <string>
@@ -129,7 +130,8 @@ wstring wxml_to_wstring(const wstring& s) {
 
 string escape_xml_comment(const string& s) {
     string buf(s);
-    boost::replace_all(buf, "--", "\\-\\-");
+    while (boost::contains(buf, "--"))
+        boost::replace_all(buf, "--", "-\\-");
     return buf;
 }
 
