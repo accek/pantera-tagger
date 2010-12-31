@@ -89,7 +89,7 @@ public:
     {
         parsing_regex = boost::wregex(
                 L"(?:(?:(<p|<ab|<u)[^>]*?(?:xml:id=[\"']([^\"']*)[\"'])[^/>]*?>)|"
-                 "(?<!<desc|.<gap)>)([^<>]*)<(?!p\\>|ab\\>|u\\>)(/p>|/ab>|/u>)?",
+                 "(?<!<desc|.<gap)>)([^<]*)<(?!p\\>|ab\\>|u\\>)(/p>|/ab>|/u>)?",
                   boost::regex::perl);
 
         text_regex = boost::wregex(
