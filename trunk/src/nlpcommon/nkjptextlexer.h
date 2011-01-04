@@ -33,6 +33,7 @@ private:
     LexerCollector<Lexeme>* collector;
     bool new_paragraph;
     bool inside_paragraph;
+    string last_para_id;
     boost::wregex parsing_regex, text_regex;
     wstring raw_text; // Saved most recently parsed file
 
@@ -56,12 +57,15 @@ private:
         collector->collectLexeme(lex);
         new_paragraph = true;
         inside_paragraph = true;
+        last_para_id = id;
     }
 
     void handleEndOfParagraph() {
         if (!inside_paragraph) {
-            throw Exception("NKJP lexer found end-of-para before "
-                    "start-of-para.");
+            throw Exception(boost::str(boost::format(
+                    "NKJP lexer found end-of-para before start-of-para near "
+                    "paragraph '%1%'. Maybe the xml:id attribute is missing "
+                    "in the opening tag.") % last_para_id));
         }
         Lexeme lex(Lexeme::END_OF_PARAGRAPH);
         collector->collectLexeme(lex);
@@ -112,6 +116,7 @@ public:
         this->collector = &collector;
         this->new_paragraph = true;
         this->inside_paragraph = false;
+        this->last_para_id = "(beginning)";
 
         // This code is heavily based on example from Boost.Regex
         // (http://www.boost.org/doc/libs/1_41_0/libs/regex/doc/html/boost_regex/partial_matches.html)
