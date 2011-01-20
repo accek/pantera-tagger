@@ -28,7 +28,7 @@ private:
     LexerCollector<Lexeme>* collector;
     bool new_paragraph;
 
-    void handleOrth(const string& orth, bool preceded_by_space) {
+    void handleOrth(const wstring& orth, bool preceded_by_space) {
         if (new_paragraph) {
             Lexeme lex(Lexeme::START_OF_PARAGRAPH);
             collector->collectLexeme(lex);
@@ -37,7 +37,7 @@ private:
         if (!preceded_by_space && !new_paragraph)
             collector->collectLexeme(Lexeme(Lexeme::NO_SPACE));
         Lexeme current_lex = Lexeme(Lexeme::SEGMENT);
-        current_lex.setOrth(utf8_to_wstring(orth));
+        current_lex.setOrth(orth);
         collector->collectLexeme(current_lex);
         this->advanceProgress();
         new_paragraph = false;
@@ -63,10 +63,10 @@ public:
         this->collector = &collector;
         this->new_paragraph = true;
 
-        boost::regex parsing_regex = boost::regex(
-				"(\\s*?\n\\s*?\\n\\s*)|"  // New paragraph
-				"(\\s)?([^\\s]*)"  // Word may be preceded by space
-                );
+        boost::wregex parsing_regex = boost::wregex(
+				L"(\\s*?\n\\s*?\\n\\s*)|"  // New paragraph
+				L"(\\s)?([^\\s]+)",  // Word may be preceded by space
+                boost::regex::perl);
 
         enum {
 			MATCH_NEWPAR = 1,
@@ -77,10 +77,12 @@ public:
         // This code is heavily based on example from Boost.Regex
         // (http://www.boost.org/doc/libs/1_41_0/libs/regex/doc/html/boost_regex/partial_matches.html)
 
-        string text(std::istreambuf_iterator<char>(this->stream),
+        string raw_text_s = string(std::istreambuf_iterator<char>(this->stream),
                 std::istreambuf_iterator<char>());
-        boost::sregex_iterator i(text.begin(), text.end(), parsing_regex);
-        boost::sregex_iterator end;
+        wstring raw_text = utf8_to_wstring(raw_text_s);
+        boost::wsregex_iterator i(raw_text.begin(), raw_text.end(),
+                parsing_regex);
+        boost::wsregex_iterator end;
         for (; i != end; ++i) {
             if ((*i)[MATCH_NEWPAR].matched) {
                 handleNewParagraph();
