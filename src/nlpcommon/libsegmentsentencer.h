@@ -10,6 +10,7 @@
 
 #include <istream>
 #include <vector>
+#include <algorithm>
 
 #include <nlpcommon/sentencer.h>
 #include <nlpcommon/lexeme.h>
@@ -100,6 +101,7 @@ public:
                             " executable");
                 }
 
+
                 // Read back and insert sentence delimiters.
                 bool first_sentence = true;
                 int response_position = 0;
@@ -126,6 +128,11 @@ public:
                             response_position++;
                         }
 
+                        // std::cerr << "response_pos " << response_position
+                        //     << " len " << response.length() << " utf8_orth '" <<
+                        //     utf8_orth << "' no_space " << (no_space ? "Y" : "N")
+                        //     << std::endl;
+
                         if (!no_space) {
                             if (response[response_position] != ' ') {
                                 throw Exception(boost::str(boost::format(
@@ -137,7 +144,9 @@ public:
                             response_position++;
                         }
 
-                        if (response.substr(response_position, utf8_orth.length())
+                        if (response.substr(response_position,
+                                    std::min(response.length() - response_position,
+                                        utf8_orth.length()))
                                 != utf8_orth) {
                             std::cerr << "BAD " << utf8_orth << std::endl <<
                                         response.substr(response_position) << std::endl;
