@@ -83,12 +83,9 @@ public:
             if (from_cat != NULL) {
                 // We assume the values between categories match.
                 // 
-                // This also works well for converting values of degree,
-                // which in some tagsets are named 'com', while in others
-                // 'comp'.
-                //
                 // We also consider the case of reduced gender (no
-                // n1,n2,n3,p1,p2,p3).
+                // n1,n2,n3,p1,p2,p3) and two possibilities for
+                // degree com/comp.
 
                 int to_index = this->to_tagset->getCategoryIndex(to_cat);
                 int value = tag.getValue(
@@ -109,6 +106,14 @@ public:
                                             "Unexpected gender '%1%' when converting "
                                             "between Polish tagsets.")
                                         % value_str));
+                        }
+                    } else if (from_cat->getName() == "degree") {
+                        if (value_str == "comp" || value_str == "com") {
+                            try {
+                                value = to_cat->getIndex("comp");
+                            } catch (const CategoryValueNotFoundException& e) {
+                                value = to_cat->getIndex("com");
+                            }
                         }
                     } else {
                         throw Exception(boost::str(boost::format(
