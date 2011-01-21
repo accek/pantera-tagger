@@ -3,10 +3,6 @@ AM_CXXFLAGS = @BOOST_CPPFLAGS@ @OPENMP_CXXFLAGS@ @MORFEUSZ_CFLAGS@ \
 	-DSEGMENT_PATH=\"$(libexecdir)/$(PACKAGE):@abs_top_srcdir@/third_party/segment\" \
 	-DENGINES_PATH=\"$(pkgdatadir)/engines:@abs_top_srcdir@/engines\"
 
-if HAVE_PROTOBUF
-AM_CXXFLAGS += @PROTOBUF_CFLAGS@
-endif
-
 SUBDIRS = nlpcommon
 
 SUFFIXES = .m4 .m4h
@@ -124,16 +120,3 @@ wrapper_test_LDADD = libpantera.la nlpcommon/libnlpcommon.la \
 #dat2dat_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@
 #dat2dat_LDADD = nlpcommon/libnlpcommon.la
 #
-#if HAVE_PROTOBUF
-#
-#bin_PROGRAMS += xces2corpus corpus2corpus
-#
-#xces2corpus_SOURCES = xces2corpus.cpp
-#xces2corpus_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_PROGRAM_OPTIONS_LIB@
-#xces2corpus_LDADD = nlpcommon/libnlpcommon.la
-#
-#corpus2corpus_SOURCES = corpus2corpus.cpp
-#corpus2corpus_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_PROGRAM_OPTIONS_LIB@
-#corpus2corpus_LDADD = nlpcommon/libnlpcommon.la
-#
-#endif

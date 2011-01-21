@@ -22,20 +22,3 @@ libnlpcommoninclude_HEADERS = \
 	tagset_convert.h polish_tagset_convert.h _pstream.h segm_disamb.h \
 	polish_segm_disamb.h lexeme.h
 
-if HAVE_PROTOBUF
-
-AM_CXXFLAGS += @PROTOBUF_CFLAGS@
-
-SUFFIXES = .proto .pb.cc .pb.h
-.proto.pb.cc:
-	protoc $< --cpp_out=./ --proto_path=${srcdir}
-.proto.pb.h:
-	protoc $< --cpp_out=./ --proto_path=${srcdir}
-
-libnlpcommon_la_SOURCES += corpus.pb.cc corpus.pb.h corpustagsetloader.cpp
-libnlpcommon_la_LIBADD += @PROTOBUF_LIBS@
-libnlpcommoninclude_HEADERS += corpus.pb.h corpuslexer.h corpuswriter.h \
-							   corpustagsetloader.h
-CLEANFILES += corpus.pb.h corpus.pb.cc
-
-endif
