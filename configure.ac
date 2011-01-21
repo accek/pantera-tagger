@@ -55,20 +55,6 @@ AX_BOOST_IOSTREAMS
 AX_BOOST_SERIALIZATION
 AX_BOOST_MPI
 
-PKG_CHECK_MODULES([PROTOBUF], [protobuf >= 2.0],
-                  [have_protobuf=yes], [have_protobuf=no])
-if test "x$have_protobuf" = "xyes"; then
-    AC_CHECK_PROG(ax_cv_protoc, protoc, yes, no)
-    if test "x$ax_cv_protoc" = "xyes"; then
-        AC_SUBST(PROTOBUF_CFLAGS)
-        AC_SUBST(PROTOBUF_LIBS)
-        AC_DEFINE(HAVE_PROTOBUF, 1, [Google Protocol Buffers available])
-    else
-        have_protobuf=no
-    fi
-fi
-AM_CONDITIONAL(HAVE_PROTOBUF, test "x$have_protobuf" = "xyes")
-
 AC_ARG_WITH([openmp],
     AS_HELP_STRING([--without-openmp], [Do not use OpenMP parallelism]))
 
