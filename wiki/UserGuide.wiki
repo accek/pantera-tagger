@@ -23,6 +23,7 @@
  * Java (JDK)
  * libtcmalloc from [http://code.google.com/p/google-perftools/ google-perftools] v. 1.3 or later (optional, but noticeably increases efficiency). Please note that some distributions, namely Ubuntu, have older versions in their repositories.
  * automake, autoconf, libtool
+ * [http://www.cmake.org/ CMake]
 
 Two major third-party components: [http://nlp.pwr.wroc.pl/takipi/ TaKIPI] (another tagger of Polish; we use its morphological guesser) and [http://sourceforge.net/projects/segment/ segment] (sentencer) are distributed with Pantera.
 
