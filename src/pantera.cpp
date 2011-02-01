@@ -227,8 +227,8 @@ static void postprocess_file(const fs::path& path, const string& type,
         boost::iostreams::filtering_stream<boost::iostreams::output> segm_stream;
         boost::iostreams::filtering_stream<boost::iostreams::output> morph_stream;
         if (options.count("compress")) {
-            segm_stream.push(boost::iostreams::gzip_compressor(1, 1024*1024));
-            morph_stream.push(boost::iostreams::gzip_compressor(1, 1024*1024));
+            segm_stream.push(boost::iostreams::gzip_compressor(options.count("compress"), 1024*1024));
+            morph_stream.push(boost::iostreams::gzip_compressor(options.count("compress"), 1024*1024));
         }
         segm_stream.push(segm_file);
         morph_stream.push(morph_file);
@@ -286,7 +286,8 @@ void parse_command_line(int argc, char** argv) {
     po::options_description config("Configuration");
     config.add_options()
         ("verbose,v", "be verbose")
-        ("compress,z", "compress output, if possible")
+        ("compress,z", "compress output, if possible; use this option "
+         "multiple times for higher compression levels.")
         ("skip-done", "skip processing if output files exist")
         ("tagset,t", po::value<string>()->default_value(DEFAULT_TAGSET),
          "name of tagset to use (or a Spejd-compatible tagset config file, "
