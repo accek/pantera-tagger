@@ -189,9 +189,9 @@ class NKJPMorphWriter : public Writer<Lexeme>
 private:
     string para_id;
     bool no_space;
-    string time_str;
     int id_generator;
     bool in_rejected;
+    string tool_name;
 
     typedef typename Lexeme::tag_type tag_type;
 
@@ -266,7 +266,8 @@ private:
                     this->stream << "         <vAlt>\n";
 
                 int i = 0;
-                int chosen_tag = -1;
+                int chosen_tag_id = -1;
+                string chosen_tag_desc;
                 BOOST_FOREACH(const std::vector<bct_type>& bct_group, bct_groups) {
                     key = bct_group[0].first;
                     this->stream << "          <fs type=\"lex\" xml:id=\"morph_"
@@ -283,12 +284,18 @@ private:
                         this->stream << "            <vAlt>\n";
 
                     BOOST_FOREACH(const bct_type& bct, bct_group) {
-                        this->stream << "             <symbol value=\"" <<
-                            bct.second.asStringMsd(tagset) << "\" xml:id=\"morph_"
-                                << id << '_' << i << "-msd\"/>\n";
+                        string msd = bct.second.asStringMsd(tagset);
+                        this->stream << "             <symbol value=\"" << msd
+                            << "\" xml:id=\"morph_" << id << '_' << i <<
+                            "-msd\"/>\n";
 
-                        if (lex.isAutoselectedTag(bct.second))
-                            chosen_tag = i;
+                        if (lex.isAutoselectedTag(bct.second)) {
+                            chosen_tag_id = i;
+                            chosen_tag_desc = wstring_to_xml(key.first) + ":" +
+                                key.second;
+                            if (msd.length())
+                                chosen_tag_desc += ":" + msd;
+                        }
 
                         i++;
                     }
@@ -303,13 +310,15 @@ private:
                     this->stream << "         </vAlt>\n";
                 this->stream << "        </f>\n";
                 this->stream << "        <f name=\"disamb\">\n";
-                this->stream << "         <fs feats=\"#pantera0.9\" type=\"tool_report\">\n";
-                this->stream << "          <f name=\"date\">\n";
-                this->stream << "           <string>" << time_str << "</string>\n";
-                this->stream << "          </f>\n";
-                if (chosen_tag != -1) {
+                this->stream << "         <fs feats=\"#" << this->tool_name << "\" type=\"tool_report\">\n";
+                if (chosen_tag_id != -1) {
                     this->stream << "          <f fVal=\"#morph_"
-                        << id << '_' << chosen_tag << "-msd\" name=\"choice\"/>\n";
+                        << id << '_' << chosen_tag_id << "-msd\" name=\"choice\"/>\n";
+                    this->stream << "          <f name=\"interpretation\">\n";
+                    this->stream << "           <string>" << chosen_tag_desc <<
+                        "</string>\n";
+                    this->stream << "          </f>\n";
+
                 }
                 this->stream << "         </fs>\n";
                 this->stream << "        </f>\n";
@@ -371,8 +380,8 @@ private:
     }
 
 public:
-    NKJPMorphWriter(std::ostream& stream)
-        : Writer<Lexeme>(stream), no_space(false)
+    NKJPMorphWriter(std::ostream& stream, const string& tool_name = "pantera")
+        : Writer<Lexeme>(stream), no_space(false), tool_name(tool_name)
     {
         namespace ptime = boost::posix_time;
         ptime::ptime now = ptime::second_clock::local_time();
@@ -381,7 +390,6 @@ public:
         std::ostringstream ss;
         ss.imbue(std::locale(std::locale::classic(), output_facet));
         ss << now;
-        time_str = ss.str();
     }
 
     virtual void writeToStream(WriterDataSource<Lexeme>& data_source) {
