@@ -13,7 +13,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
-#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
 #include <boost/mpi.hpp>
 
 #include <nlpcommon/lexer.h>
@@ -60,8 +60,8 @@ static boost::scoped_ptr<Lexer<MyLexeme> > lexer;
 static void load_engine_from_archive(
 		BTagger::BrillEngine<MyLexeme, MyScorer>& engine) {
 	fs::path engine_path = find_with_path(ENGINES_PATH, DEFAULT_ENGINE);
-	fs::ifstream data_stream(engine_path, ios::in | ios::binary);
-	boost::archive::binary_iarchive engine_archive(data_stream);
+	fs::ifstream data_stream(engine_path, ios::in);
+	boost::archive::text_iarchive engine_archive(data_stream);
 
 	engine_archive >> engine;
 }
