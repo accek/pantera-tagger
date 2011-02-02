@@ -236,7 +236,8 @@ static void postprocess_file(const fs::path& path, const string& type,
 
         NKJPSegmWriter<MyLexeme> segm_writer(segm_stream);
         segm_writer.writeVectorToStream(tagset, text);
-        NKJPMorphWriter<MyLexeme> morph_writer(morph_stream);
+        NKJPMorphWriter<MyLexeme> morph_writer(morph_stream,
+                options["nkjp-tool-name"].as<string>());
         morph_writer.writeVectorToStream(tagset, text);
 
         BOOST_FOREACH(const fs::path& output_path, output_paths) {
@@ -310,6 +311,9 @@ void parse_command_line(int argc, char** argv) {
         ("morph-dict,d", po::value<vector<string> >(),
          "extra morphological dictionaries, see documentation "
          "on the project page for format examples.")
+        ("nkjp-tool-name", po::value<string>()->default_value("pantera"),
+         "the name of the tool to use when producing NKJP XML output "
+         "(default is 'pantera').")
         ;
 
     // Hidden options, will be allowed both on command line and
