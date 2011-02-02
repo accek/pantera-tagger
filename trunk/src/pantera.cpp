@@ -1,8 +1,9 @@
 #include <boost/program_options.hpp>
 #include <boost/foreach.hpp>
 #include <boost/mpi.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
-#include <boost/archive/binary_oarchive.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
@@ -437,9 +438,39 @@ int real_main(mpi::communicator& world, int argc, char** argv) {
             cerr << endl << "Loading engine ..." << endl;
             fs::path engine_path = find_with_path(ENGINES_PATH,
                     options["engine"].as<string>());
-            fs::ifstream data_stream(engine_path, ios::in | ios::binary);
-            boost::archive::binary_iarchive engine_archive(data_stream);
-            engine_archive >> engine;
+
+            try {
+                fs::ifstream data_stream(engine_path, ios::in);
+                boost::archive::text_iarchive engine_archive(data_stream);
+                engine_archive >> engine;
+            } catch (...) {
+                fs::ifstream data_stream(engine_path, ios::in | ios::binary);
+                boost::archive::binary_iarchive engine_archive(data_stream);
+                engine_archive >> engine;
+                data_stream.close();
+
+                cerr << "Converting engine to newer file format ..." << endl;
+
+                fs::path backup_path(engine_path);
+                backup_path.replace_extension(".bak");
+                fs::rename(engine_path, backup_path);
+
+                fs::ofstream data_ostream(engine_path, ios::out);
+                boost::archive::text_oarchive engine_oarchive(data_ostream);
+                engine_oarchive << engine;
+                data_stream.close();
+
+                cerr << endl;
+                cerr << "The engine has been converted to a newer file format."
+                    << endl;
+                cerr << "The original engine was saved as " << endl;
+                cerr << backup_path << endl << endl;
+
+                cerr << "Please run the tagger again." << endl;
+
+                return 2;
+            }
+
         }
 
         cerr << "Sending data to all worker processes ..." << endl;
@@ -458,10 +489,9 @@ int real_main(mpi::communicator& world, int argc, char** argv) {
         // Save engine if needed.
         if (world.rank() == 0) {
             string engine_filename = options["create-engine"].as<string>();
-            ofstream engine_stream(engine_filename.c_str(), ios::out |
-                    ios::binary);
+            ofstream engine_stream(engine_filename.c_str(), ios::out);
             cerr << endl << "Saving engine to " << engine_filename << " ...  ";
-            boost::archive::binary_oarchive engine_archive(engine_stream);
+            boost::archive::text_oarchive engine_archive(engine_stream);
             engine_archive << engine;
             cerr << "done." << endl;
         }
