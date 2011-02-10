@@ -245,6 +245,12 @@ private:
                     escape_xml_comment(lex.getUtf8Orth()) << " ["
                     << start << ',' << end - start << "] -->\n";
 
+                if (no_space) {
+                    this->stream << "        <f name=\"nps\">\n";
+                    this->stream << "         <binary value=\"true\"/>\n";
+                    this->stream << "        </f>\n";
+                }
+
                 std::vector<bct_type> all_bcts = extractBcts(lex, tagset);
                 assert(all_bcts.size() > 0);
                 std::vector<std::vector<bct_type> > bct_groups;
