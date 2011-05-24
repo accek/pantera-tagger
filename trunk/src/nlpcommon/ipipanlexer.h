@@ -101,7 +101,7 @@ public:
 
         boost::regex parsing_regex = boost::regex(
 				"(<ns\\>)|"
-				"(?:<chunk[^>]*\\<type=[\"']?([a-zA-Z]*)[\"']?)|"
+				"(?:<chunk[^>]*\\<type=[\"']?([a-zA-Z]*)[\"']?[^>]*>)|"
 				"(</chunk\\>)|"
                 "(?:<orth>\\s*(.*?)\\s*</orth>)|"
                 "(?:<lex\\>([^>]*\\<disamb=[\"']?1[\"']?)?([^>]*\\<disamb_sh=[\"']?0[\"']?)?[^>]*>\\s*"

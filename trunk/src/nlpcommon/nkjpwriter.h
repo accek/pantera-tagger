@@ -67,10 +67,13 @@ private:
                                 std::locale::classic()) % (++id_generator));
                 }
 
+                string string_range(boost::str(boost::format("string-range(%s,%d,%d)",
+                            std::locale::classic()) % para_id % start %
+                        (end - start)));
+
                 this->stream << "      <!-- " << escape_xml_comment(lex.getUtf8Orth())
                     << " -->\n";
-                this->stream << "      <seg corresp=\"text_structure.xml#string-range("
-                    << para_id << ',' << start << ',' << end - start << ")\"";
+                this->stream << "      <seg corresp=\"text_structure.xml#" << string_range << '"';
                 if (no_space)
                     this->stream << " nkjp:nps=\"true\"";
                 if (in_rejected)
