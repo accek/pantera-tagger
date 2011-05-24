@@ -132,9 +132,11 @@ public:
                 handleNewParagraph(wstring_to_utf8(i->str(MATCH_NEWPAR_ID)));
             boost::wsregex_iterator j((*i)[MATCH_TEXT].first,
                     (*i)[MATCH_TEXT].second, text_regex);
+            bool first_token = true;
             for (; j != end; ++j) {
                 handleOrth(wxml_to_wstring(j->str(MATCH_ORTH)),
-                        (*j)[MATCH_PRECEDING_SPACE].matched);
+                        (*j)[MATCH_PRECEDING_SPACE].matched || first_token);
+                first_token = false;
             }
             if ((*i)[MATCH_ENDPAR].matched)
                 handleEndOfParagraph();
