@@ -30,8 +30,14 @@
 #include <nlpcommon/tagset.h>
 #include <nlpcommon/polish_tagset_convert.h>
 
+#define MORFEUSZ_IPI //uncomment if using old Morfeusz
+
 #ifndef MORFEUSZ_TAGSET
+#ifdef MORFEUSZ_IPI
+#define MORFEUSZ_TAGSET "ipipan"
+#else
 #define MORFEUSZ_TAGSET "nkjp-morfeusz"
+#endif
 #endif
 
 #ifndef ODGADYWACZ_TAGSET
@@ -162,6 +168,7 @@ private:
     }
 
     void adjustMorfeuszTag(const wstring& orth, wstring& base, string& tag) {
+#ifndef MORFEUSZ_IPI
         static const char* regex_expression = 
             // 1. Klasy gramatyczne
             //
@@ -206,6 +213,7 @@ private:
         }
 
         //std::cerr << " -> " << tag << std::endl;
+#endif
     }
 
     void parseMorfeuszTags(string mtags, wstring base,
