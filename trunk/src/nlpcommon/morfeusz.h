@@ -30,7 +30,7 @@
 #include <nlpcommon/tagset.h>
 #include <nlpcommon/polish_tagset_convert.h>
 
-#define MORFEUSZ_IPI //uncomment if using old Morfeusz
+//#define MORFEUSZ_IPI //uncomment if using old Morfeusz
 
 #ifndef MORFEUSZ_TAGSET
 #ifdef MORFEUSZ_IPI
