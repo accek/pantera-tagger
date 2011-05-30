@@ -39,7 +39,7 @@
 #endif
 
 #ifndef DEFAULT_ENGINE
-#define DEFAULT_ENGINE "nkjp-wypluwka20091216-t6-np4.btengine"
+#define DEFAULT_ENGINE "ultimarum-tertia-np0-6.btengine"
 #endif
 
 using namespace std;
