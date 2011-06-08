@@ -3,6 +3,8 @@
  *
  *  Created on: 30-11-2010
  *      Author: lennyn
+ *
+ *  Modified by: bz
  */
 
 #ifndef PANTERAWRAPPER_H_
@@ -17,17 +19,22 @@ namespace Pantera {
 
 class PanteraWrapper {
 public:
-    static PanteraWrapper* getInstance();
+  static PanteraWrapper* createInstance(std::string enginePath, std::string tagsetName);
+  static PanteraWrapper* getInstance();
 
-	virtual std::vector<NLPCommon::DefaultLexeme> tag(const std::string& text);
+	virtual std::vector<NLPCommon::DefaultLexeme> tag(const std::string& text) = 0;
 	virtual NLPCommon::Tagset* getTagset();
 
-private:
-	PanteraWrapper();
-	virtual ~PanteraWrapper();
+	virtual std::vector<NLPCommon::DefaultLexeme> tag(const
+      std::vector<NLPCommon::DefaultLexeme>& lexems, bool doSentSplit,
+      bool doMorphAnalysis, bool doSegmentDisamb, bool doTagging) = 0;
+
+protected:
+  PanteraWrapper(std::string tagsetName = "");
 
 	NLPCommon::Tagset* tagset;
 	std::vector<const NLPCommon::Tagset*> tagsets;
+
 };
 }
 

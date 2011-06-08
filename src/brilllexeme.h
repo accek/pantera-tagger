@@ -51,6 +51,10 @@ public:
         : Lexeme<Tag>(type), last_matched_rule(0)
     { }
 
+    BrillLexeme(Lexeme<Tag> other):
+      Lexeme<Tag>(other), last_matched_rule(0) {
+    }
+
     static BrillLexeme<Tag> getNullLexeme() {
         BrillLexeme<Tag> lexeme;
         lexeme.setOrth(L"[null]");

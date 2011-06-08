@@ -3,9 +3,11 @@
  *
  *  Created on: 30-11-2010
  *      Author: lennyn
+ *
+ *  Modified by: bz
  */
 
-#include "wrapper.h"
+#include "concrete_wrapper.h"
 
 #include <iostream>
 #include <fstream>
@@ -15,21 +17,6 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/mpi.hpp>
-
-#include <nlpcommon/lexer.h>
-#include <nlpcommon/plaintextlexer.h>
-#include <nlpcommon/lexeme.h>
-#include <nlpcommon/lexemesfilter.h>
-#include <nlpcommon/spejdtagsetloader.h>
-#include <nlpcommon/libsegmentsentencer.h>
-#include <nlpcommon/morfeusz.h>
-#include <nlpcommon/tagset.h>
-#include <nlpcommon/polish_segm_disamb.h>
-#include <nlpcommon/util.h>
-#include <nlpcommon/ipipanwriter.h>
-
-#include "pantera.h"
-#include "pantera_rules.h"
 
 #ifndef DEFAULT_LIB_TAGSET
 #define DEFAULT_LIB_TAGSET "nkjp"
@@ -58,8 +45,8 @@ typedef BestScoreMultiGoldenScorer<BinaryScorer<MyLexeme::tag_type> > MyScorer;
 static boost::scoped_ptr<Lexer<MyLexeme> > lexer;
 
 static void load_engine_from_archive(
-		BTagger::BrillEngine<MyLexeme, MyScorer>& engine) {
-	fs::path engine_path = find_with_path(ENGINES_PATH, DEFAULT_ENGINE);
+		BTagger::BrillEngine<MyLexeme, MyScorer>& engine, string enginePath) {
+  fs::path engine_path = find_with_path(ENGINES_PATH, enginePath);
 	fs::ifstream data_stream(engine_path, ios::in);
 	boost::archive::text_iarchive engine_archive(data_stream);
 
@@ -86,18 +73,11 @@ static void splitIntoSents(vector<MyLexeme>& lexems) {
 	lexems = sentencer.addSentenceDelimiters(lexems);
 }
 
-static void morphAnalyze(vector<MyLexeme>& lexems, const Tagset* tagset) {
-	static MorfeuszAnalyzer<MyLexeme> morfeusz(tagset, true);
-	static PolishSegmDisambiguator<MyLexeme> segm_disamb;
-	static bool first_time = true;
-
-	if (first_time) {
-		first_time = false;
-
-		morfeusz.setQuiet(true);
-	}
+void ConcretePanteraWrapper::morphAnalyze(vector<MyLexeme>& lexems) {
 	lexems = morfeusz.analyzeText(lexems);
+}
 
+void ConcretePanteraWrapper::segmentDisamb(vector<MyLexeme>& lexems){
 	segm_disamb.disambiguateSegmentation(lexems);
 }
 
@@ -108,40 +88,47 @@ static void debug(vector<MyLexeme>& lexems, const Tagset* tagset) {
 	cerr << out.str() << endl;
 }
 
-PanteraWrapper::PanteraWrapper() {
-	tagsets = load_tagsets(DEFAULT_LIB_TAGSET);
+PanteraWrapper::PanteraWrapper(string tagsetName){
+  tagsets = load_tagsets(tagsetName);
 	tagset = const_cast<Tagset*> (tagsets[tagsets.size() - 1]);
 }
 
-PanteraWrapper::~PanteraWrapper() {
+ConcretePanteraWrapper::ConcretePanteraWrapper(string engineName, string tagsetName) :
+  PanteraWrapper(tagsetName), morfeusz(tagset, true) {
 
+  morfeusz.setQuiet(true);
+
+  add_phases_to_engine(engine, tagsets, rule_generators);
+  load_engine_from_archive(engine, engineName);
+  engine.setQuiet(true);
+
+}
+
+ConcretePanteraWrapper::~ConcretePanteraWrapper() {
 }
 
 PanteraWrapper* PanteraWrapper::getInstance() {
-    static PanteraWrapper pantera;
-    return &pantera;
+  static ConcretePanteraWrapper pantera(DEFAULT_ENGINE, DEFAULT_LIB_TAGSET);
+  return &pantera;
 }
 
-vector<DefaultLexeme> PanteraWrapper::tag(const string& text) {
+PanteraWrapper* PanteraWrapper::createInstance(string enginePath, string tagsetName) {
+  return new ConcretePanteraWrapper(enginePath.empty() ? DEFAULT_ENGINE : enginePath,
+      tagsetName.empty() ? DEFAULT_LIB_TAGSET : tagsetName);
+}
 
-	static bool initialized = false;
-	static BTagger::BrillEngine<MyLexeme, MyScorer> engine;
-	static std::vector<BTagger::RulesGenerator<MyLexeme>*> rule_generators;
-
-	if (!initialized) {
-		add_phases_to_engine(engine, tagsets, rule_generators);
-		load_engine_from_archive(engine);
-		engine.setQuiet(true);
-
-		initialized = true;
-	}
+vector<DefaultLexeme> ConcretePanteraWrapper::tag(const string& text) {
 
 	vector < MyLexeme > lexems = tokenize(text, tagset);
+
+//	debug(lexems, tagset);
 
 	//cerr << "tokenized" << endl;
 	splitIntoSents(lexems);
 	//cerr << "split" << endl;
-	morphAnalyze(lexems, tagset);
+	morphAnalyze(lexems);
+
+  segmentDisamb(lexems);
 	//cerr << "morphed" << endl;
 
 	LexemesFilter < MyLexeme > segments_filter(MyLexeme::SEGMENT);
@@ -151,10 +138,40 @@ vector<DefaultLexeme> PanteraWrapper::tag(const string& text) {
 	//cerr << "tagged" << endl;
 	lexems = segments_filter.unfilterText(lexems);
 	//cerr << "unfiltered" << endl;
-	//debug(lexems, tagset);
+//	debug(lexems, tagset);
 
 	vector<DefaultLexeme> res(lexems.begin(), lexems.end());
 	return res;
+}
+
+vector<DefaultLexeme> ConcretePanteraWrapper::tag(
+    const std::vector<DefaultLexeme> &lexems_,
+    bool doSentSplit, bool doMorphAnalysis, bool doSegmentDisamb, bool doTagging){
+
+  vector<MyLexeme> lexems(lexems_.begin(), lexems_.end());
+
+//	debug(lexems, tagset);
+
+  if (doSentSplit)
+    splitIntoSents(lexems);
+
+  if (doMorphAnalysis)
+    morphAnalyze(lexems);
+
+  if (doSegmentDisamb)
+    segmentDisamb(lexems);
+
+  if (!doTagging)
+    return vector<DefaultLexeme>(lexems.begin(), lexems.end());
+
+	LexemesFilter < MyLexeme > segments_filter(MyLexeme::SEGMENT);
+	lexems = segments_filter.filterText(lexems);
+	engine.tagText(lexems);
+	lexems = segments_filter.unfilterText(lexems);
+
+//	debug(lexems, tagset);
+
+	return vector<DefaultLexeme>(lexems.begin(), lexems.end());
 }
 
 Tagset* PanteraWrapper::getTagset() {
@@ -162,3 +179,4 @@ Tagset* PanteraWrapper::getTagset() {
 }
 
 } // namespace Pantera
+

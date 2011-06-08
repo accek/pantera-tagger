@@ -52,7 +52,7 @@ BUILT_SOURCES = rules/c1.m4h
 #bin_PROGRAMS = xces2dat xces2txt dat2dat eval txt2xces \
 #			   nkjp2xces pantera
 
-bin_PROGRAMS = pantera wrapper_test
+bin_PROGRAMS = pantera wrapper_test pantera_eval
 lib_LTLIBRARIES = libpantera.la
 
 pantera_SOURCES = pantera.cpp pantera_rules.cpp \
@@ -87,6 +87,17 @@ wrapper_test_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
 				   @MORFEUSZ_LIBS@ $(LIBCORPUS_LINK_FLAGS) \
 				   $(GLOBAL_LINK_FLAGS) $(LIBMORFEUSZ_LINK_FLAGS)
 wrapper_test_LDADD = libpantera.la nlpcommon/libnlpcommon.la \
+				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
+
+pantera_eval_SOURCES = eval.cpp
+pantera_eval_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
+				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ \
+				   @BOOST_SYSTEM_LIB@ @BOOST_FILESYSTEM_LIB@ \
+				   @BOOST_IOSTREAMS_LIB@ \
+				   @BOOST_MPI_LIB@ @ICU_LIBS@ @LIBICONV@ \
+				   @MORFEUSZ_LIBS@ $(LIBCORPUS_LINK_FLAGS) \
+				   $(GLOBAL_LINK_FLAGS) $(LIBMORFEUSZ_LINK_FLAGS)
+pantera_eval_LDADD = libpantera.la nlpcommon/libnlpcommon.la \
 				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
 
 #eval_SOURCES = eval.cpp
