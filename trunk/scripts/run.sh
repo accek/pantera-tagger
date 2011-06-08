@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#DIR=~/studia/doktoranckie/tager/dane/wypluwka_2009-12-16-1756.xml.split
+DIR=/mnt/storage/accek/wypluwka_UltimarumTertia.xml.split
 
 if [ -z "$DIR" ]; then
     echo "DIR environment variable not set."
@@ -29,10 +29,20 @@ done
 
 for t in $THRS; do
     for ((i=0; i<10; i++)); do
-        nice /usr/bin/time mpirun -np $PROCESSES ./src/btagger \
-            $DIR-$t-$SUFFIX/npart$i.xml \
-            $DIR-$t-$SUFFIX/part$i.xml \
-            $t 2>&1 | tee $DIR-$t-$SUFFIX/part$i.out
+        OUT="$DIR-$t-$SUFFIX/part$i.xml.disamb"
+        echo $OUT
+        if [ ! -f "$OUT" ]; then
+            nice /usr/bin/time mpirun -np $PROCESSES ../src/pantera \
+                --verbose \
+                --tagset nkjp \
+                --threshold $t \
+                --no-morph \
+                --no-sentencer \
+                --create-engine $DIR-$t-$SUFFIX/npart$i.btengine \
+                --training-data $DIR-$t-$SUFFIX/npart$i.xml \
+                $DIR-$t-$SUFFIX/part$i.xml \
+                2>&1 | tee -a $DIR-$t-$SUFFIX/part$i.out
+        fi
     done
 done
 

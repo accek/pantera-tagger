@@ -25,7 +25,7 @@ for ODIR in $DIR-*; do
 		> "$p.txt"
 	done
 
-	for i in *.out; do
+	for i in *-eval.out; do
 		if [ -f "$i.stats" ]; then
 			j="$i.stats";
 		else

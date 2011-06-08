@@ -103,6 +103,7 @@ AS_IF([test "x$have_profiler" = "xyes"],
 AC_CONFIG_FILES(Makefile src/Makefile src/nlpcommon/Makefile tagsets/Makefile
                 tagsets/ipipan/Makefile tagsets/nkjp/Makefile tagsets/nkjp-morfeusz/Makefile
                 third_party/Makefile third_party/segment/Makefile
-                third_party/morfeusz/Makefile engines/Makefile)
+                third_party/morfeusz/Makefile engines/Makefile
+                libpantera.pc)
 AC_OUTPUT
 
