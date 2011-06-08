@@ -1,0 +1,14 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+pkglibdir=${libdir}/pantera-tagger
+
+Name: libpantera
+Description: Pantera tagger library
+Requires:
+Version: @PACKAGE_VERSION@
+Libs: -L${pkglibdir} -lcorpus -lnlpcommon -lmorfeusz @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ @BOOST_SYSTEM_LIB@ @BOOST_FILESYSTEM_LIB@ @BOOST_IOSTREAMS_LIB@ @BOOST_MPI_LIB@ @ICU_LIBS@ @LIBICONV@ -lpantera
+Cflags: 
+
+
