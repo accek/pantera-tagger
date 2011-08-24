@@ -146,7 +146,11 @@ static vector<fs::path> gen_output_paths(const fs::path& input_path, const strin
             morph_filename += ".gz";
         }
         fs::path p(input_path);
-        p.remove_filename();
+        if (type == "nkjp-text" && options.count("txt-output-to-dir")) {
+            p.replace_extension();
+        } else {
+            p.remove_filename();
+        }
         ret.push_back(p / segm_filename);
         ret.push_back(p / morph_filename);
     }
@@ -219,6 +223,9 @@ static void postprocess_file(const fs::path& path, const string& type,
 
         vector<fs::path> tmp_paths;
         BOOST_FOREACH(fs::path output_path, output_paths) {
+            fs::path dir(output_path);
+            dir.remove_filename();
+            fs::create_directories(dir);
             tmp_paths.push_back(output_path.replace_extension(".tmp"));
         }
 
@@ -314,6 +321,7 @@ void parse_command_line(int argc, char** argv) {
         ("nkjp-tool-name", po::value<string>()->default_value("pantera"),
          "the name of the tool to use when producing NKJP XML output "
          "(default is 'pantera').")
+        ("txt-output-to-dir", "create a subfolder for every .txt file parsed")
         ;
 
     // Hidden options, will be allowed both on command line and
