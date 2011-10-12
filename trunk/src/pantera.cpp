@@ -208,13 +208,26 @@ static void preprocess_file(const fs::path& path, const string& type,
     }
 }
 
-static void postprocess_file(const fs::path& path, const string& type,
-        const vector<fs::path> output_paths, const Tagset* tagset, vector<MyLexeme>& text) {
+static void postprocess_file(const fs::path& path, string type,
+        const vector<fs::path> output_paths, const Tagset* tagset,
+        vector<MyLexeme>& text) {
     print_status("WRITER", path.file_string());
 
-    if (type == "ipipan-morph") {
+    string output_format = options["output-format"].as<string>();
+    if (output_format == "xces")
+        type = "ipipan-morph";
+    else if (output_format == "xces-disamb")
+        type = "ipipan-disamb";
+    else if (output_format == "nkjp")
+        type = "nkjp-text";
+    else if (!output_format.empty())
+        throw Exception(boost::str(
+                    boost::format("unknown output format '%1%'")
+                    % output_format));
+
+    if (type == "ipipan-morph" || type == "ipipan-disamb") {
         ofstream rewrite_out((path.file_string() + ".disamb").c_str());
-        IpiPanWriter<MyLexeme> writer(rewrite_out);
+        IpiPanWriter<MyLexeme> writer(rewrite_out, type == "ipipan-morph");
         writer.writeVectorToStream(tagset, text);
     } else if (type == "nkjp-text" || type == "plaintext") {
         NKJPTextLexer<MyLexeme>* nkjp_lexer = dynamic_cast<NKJPTextLexer<MyLexeme>*>(lexer.get());
@@ -307,6 +320,8 @@ void parse_command_line(int argc, char** argv) {
         ("no-tagger", "disable tagger")
         ("engine", po::value<string>()->default_value(DEFAULT_ENGINE),
          "Brill engine to use (file ending with .btengine)")
+        ("output-format,o", po::value<string>(),
+         "Output format ('nkjp', 'xces' or 'xces-disamb')")
         ("create-engine,T", po::value<string>(),
          "Enter training mode. The argument to this option is the output "
          ".btengine file to produce. Training files should be provided "
