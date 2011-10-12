@@ -23,7 +23,7 @@ def convert_file(filename):
         r'(?P<seg><seg)|'
         r'(?P<f><f (fVal="(?P<fval>.*?)" )?name="(?P<ff>.*?)")|'
         r'(?P<string><string>(?P<sstring>.*?)</string>)|'
-        r'(?P<symbol><symbol .*value="(?P<ssymbol>.*?)"( xml:id="(?P<isymbol>.*?)")?)')
+        r'(?P<symbol><symbol (xml:id="(?P<isymbol0>.*?)")?.*value="(?P<ssymbol>.*?)"( xml:id="(?P<isymbol>.*?)")?)')
 
     for m in r.finditer(inp.read()):
         if m.group('chunk'):
@@ -46,6 +46,7 @@ def convert_file(filename):
                     outp.write('<ns/>\n')
                 outp.write('<tok>\n')
                 outp.write('<orth>%s</orth>\n' % orth)
+                assert ch in forms.iterkeys()
                 for k, v in forms.iteritems():
                     outp.write('<lex%s><base>%s</base><ctag>%s</ctag></lex>\n'
                             % (k == ch and ' disamb="1"' or '', v[0], v[1]))
@@ -61,7 +62,7 @@ def convert_file(filename):
             if f == 'ctag':
                 ctag = v
             elif f == 'msd':
-                i = m.group('isymbol')
+                i = m.group('isymbol') or m.group('isymbol0')
                 tag = ctag
                 if v:
                     tag += ':' + v
