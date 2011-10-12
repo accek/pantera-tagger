@@ -24,10 +24,13 @@ template<class Lexeme = DefaultLexeme>
 class IpiPanWriter : public Writer<Lexeme>
 {
 private:
+    bool use_disamb_sh;
+
 	void writeLexeme(const Lexeme& lex, const Tagset* tagset)
     {
         switch (lex.getType()) {
             case Lexeme::SEGMENT:
+            {
                 this->stream <<
                     "<tok>\n"
                     "<orth>" << wstring_to_xml(lex.getOrth()) << "</orth>\n";
@@ -38,21 +41,31 @@ private:
                     this->stream << "<!-- autoselected: " <<
                         tag.asString(tagset) << " -->\n";
                 }
+
+                bool tag_selected = false;
                 BOOST_FOREACH(const tag_base_type& tb, lex.getTagBases()) {
 					const tag_type& tag = tb.first;
 					const wstring& base = tb.second;
 
 					this->stream << "<lex";
-                    if (lex.isGoldenTag(tag))
-						this->stream << " disamb=\"1\"";
-                    if (!lex.isAutoselectedTag(tag))
-						this->stream << " disamb_sh=\"0\"";
+                    if (this->use_disamb_sh) {
+                        if (lex.isGoldenTag(tag))
+                            this->stream << " disamb=\"1\"";
+                        if (!lex.isAutoselectedTag(tag))
+                            this->stream << " disamb_sh=\"0\"";
+                    } else {
+                        if (lex.isAutoselectedTag(tag) && !tag_selected) {
+                            this->stream << " disamb=\"1\"";
+                            tag_selected = true;
+                        }
+                    }
 					this->stream << "><base>" << wstring_to_xml(base)
 						<< "</base><ctag>" << tag.asString(tagset)
 						<< "</ctag></lex>\n";
                 }
                 this->stream << "</tok>\n";
                 break;
+            }
 
             case Lexeme::NO_SPACE:
 				this->stream << "<ns/>\n";
@@ -74,7 +87,8 @@ private:
     }
 
 public:
-    IpiPanWriter(std::ostream& stream) : Writer<Lexeme>(stream) { }
+    IpiPanWriter(std::ostream& stream, bool use_disamb_sh = true)
+        : Writer<Lexeme>(stream), use_disamb_sh(use_disamb_sh) { }
 
     virtual void writeToStream(WriterDataSource<Lexeme>& data_source) {
         this->stream.imbue(get_utf8_locale());
