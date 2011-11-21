@@ -320,7 +320,7 @@ void parse_command_line(int argc, char** argv) {
         ("no-tagger", "disable tagger")
         ("engine", po::value<string>()->default_value(DEFAULT_ENGINE),
          "Brill engine to use (file ending with .btengine)")
-        ("output-format,o", po::value<string>(),
+        ("output-format,o", po::value<string>()->default_value(""),
          "Output format ('nkjp', 'xces' or 'xces-disamb')")
         ("create-engine,T", po::value<string>(),
          "Enter training mode. The argument to this option is the output "
