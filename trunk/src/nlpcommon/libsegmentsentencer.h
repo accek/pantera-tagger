@@ -38,7 +38,7 @@ private:
 public:
     LibSegmentSentencer()
         : Sentencer<Lexeme>(),
-          segment_exec(find_with_path(SEGMENT_PATH, "segment_batch").file_string())
+          segment_exec(find_with_path(SEGMENT_PATH, "segment_batch").string())
     {
     }
 

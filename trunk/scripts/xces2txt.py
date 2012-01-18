@@ -31,7 +31,9 @@ def convert_file(filename):
 
     outp = open(os.path.splitext(filename)[0] + '.txt', 'w')
     for par in paragraphs:
-        outp.write('\n'.join(textwrap.wrap(par)) + '\n\n')
+        wrapped = textwrap.wrap(par, break_long_words=False,
+                break_on_hyphens=False)
+        outp.write('\n'.join(wrapped) + '\n\n')
     outp.close()
 
 if not sys.argv[1:]:

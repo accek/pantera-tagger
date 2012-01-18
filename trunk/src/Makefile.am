@@ -35,17 +35,18 @@ Morfeusz_LIBRARY_DIRS = $(abspath $(firstword $(patsubst -L%,%,$(filter -L%,@MOR
 
 clean-local:
 	+make -C ../third_party/TaKIPI18/Linux/bin clean
+	rm -rf ../third_party/TaKIPI18/Linux/bin/*
 
 install-exec-local: ../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
-	$(INSTALL_PROGRAM) -D ../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so $(pkglibdir)/libcorpus.so
+	$(INSTALL_PROGRAM) -D ../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so $(DESTDIR)$(pkglibdir)/libcorpus.so.1
+	ln -s libcorpus.so.1 $(DESTDIR)$(pkglibdir)/libcorpus.so
 
 GLOBAL_LINK_FLAGS = -Wl,-rpath -Wl,$(pkglibdir)
 
 LIBCORPUS_LINK_FLAGS = -L../third_party/TaKIPI18/Linux/bin/Corpus \
-					   -Wl,-rpath -Wl,@abs_top_srcdir@/third_party/TaKIPI18/Linux/bin/Corpus \
 					   -lcorpus
 
-LIBMORFEUSZ_LINK_FLAGS = -Wl,-rpath -Wl,@abs_top_srcdir@/third_party/morfeusz/lib
+LIBMORFEUSZ_LINK_FLAGS = 
 
 BUILT_SOURCES = rules/c1.m4h
 
@@ -61,15 +62,19 @@ pantera_SOURCES = pantera.cpp pantera_rules.cpp \
 	brillexeme.h unigram.h rules.h pantera_rules.h \
 	pantera.h
 pantera_CXXFLAGS = $(AM_CXXFLAGS)
-pantera_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
-				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ \
+pantera_LDFLAGS = $(LIBCORPUS_LINK_FLAGS) $(GLOBAL_LINK_FLAGS) $(LIBMORFEUSZ_LINK_FLAGS) \
+				   @BOOST_LDFLAGS@ 
+
+pantera_LDADD = nlpcommon/libnlpcommon.la \
+				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so \
+				   @BOOST_SERIALIZATION_LIB@ \
+				   @BOOST_PROGRAM_OPTIONS_LIB@ \
 				   @BOOST_SYSTEM_LIB@ @BOOST_FILESYSTEM_LIB@ \
 				   @BOOST_IOSTREAMS_LIB@ \
 				   @BOOST_MPI_LIB@ @ICU_LIBS@ @LIBICONV@ \
-				   @MORFEUSZ_LIBS@ $(LIBCORPUS_LINK_FLAGS) \
-				   $(GLOBAL_LINK_FLAGS) $(LIBMORFEUSZ_LINK_FLAGS)
-pantera_LDADD = nlpcommon/libnlpcommon.la \
-				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
+				   @MORFEUSZ_LIBS@ @BOOST_REGEX_LIB@
+
+
 
 libpantera_la_SOURCES = wrapper.cpp pantera_rules.cpp
 include_HEADERS = wrapper.h
@@ -79,26 +84,36 @@ wrapper_test_SOURCES = wrapper_test.cpp \
 	rules/impl.h rules/make.h brillengine.h \
 	brillexeme.h unigram.h rules.h pantera_rules.h \
 	pantera.h
-wrapper_test_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
-				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ \
+wrapper_test_LDFLAGS =  $(LIBCORPUS_LINK_FLAGS) $(GLOBAL_LINK_FLAGS) $(LIBMORFEUSZ_LINK_FLAGS) \
+				   @BOOST_LDFLAGS@
+
+
+wrapper_test_LDADD = libpantera.la nlpcommon/libnlpcommon.la \
+				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so \
+				   @BOOST_SERIALIZATION_LIB@ \
+				   @BOOST_PROGRAM_OPTIONS_LIB@ \
 				   @BOOST_SYSTEM_LIB@ @BOOST_FILESYSTEM_LIB@ \
 				   @BOOST_IOSTREAMS_LIB@ \
 				   @BOOST_MPI_LIB@ @ICU_LIBS@ @LIBICONV@ \
-				   @MORFEUSZ_LIBS@ $(LIBCORPUS_LINK_FLAGS) \
-				   $(GLOBAL_LINK_FLAGS) $(LIBMORFEUSZ_LINK_FLAGS)
-wrapper_test_LDADD = libpantera.la nlpcommon/libnlpcommon.la \
-				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
+				   @MORFEUSZ_LIBS@ @BOOST_REGEX_LIB@
+
+
 
 pantera_eval_SOURCES = eval.cpp
-pantera_eval_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_SERIALIZATION_LIB@ \
-				   @BOOST_REGEX_LIB@ @BOOST_PROGRAM_OPTIONS_LIB@ \
+pantera_eval_LDFLAGS =  $(LIBCORPUS_LINK_FLAGS) $(GLOBAL_LINK_FLAGS) $(LIBMORFEUSZ_LINK_FLAGS) \
+				   @BOOST_LDFLAGS@
+
+pantera_eval_LDADD = libpantera.la nlpcommon/libnlpcommon.la \
+				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so \
+				   @BOOST_SERIALIZATION_LIB@ \
+				   @BOOST_PROGRAM_OPTIONS_LIB@ \
 				   @BOOST_SYSTEM_LIB@ @BOOST_FILESYSTEM_LIB@ \
 				   @BOOST_IOSTREAMS_LIB@ \
 				   @BOOST_MPI_LIB@ @ICU_LIBS@ @LIBICONV@ \
-				   @MORFEUSZ_LIBS@ $(LIBCORPUS_LINK_FLAGS) \
-				   $(GLOBAL_LINK_FLAGS) $(LIBMORFEUSZ_LINK_FLAGS)
-pantera_eval_LDADD = libpantera.la nlpcommon/libnlpcommon.la \
-				../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so
+				   @MORFEUSZ_LIBS@ @BOOST_REGEX_LIB@
+
+
+
 
 #eval_SOURCES = eval.cpp
 #eval_LDFLAGS = @BOOST_LDFLAGS@ @BOOST_REGEX_LIB@ \

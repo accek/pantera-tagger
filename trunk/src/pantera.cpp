@@ -80,9 +80,9 @@ static void find_input_files(const fs::path& path,
 
     if (fs::is_regular_file(path)) {
         if (path.filename() == "text_structure.xml") {
-            candidates.push_back(make_pair(path.file_string(), "nkjp-text"));
+            candidates.push_back(make_pair(path.string(), "nkjp-text"));
         } else if (path.filename() == "morph.xml") {
-            candidates.push_back(make_pair(path.file_string(),
+            candidates.push_back(make_pair(path.string(),
                         "ipipan-morph"));
         } else if (path.extension() == ".xml") {
             fs::ifstream stream(path);
@@ -91,13 +91,13 @@ static void find_input_files(const fs::path& path,
                 char line[1024];
                 stream.getline(line, sizeof(line));
                 if (!strncmp(pattern, line, strlen(pattern))) {
-                    candidates.push_back(make_pair(path.file_string(),
+                    candidates.push_back(make_pair(path.string(),
                                 "ipipan-morph"));
                     break;
                 }
             }
         } else if (path.extension() == ".txt" && specified_directly) {
-            candidates.push_back(make_pair(path.file_string(),
+            candidates.push_back(make_pair(path.string(),
                         "plaintext"));
         }
     } else if (fs::is_directory(path)) {
@@ -137,7 +137,7 @@ static vector<fs::path> gen_output_paths(const fs::path& input_path, const strin
         type) {
     vector<fs::path> ret;
     if (type == "ipipan-morph") {
-        ret.push_back(input_path.file_string() + ".disamb");
+        ret.push_back(input_path.string() + ".disamb");
     } else if (type == "nkjp-text" || type == "plaintext") {
         string segm_filename = "ann_segmentation.xml";
         string morph_filename = "ann_morphosyntax.xml";
@@ -165,7 +165,7 @@ static void preprocess_file(const fs::path& path, const string& type,
     lexer.reset(make_lexer(type, data_stream));
 
     // 1. Parser.
-    print_status("LEXER", path.file_string());
+    print_status("LEXER", path.string());
     text.clear();
     lexer->setQuiet(options.count("verbose") == 0);
     lexer->parseStreamToVector(text, &tagset);
@@ -175,7 +175,7 @@ static void preprocess_file(const fs::path& path, const string& type,
 
     // 2. Sentencer.
     if (options.count("no-sentencer") == 0) {
-        print_status("SENTENCER", path.file_string());
+        print_status("SENTENCER", path.string());
         static LibSegmentSentencer<MyLexeme> sentencer;
         text = sentencer.addSentenceDelimiters(text);
     }
@@ -200,10 +200,10 @@ static void preprocess_file(const fs::path& path, const string& type,
             }
         }
 
-        print_status("MORPH", path.file_string());
+        print_status("MORPH", path.string());
         text = morfeusz.analyzeText(text);
 
-        print_status("SEGM-DISAMB", path.file_string());
+        print_status("SEGM-DISAMB", path.string());
         segm_disamb.disambiguateSegmentation(text);
     }
 }
@@ -211,7 +211,7 @@ static void preprocess_file(const fs::path& path, const string& type,
 static void postprocess_file(const fs::path& path, string type,
         const vector<fs::path> output_paths, const Tagset* tagset,
         vector<MyLexeme>& text) {
-    print_status("WRITER", path.file_string());
+    print_status("WRITER", path.string());
 
     string output_format = options["output-format"].as<string>();
     if (output_format == "xces")
@@ -226,7 +226,7 @@ static void postprocess_file(const fs::path& path, string type,
                     % output_format));
 
     if (type == "ipipan-morph" || type == "ipipan-disamb") {
-        ofstream rewrite_out((path.file_string() + ".disamb").c_str());
+        ofstream rewrite_out((path.string() + ".disamb").c_str());
         IpiPanWriter<MyLexeme> writer(rewrite_out, type == "ipipan-morph");
         writer.writeVectorToStream(tagset, text);
     } else if (type == "nkjp-text" || type == "plaintext") {
