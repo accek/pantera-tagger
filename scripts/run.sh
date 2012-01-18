@@ -28,7 +28,8 @@ for t in $THRS; do
 done
 
 for t in $THRS; do
-    for ((i=0; i<10; i++)); do
+    #for ((i=0; i<10; i++)); do
+    for ((i=0; i<1; i++)); do
         OUT="$DIR-$t-$SUFFIX/part$i.xml.disamb"
         echo $OUT
         if [ ! -f "$OUT" ]; then
