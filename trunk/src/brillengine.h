@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <functional>
 #include <numeric>
+#include <utility>
 
 #include "unigram.h"
 #include "rules.h"
@@ -576,7 +577,7 @@ public:
                     const Tag& chosen_tag = lex.chosen_tag[phase];
                     score_type delta = scoreDelta(chosen_tag,
                             r.changedTag(tstore, text, i), lex.expected_tag);
-                    score_adds.push_back(make_pair(r, delta));
+                    score_adds.push_back(std::make_pair(r, delta));
                 }
 
                 if (score_adds.size() + score_subs.size() > 10000)
@@ -694,7 +695,7 @@ public:
 
             if (mpi_world.rank() == 0 && DBG && !quiet) {
                 std::pair<score_type, score_type> good_scores = countScores(phase, b);
-                if (good_scores != make_pair(good, bad)) {
+                if (good_scores != std::make_pair(good, bad)) {
                     wcerr << boost::wformat(L"\n*** WRONG SCORES ***"
                             "\n good is %.1lf, should be %.1lf"
                             "\n bad is %.1lf, should be %.1lf\n\n") %
