@@ -174,7 +174,7 @@ PTEMPLATE_BEGIN(`Nearby'$1`CatPredicateTemplate', $1,
     }
 
     PTEMPLATE_STRING_REPR(
-        L"(" PTEMPLATE_FOR_EACH_OFFSET(`L"T[%d]|pos,%hs = %hs,%hs"', `L" OR "') L") AND T[0]|pos,%hs = %hs,%hs%ls%ls",
+        L"(" PTEMPLATE_FOR_EACH_OFFSET(`L"T[%d]|pos,%hs = %hs,%hs"', ` L" OR " ') L") AND T[0]|pos,%hs = %hs,%hs%ls%ls",
              PTEMPLATE_FOR_EACH_OFFSET(`Offset, C(0), AlwaysPos ? P(1) : "*", V(0, 1), ')
              C(0), P(0), V(0, 0), orth_match_repr(MatchNearbyOrth, p.params.chars, PrefixLen, SuffixLen).c_str(),
              history_match_repr(UseHistory, p.params.rule_number).c_str())
@@ -234,7 +234,7 @@ PTEMPLATE_BEGIN(`NearbyExact'$1`CatPredicateTemplate', $1, `, bool AlwaysPos = f
     }
 
     PTEMPLATE_STRING_REPR(
-        PTEMPLATE_FOR_EACH_OFFSET(`L"T[%d]|pos,%hs = %hs,%hs"', `L" AND "') L" AND T[0]|pos = %hs AND T[0]|%hs = %hs",
+        PTEMPLATE_FOR_EACH_OFFSET(`L"T[%d]|pos,%hs = %hs,%hs"', ` L" AND " ') L" AND T[0]|pos = %hs AND T[0]|%hs = %hs",
             PTEMPLATE_FOR_EACH_OFFSET(`Offset, C(0), AlwaysPos ? P(O) : "*", V(0, O), ')
             P(0), C(0), V(0, 0))
 
