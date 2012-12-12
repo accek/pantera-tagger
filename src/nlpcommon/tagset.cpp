@@ -52,7 +52,7 @@ vector<const Tagset*> load_tagsets(const string& name) {
     string tagsetPath = options.count("tagset-path")
     		? options["tagset-path"].as<string>()
     		: DEFAULT_TAGSET_PATH;
-    fs::path filepath = find_with_path(tagsetPath, name, "1.cfg");
+    fs::path filepath = find_with_path(tagsetPath, name, "1.cfg", false);
 
     vector<const Tagset*> tagsets;
     SpejdTagsetLoader tagset_loader;

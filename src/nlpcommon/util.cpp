@@ -136,8 +136,9 @@ string escape_xml_comment(const string& s) {
 }
 
 fs::path find_with_path(const string& path, const string& filename,
-        const string& required_file_in_folder) {
-    if (fs::exists(filename))
+        const string& required_file_in_folder,
+        const bool include_current_dir) {
+    if (include_current_dir && fs::exists(filename))
         return fs::path(filename);
 
     vector<string> dirs;
