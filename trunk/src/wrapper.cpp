@@ -2,15 +2,18 @@
  * PanteraWrapper.cpp
  *
  *  Created on: 30-11-2010
- *      Author: lennyn
+ *      Author: mlenart
  *
  *  Modified by: bz
  */
 
 #include "concrete_wrapper.h"
+#include <taggingoptions.h>
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <cstdio>
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/filesystem.hpp>
@@ -45,62 +48,88 @@ typedef BestScoreMultiGoldenScorer<BinaryScorer<MyLexeme::tag_type> > MyScorer;
 static boost::scoped_ptr<Lexer<MyLexeme> > lexer;
 
 static void load_engine_from_archive(
-		BTagger::BrillEngine<MyLexeme, MyScorer>& engine, string enginePath) {
-  fs::path engine_path = find_with_path(ENGINES_PATH, enginePath);
-	fs::ifstream data_stream(engine_path, ios::in);
-	boost::archive::text_iarchive engine_archive(data_stream);
-
-	engine_archive >> engine;
+        BTagger::BrillEngine<MyLexeme, MyScorer>& engine, string enginePath) {
+    fs::path engine_path = find_with_path(ENGINES_PATH, enginePath);
+    fs::ifstream data_stream(engine_path, ios::in);
+    boost::archive::text_iarchive engine_archive(data_stream);
+    engine_archive >> engine;
 }
 
 static Lexer<MyLexeme>* make_lexer(istream& stream) {
-	return new PlainTextLexer<MyLexeme > (stream);
+    return new PlainTextLexer<MyLexeme>(stream);
 }
 
 static vector<MyLexeme> tokenize(const string& text, const Tagset* tagset) {
-	vector<MyLexeme> lexems;
+    vector<MyLexeme> lexems;
 
-	istringstream stream(text);
-	lexer.reset(make_lexer(stream));
-	lexer->setQuiet(true);
-	lexer->parseStreamToVector(lexems, &tagset);
+    istringstream stream(text);
+    lexer.reset(make_lexer(stream));
+    lexer->setQuiet(true);
+    lexer->parseStreamToVector(lexems, &tagset);
 
-	return lexems;
+    return lexems;
 }
 
-static void splitIntoSents(vector<MyLexeme>& lexems) {
-	static LibSegmentSentencer<MyLexeme> sentencer;
-	lexems = sentencer.addSentenceDelimiters(lexems);
+static void writeToFile(const string& fname, const string& data) {
+    ofstream out(fname.c_str());
+    out.exceptions(ofstream::badbit);
+    out << data << endl;
 }
 
-void ConcretePanteraWrapper::morphAnalyze(vector<MyLexeme>& lexems) {
-	lexems = morfeusz.analyzeText(lexems);
+static void splitIntoSents(vector<MyLexeme>& lexems, const string& rules) {
+    static LibSegmentSentencer<MyLexeme> sentencer;
+    string tmpNameString = "";
+    char tmpName[L_tmpnam];
+    if (!rules.empty()) {
+        tmpnam(tmpName);
+        tmpNameString = tmpName;
+        writeToFile(tmpNameString, rules);
+    }
+    try {
+        lexems = sentencer.addSentenceDelimiters(lexems, tmpNameString);
+        if (!rules.empty())
+            remove(tmpName);
+    } catch (...) {
+        if (!rules.empty())
+            remove(tmpName);
+    }
 }
 
-void ConcretePanteraWrapper::segmentDisamb(vector<MyLexeme>& lexems){
-	segm_disamb.disambiguateSegmentation(lexems);
+void ConcretePanteraWrapper::morphAnalyze(vector<MyLexeme>& lexems,
+        const string& morphDict, const bool useGuesser) {
+    morfeusz.clearMorphDict();
+    if (!morphDict.empty()) {
+        istringstream stream(morphDict);
+        morfeusz.loadMorphDict(stream);
+    }
+    lexems = morfeusz.analyzeText(lexems, useGuesser);
+}
+
+void ConcretePanteraWrapper::segmentDisamb(vector<MyLexeme>& lexems) {
+    segm_disamb.disambiguateSegmentation(lexems);
 }
 
 static void debug(vector<MyLexeme>& lexems, const Tagset* tagset) {
-	stringstream out;
-	IpiPanWriter<MyLexeme> writer(out);
-	writer.writeVectorToStream(tagset, lexems);
-	cerr << out.str() << endl;
+    stringstream out;
+    IpiPanWriter<MyLexeme> writer(out);
+    writer.writeVectorToStream(tagset, lexems);
+    cerr << out.str() << endl;
 }
 
-PanteraWrapper::PanteraWrapper(string tagsetName){
-  tagsets = load_tagsets(tagsetName);
-	tagset = const_cast<Tagset*> (tagsets[tagsets.size() - 1]);
+PanteraWrapper::PanteraWrapper(string tagsetName) {
+    tagsets = load_tagsets(tagsetName);
+    tagset = const_cast<Tagset*>(tagsets[tagsets.size() - 1]);
 }
 
-ConcretePanteraWrapper::ConcretePanteraWrapper(string engineName, string tagsetName) :
-  PanteraWrapper(tagsetName), morfeusz(tagset, true) {
+ConcretePanteraWrapper::ConcretePanteraWrapper(string engineName,
+        string tagsetName) :
+        PanteraWrapper(tagsetName), morfeusz(tagset) {
 
-  morfeusz.setQuiet(true);
+    morfeusz.setQuiet(true);
 
-  add_phases_to_engine(engine, tagsets, rule_generators);
-  load_engine_from_archive(engine, engineName);
-  engine.setQuiet(true);
+    add_phases_to_engine(engine, tagsets, rule_generators);
+    load_engine_from_archive(engine, engineName);
+    engine.setQuiet(true);
 
 }
 
@@ -108,75 +137,92 @@ ConcretePanteraWrapper::~ConcretePanteraWrapper() {
 }
 
 PanteraWrapper* PanteraWrapper::getInstance() {
-  static ConcretePanteraWrapper pantera(DEFAULT_ENGINE, DEFAULT_LIB_TAGSET);
-  return &pantera;
+    static ConcretePanteraWrapper pantera(DEFAULT_ENGINE, DEFAULT_LIB_TAGSET);
+    return &pantera;
 }
 
-PanteraWrapper* PanteraWrapper::createInstance(string enginePath, string tagsetName) {
-  return new ConcretePanteraWrapper(enginePath.empty() ? DEFAULT_ENGINE : enginePath,
-      tagsetName.empty() ? DEFAULT_LIB_TAGSET : tagsetName);
+PanteraWrapper* PanteraWrapper::createInstance(string enginePath,
+        string tagsetName) {
+    return new ConcretePanteraWrapper(
+            enginePath.empty() ? DEFAULT_ENGINE : enginePath,
+            tagsetName.empty() ? DEFAULT_LIB_TAGSET : tagsetName);
 }
 
-vector<DefaultLexeme> ConcretePanteraWrapper::tag(const string& text) {
-
-	vector < MyLexeme > lexems = tokenize(text, tagset);
-
-//	debug(lexems, tagset);
-
-	//cerr << "tokenized" << endl;
-	splitIntoSents(lexems);
-	//cerr << "split" << endl;
-	morphAnalyze(lexems);
-
-  segmentDisamb(lexems);
-	//cerr << "morphed" << endl;
-
-	LexemesFilter < MyLexeme > segments_filter(MyLexeme::SEGMENT);
-	lexems = segments_filter.filterText(lexems);
-	//cerr << "filtered" << endl;
-	engine.tagText(lexems);
-	//cerr << "tagged" << endl;
-	lexems = segments_filter.unfilterText(lexems);
-	//cerr << "unfiltered" << endl;
-//	debug(lexems, tagset);
-
-	vector<DefaultLexeme> res(lexems.begin(), lexems.end());
-	return res;
+void ConcretePanteraWrapper::tag(const string& text,
+        const TaggingOptions& options,
+        vector<DefaultLexeme>& result) {
+    result.clear();
+    vector<MyLexeme> lexems = tokenize(text, tagset);
+    doTag(lexems, options);
+    result.insert(result.begin(), lexems.begin(), lexems.end());
 }
 
-vector<DefaultLexeme> ConcretePanteraWrapper::tag(
-    const std::vector<DefaultLexeme> &lexems_,
-    bool doSentSplit, bool doMorphAnalysis, bool doSegmentDisamb, bool doTagging){
+void ConcretePanteraWrapper::tag(
+        std::vector<DefaultLexeme> &lexems,
+        const TaggingOptions& options) {
 
-  vector<MyLexeme> lexems(lexems_.begin(), lexems_.end());
+    vector<MyLexeme> myLexems(lexems.begin(), lexems.end());
 
-//	debug(lexems, tagset);
+    //  debug(lexems, tagset);
+    this->doTag(myLexems, options);
+    //~ cerr << "done tagging" << endl; // XXX
+    lexems.clear();
+    lexems.insert(lexems.begin(), lexems.begin(), lexems.end());
+}
 
-  if (doSentSplit)
-    splitIntoSents(lexems);
+void ConcretePanteraWrapper::doTag(
+        vector<MyLexeme>& lexems,
+        const TaggingOptions& options) {
+    if (options.doSentSplit())
+        splitIntoSents(lexems, options.sentencerRules());
 
-  if (doMorphAnalysis)
-    morphAnalyze(lexems);
+    if (options.doMorphAnalysis())
+        morphAnalyze(lexems, options.morphDict(), options.useGuesser());
 
-  if (doSegmentDisamb)
-    segmentDisamb(lexems);
+    if (options.doSegmentDisamb())
+        this->segmentDisamb(lexems);
 
-  if (!doTagging)
-    return vector<DefaultLexeme>(lexems.begin(), lexems.end());
-
-	LexemesFilter < MyLexeme > segments_filter(MyLexeme::SEGMENT);
-	lexems = segments_filter.filterText(lexems);
-	engine.tagText(lexems);
-	lexems = segments_filter.unfilterText(lexems);
-
-//	debug(lexems, tagset);
-
-	return vector<DefaultLexeme>(lexems.begin(), lexems.end());
+    if (options.doTagging()) {
+        LexemesFilter<MyLexeme> segments_filter(MyLexeme::SEGMENT);
+        if (options.doSegmentDisamb()) {
+            lexems = segments_filter.filterText(lexems);
+        }
+        engine.tagText(lexems);
+        if (options.doSegmentDisamb()) {
+            lexems = segments_filter.unfilterText(lexems);
+        }
+    }
 }
 
 Tagset* PanteraWrapper::getTagset() {
-	return tagset;
+    return tagset;
 }
 
+// DEPRECATED
+std::vector<NLPCommon::DefaultLexeme> ConcretePanteraWrapper::tag(
+        const std::vector<NLPCommon::DefaultLexeme>& lexems, 
+        bool doSentSplit, bool doMorphAnalysis, 
+        bool doSegmentDisamb, bool doTagging) {
+    TaggingOptions opts;
+    opts.doSentSplit(doSentSplit)
+        .doMorphAnalysis(doMorphAnalysis)
+        .doSegmentDisamb(doSegmentDisamb)
+        .doTagging(doTagging);
+    std::vector<NLPCommon::DefaultLexeme> result(lexems.begin(), lexems.end());
+    tag(result, opts);
+    return result;
+}
+
+// DEPRECATED
+std::vector<NLPCommon::DefaultLexeme> ConcretePanteraWrapper::tag(const std::string& text) {
+    TaggingOptions opts;
+    opts.doSentSplit(true)
+        .doMorphAnalysis(true)
+        .doSegmentDisamb(true)
+        .doTagging(true);
+    std::vector<NLPCommon::DefaultLexeme> result;
+    tag(text, opts, result);
+    return result;
+}
 } // namespace Pantera
 

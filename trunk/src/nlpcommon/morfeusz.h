@@ -17,7 +17,7 @@
 #include <boost/range/iterator_range.hpp>
 
 #include <iostream>
-#include <fstream>
+#include <istream>
 #include <vector>
 #include <morfeusz.h>
 #include <guesser_api.h>
@@ -73,7 +73,6 @@ private:
     const Tagset* odg_tagset;
     TagsetConverter<tag_type>* odg_converter;
 
-    bool use_odgadywacz;
     bool quiet;
 
     // lowercase form -> vector of (base, tag)
@@ -239,7 +238,7 @@ private:
         }
     }
 
-	void parseOdgadywaczResponse(const string& forms, Lexeme& lex) {
+    void parseOdgadywaczResponse(const string& forms, Lexeme& lex) {
         bool got_form = false;
         for (string_split_iterator segment_it =
                 boost::make_split_iterator(forms, boost::token_finder(
@@ -282,7 +281,7 @@ private:
         }
     }
 
-	void parseDictEntry(const std::vector<std::pair<wstring, string> >& entry,
+    void parseDictEntry(const std::vector<std::pair<wstring, string> >& entry,
             Lexeme& lex) {
         typedef std::pair<wstring, string> ss_type;
         BOOST_FOREACH(const ss_type& ss, entry) {
@@ -293,7 +292,7 @@ private:
     }
 
 public:
-    MorfeuszAnalyzer(const Tagset* out_tagset, bool use_odgadywacz = true)
+    MorfeuszAnalyzer(const Tagset* out_tagset)
         : out_tagset(out_tagset),
           morf_tagset(load_tagset(MORFEUSZ_TAGSET)),
           morf_converter(PolishTagsetConverter<tag_type>::getSharedInstance(
@@ -301,7 +300,6 @@ public:
           odg_tagset(load_tagset(ODGADYWACZ_TAGSET)),
           odg_converter(PolishTagsetConverter<tag_type>::getSharedInstance(
                       odg_tagset, out_tagset)),
-          use_odgadywacz(use_odgadywacz),
           quiet(false)
     {
     }
@@ -321,14 +319,14 @@ public:
     // 
     // Full-line comments starting with # are allowed.
     //
-    void loadMorphDict(const string& filename) {
+    void loadMorphDict(std::istream& stream) {
         wstring key;
         wstring base;
         std::vector<std::pair<wstring, string> > interps;
 
         char line_buffer[1024];
-        ifstream stream(filename.c_str());
-        stream.exceptions(ifstream::badbit);
+//        ifstream stream(filename.c_str());
+//        stream.exceptions(ifstream::badbit);
         while (!stream.eof()) {
             stream.getline(line_buffer, sizeof(line_buffer));
             string line(line_buffer);
@@ -381,10 +379,14 @@ public:
         }
     }
 
-	vector<Lexeme> analyzeText(const vector<Lexeme>& text) {
+    void clearMorphDict() {
+        morph_dict.clear();
+    }
+
+    vector<Lexeme> analyzeText(const vector<Lexeme>& text, const bool use_odgadywacz) {
         vector<Lexeme> ret;
         int tidx = -1;
-		BOOST_FOREACH(const Lexeme& lex, text) {
+        BOOST_FOREACH(const Lexeme& lex, text) {
             tidx++;
 
             if (lex.getType() != Lexeme::SEGMENT) {
@@ -547,10 +549,10 @@ public:
                     ret.push_back(Lexeme(Lexeme::END_OF_AMBIGUITY));
                 }
             }
-		}
+        }
 
         return ret;
-	}
+    }
 };
 
 

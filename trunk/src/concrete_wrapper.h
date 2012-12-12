@@ -39,18 +39,32 @@ typedef BestScoreMultiGoldenScorer<BinaryScorer<MyLexeme::tag_type> > MyScorer;
 
 class ConcretePanteraWrapper : public PanteraWrapper {
 public:
-	virtual std::vector<NLPCommon::DefaultLexeme> tag(const std::string& text);
+    ConcretePanteraWrapper(string enginePath, string tagsetName);
+    virtual ~ConcretePanteraWrapper();
+    
+    virtual void tag(
+        std::vector<NLPCommon::DefaultLexeme>& lexems,
+        const TaggingOptions& options);
+    
+    virtual void tag(
+        const std::string& text,
+        const TaggingOptions& options,
+        std::vector<NLPCommon::DefaultLexeme>& result);
+    
+    // DEPRECATED
+    virtual std::vector<NLPCommon::DefaultLexeme> tag(
+        const std::vector<NLPCommon::DefaultLexeme>& lexems, 
+        bool doSentSplit, bool doMorphAnalysis, bool doSegmentDisamb, bool doTagging);
 
-	ConcretePanteraWrapper(string enginePath, string tagsetName);
-	virtual ~ConcretePanteraWrapper();
-	virtual std::vector<NLPCommon::DefaultLexeme> tag(const
-      std::vector<NLPCommon::DefaultLexeme>& lexems, bool doSentSplit,
-      bool doMorphAnalysis, bool doSegmentDisamb, bool doTagging);
+    // DEPRECATED
+    virtual std::vector<NLPCommon::DefaultLexeme> tag(const std::string& text);
 
 private:
-  void morphAnalyze(vector<MyLexeme>& lexems);
+  void morphAnalyze(vector<MyLexeme>& lexems, const string& morphDict, const bool useGuesser);
   void segmentDisamb(vector<MyLexeme>& lexems);
-
+  
+  void doTag(vector<MyLexeme>& lexems, const TaggingOptions& opts);
+  
   MorfeuszAnalyzer<MyLexeme> morfeusz;
   PolishSegmDisambiguator<MyLexeme> segm_disamb;
   BTagger::BrillEngine<MyLexeme, MyScorer> engine;

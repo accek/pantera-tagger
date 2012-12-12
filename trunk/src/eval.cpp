@@ -27,6 +27,13 @@
 using namespace std;
 using namespace NLPCommon;
 
+// XXX bo jest jako extern w nlpcommon/util.h
+boost::program_options::variables_map options;
+
+// XXX bo nie chcemy, by sie wywalało przez MPI
+boost::mpi::environment env;
+boost::mpi::communicator world;
+
 typedef Lexeme<Tag> MyLexeme;
 
 TaggingErrorsCollector<MyLexeme>* errors_collector;

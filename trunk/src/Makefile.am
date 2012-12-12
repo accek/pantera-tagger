@@ -1,6 +1,6 @@
 AM_CXXFLAGS = @BOOST_CPPFLAGS@ @OPENMP_CXXFLAGS@ @MORFEUSZ_CFLAGS@ \
 	-I../third_party/TaKIPI18/Linux/Corpus \
-	-DSEGMENT_PATH=\"$(libexecdir)/$(PACKAGE):@abs_top_srcdir@/third_party/segment\" \
+	-DSEGMENT_PATH=\"$(libexecdir)/$(PACKAGE):$(pkgdatadir):@abs_top_srcdir@/third_party/segment\" \
 	-DENGINES_PATH=\"$(pkgdatadir)/engines:@abs_top_srcdir@/engines\"
 
 SUBDIRS = nlpcommon
@@ -60,7 +60,7 @@ pantera_SOURCES = pantera.cpp pantera_rules.cpp \
 	rules/a.h rules/c1.m4h rules/p1.h rules/p2.h \
 	rules/impl.h rules/make.h brillengine.h \
 	brillexeme.h unigram.h rules.h pantera_rules.h \
-	pantera.h
+	pantera.h taggingoptions.h
 pantera_CXXFLAGS = $(AM_CXXFLAGS)
 pantera_LDFLAGS = $(LIBCORPUS_LINK_FLAGS) $(GLOBAL_LINK_FLAGS) $(LIBMORFEUSZ_LINK_FLAGS) \
 				   @BOOST_LDFLAGS@ 
@@ -76,14 +76,25 @@ pantera_LDADD = nlpcommon/libnlpcommon.la \
 
 
 
-libpantera_la_SOURCES = wrapper.cpp pantera_rules.cpp
-include_HEADERS = wrapper.h
+libpantera_la_SOURCES = wrapper.cpp pantera_rules.cpp taggingoptions.cpp
+include_HEADERS = wrapper.h taggingoptions.h
+
+libpantera_la_LDFLAGS = $(LIBCORPUS_LINK_FLAGS) $(GLOBAL_LINK_FLAGS) $(LIBMORFEUSZ_LINK_FLAGS) \
+				   @BOOST_LDFLAGS@ 
+
+libpantera_la_LIBADD = ../third_party/TaKIPI18/Linux/bin/Corpus/libcorpus.so \
+				   @BOOST_SERIALIZATION_LIB@ \
+				   @BOOST_PROGRAM_OPTIONS_LIB@ \
+				   @BOOST_SYSTEM_LIB@ @BOOST_FILESYSTEM_LIB@ \
+				   @BOOST_IOSTREAMS_LIB@ \
+				   @BOOST_MPI_LIB@ @ICU_LIBS@ @LIBICONV@ \
+				   @MORFEUSZ_LIBS@ @BOOST_REGEX_LIB@
 
 wrapper_test_SOURCES = wrapper_test.cpp \
 	rules/a.h rules/c1.m4h rules/p1.h rules/p2.h \
 	rules/impl.h rules/make.h brillengine.h \
 	brillexeme.h unigram.h rules.h pantera_rules.h \
-	pantera.h
+	pantera.h taggingoptions.h
 wrapper_test_LDFLAGS =  $(LIBCORPUS_LINK_FLAGS) $(GLOBAL_LINK_FLAGS) $(LIBMORFEUSZ_LINK_FLAGS) \
 				   @BOOST_LDFLAGS@
 

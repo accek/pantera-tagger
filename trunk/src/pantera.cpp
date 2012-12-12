@@ -35,7 +35,7 @@
 #include "pantera_rules.h"
 
 #ifndef DEFAULT_TAGSET
-#define DEFAULT_TAGSET "ipipan"
+#define DEFAULT_TAGSET "nkjp"
 #endif
 
 #ifndef DEFAULT_ENGINE
@@ -160,7 +160,8 @@ static vector<fs::path> gen_output_paths(const fs::path& input_path, const strin
 boost::scoped_ptr<Lexer<MyLexeme> > lexer;
 
 static void preprocess_file(const fs::path& path, const string& type,
-        const Tagset* tagset, vector<MyLexeme>& text, bool only_lex = false) {
+        const Tagset* tagset, vector<MyLexeme>& text, const bool only_lex = false,
+        const bool ignoreSentsInsideSegment = false) {
     fs::ifstream data_stream(path);
     lexer.reset(make_lexer(type, data_stream));
 
@@ -172,19 +173,20 @@ static void preprocess_file(const fs::path& path, const string& type,
 
     if (only_lex)
         return;
-
     // 2. Sentencer.
     if (options.count("no-sentencer") == 0) {
         print_status("SENTENCER", path.string());
-        static LibSegmentSentencer<MyLexeme> sentencer;
-        text = sentencer.addSentenceDelimiters(text);
+        static LibSegmentSentencer<MyLexeme> sentencer(ignoreSentsInsideSegment);
+        string sentencerRulesFile = options.count("sentencer-rules") != 0 
+            ? options["sentencer-rules"].as<string>()
+            : "";
+        text = sentencer.addSentenceDelimiters(text, sentencerRulesFile);
     }
 
     // 3. Morphological analyzer.
     if (options.count("no-morph") == 0) {
 
-        static MorfeuszAnalyzer<MyLexeme> morfeusz(tagset,
-                options.count("no-guesser") == 0);
+        static MorfeuszAnalyzer<MyLexeme> morfeusz(tagset);
         static PolishSegmDisambiguator<MyLexeme> segm_disamb;
         static bool first_time = true;
 
@@ -195,13 +197,17 @@ static void preprocess_file(const fs::path& path, const string& type,
 
             if (options.count("morph-dict")) {
                 BOOST_FOREACH(const string& filename,
-                        options["morph-dict"].as<vector<string> >())
-                    morfeusz.loadMorphDict(filename);
+                        options["morph-dict"].as<vector<string> >()) {
+                    ifstream stream(filename.c_str());
+                    stream.exceptions(ifstream::badbit);
+                    morfeusz.loadMorphDict(stream);
+                }
             }
         }
 
         print_status("MORPH", path.string());
-        text = morfeusz.analyzeText(text);
+        bool use_odgadywacz = options.count("no-guesser") == 0;
+        text = morfeusz.analyzeText(text, use_odgadywacz);
 
         print_status("SEGM-DISAMB", path.string());
         segm_disamb.disambiguateSegmentation(text);
@@ -333,6 +339,8 @@ void parse_command_line(int argc, char** argv) {
         ("morph-dict,d", po::value<vector<string> >(),
          "extra morphological dictionaries, see documentation "
          "on the project page for format examples.")
+        ("sentencer-rules,s", po::value<string>(), "path to sentencer rules file (in SRX format)")
+        ("ignore-sents-inside-segment", "ignore sentence delimiters inside segment (instead of splitting the segment)")
         ("nkjp-tool-name", po::value<string>()->default_value("pantera"),
          "the name of the tool to use when producing NKJP XML output "
          "(default is 'pantera').")
@@ -451,7 +459,7 @@ int real_main(mpi::communicator& world, int argc, char** argv) {
             BOOST_FOREACH(const input_pair_type& input_pair, training_files) {
                 vector<MyLexeme> text;
                 preprocess_file(input_pair.first, input_pair.second, tagset,
-                        text, true);
+                        text, true, options.count("ignore-sents-inside-segments") != 0);
                 all_text.insert(all_text.end(), text.begin(), text.end());
             }
 
@@ -485,7 +493,7 @@ int real_main(mpi::communicator& world, int argc, char** argv) {
                 fs::ofstream data_ostream(engine_path, ios::out);
                 boost::archive::text_oarchive engine_oarchive(data_ostream);
                 engine_oarchive << engine;
-                data_stream.close();
+                data_ostream.close();
 
                 cerr << endl;
                 cerr << "The engine has been converted to a newer file format."
@@ -553,7 +561,7 @@ int real_main(mpi::communicator& world, int argc, char** argv) {
                     input_pair.second);
 
             vector<MyLexeme> text;
-            preprocess_file(input_pair.first, input_pair.second, tagset, text);
+            preprocess_file(input_pair.first, input_pair.second, tagset, text, false);
             progress.set(done += 0.3);
             progress_left -= 0.3;
 

@@ -23,7 +23,9 @@ public:
     Sentencer() { }
     virtual ~Sentencer() { }
 
-    virtual vector<Lexeme> addSentenceDelimiters(const vector<Lexeme>& text) = 0;
+    virtual vector<Lexeme> addSentenceDelimiters(
+    		const vector<Lexeme>& text,
+    		const string& sentencerRulesFile) = 0;
 };
 
 } // namespace NLPCommon
