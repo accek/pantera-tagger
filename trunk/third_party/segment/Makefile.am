@@ -1,5 +1,9 @@
 AM_JAVACFLAGS = -cp '$(CLASSPATH):*'
 javadir = $(libexecdir)/$(PACKAGE)
+segmentdatadir = $(pkgdatadir)
+
+dist_segmentdata_DATA = segment.srx
+
 dist_java_JAVA = SegmentInterface.java
 dist_java_DATA = \
 	activation.jar \
