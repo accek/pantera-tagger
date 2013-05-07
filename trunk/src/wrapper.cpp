@@ -167,7 +167,7 @@ void ConcretePanteraWrapper::tag(
     this->doTag(myLexems, options);
     //~ cerr << "done tagging" << endl; // XXX
     lexems.clear();
-    lexems.insert(lexems.begin(), lexems.begin(), lexems.end());
+    lexems.insert(lexems.begin(), myLexems.begin(), myLexems.end());
 }
 
 void ConcretePanteraWrapper::doTag(
