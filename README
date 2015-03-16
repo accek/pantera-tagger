@@ -7,8 +7,9 @@ The tagger is described in a following paper:
 
 It is a rewrite of an experimental tagger described in
 
-  S. Acedański and K. Gołuchowski, "A Morphosyntactic Rule-Based Brill Tagger for Polish,"
-  in Recent Advances in Intelligent Information Systems, Kraków, Poland, 2009, pp. 67-76.
+  S. Acedański and K. Gołuchowski, "A Morphosyntactic Rule-Based Brill Tagger
+  for Polish," in Recent Advances in Intelligent Information Systems, Kraków,
+  Poland, 2009, pp. 67-76.
 
 The tagger was created as a part of of the National Corpus of Polish project.
 
