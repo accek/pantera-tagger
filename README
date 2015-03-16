@@ -1,1 +1,17 @@
-Sample readme file for btagger project.
+A morphosyntactic tagger based on Brill's Algorithm adapted for morphologically rich languages, eg. Polish.
+
+The tagger is described in a following paper:
+
+  S. Acedański, "A Morphosyntactic Brill Tagger for Inflectional Languages,"
+  in Advances in Natural Language Processing, 2010, pp. 3-14.
+
+It is a rewrite of an experimental tagger described in
+
+  S. Acedański and K. Gołuchowski, "A Morphosyntactic Rule-Based Brill Tagger for Polish,"
+  in Recent Advances in Intelligent Information Systems, Kraków, Poland, 2009, pp. 67-76.
+
+The tagger was created as a part of of the National Corpus of Polish project.
+
+The acronym PANTERA comes from "Polskiej Akademii Nauk Tager Ekstrahujący Reguły
+Automatycznie", which means in English "Automatic Rule Extraction Based Tagger
+of the Polish Academy of Sciences". The word "pantera" means "leopard".
