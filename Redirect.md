@@ -1,0 +1,1 @@
+The new project page is http://code.google.com/p/pantera-tagger.
